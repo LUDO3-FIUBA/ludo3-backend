@@ -2,6 +2,7 @@ version: '3.7'
 
 services:
   web:
+    container_name: web
     build: .
     command: python manage.py runserver 0.0.0.0:8007
     volumes:
@@ -14,6 +15,7 @@ services:
     depends_on:
       - db
   db:
+    container_name: db
     image: postgres:12.0-alpine
     volumes:
       - postgres_data:/var/lib/postgresql/data/
@@ -23,6 +25,7 @@ services:
       - POSTGRES_PASSWORD=ludo
       - POSTGRES_DB=ludo_dev
   fake-siu:
+    container_name: fake-siu
     build: fake-siu
     stop_grace_period: 1s
     ports:

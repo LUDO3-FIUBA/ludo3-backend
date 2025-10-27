@@ -121,6 +121,9 @@ DATABASES = {
         "PASSWORD": os.environ.get("SQL_PASSWORD", "ludo"),
         "HOST": os.environ.get("SQL_HOST", "localhost"),
         "PORT": os.environ.get("SQL_PORT", "5432"),
+        "OPTIONS": {
+            "sslmode": "disable",
+        },
     }
 }
 
@@ -190,4 +193,14 @@ USE_TZ = True
 STATIC_URL = '/static/'
 
 # Activate Django-Heroku.
-django_heroku.settings(locals())
+django_heroku.settings(locals(), databases=False)
+
+# Configure DATABASE_URL manually for local development without SSL
+if os.environ.get('DATABASE_URL'):
+    import dj_database_url
+    DATABASES['default'] = dj_database_url.config(
+        default=os.environ['DATABASE_URL'],
+        conn_max_age=500,
+        ssl_require=False
+    )
+    DATABASES['default']['OPTIONS'] = {'sslmode': 'disable'}

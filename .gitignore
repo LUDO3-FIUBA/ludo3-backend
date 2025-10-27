@@ -1,3 +1,6 @@
 .env
 .venv/
 ludo2-fiuba.json
+.DS_Store
+.cursorignore
+.vscode/
