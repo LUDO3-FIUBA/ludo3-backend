@@ -24,6 +24,8 @@ services:
       - POSTGRES_USER=ludo
       - POSTGRES_PASSWORD=ludo
       - POSTGRES_DB=ludo_dev
+    ports:
+      - 5432:5432
   fake-siu:
     container_name: fake-siu
     build: fake-siu
