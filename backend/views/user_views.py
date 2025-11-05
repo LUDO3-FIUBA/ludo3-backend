@@ -8,7 +8,7 @@ from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 
 from backend.serializers.user_serializer import (
     CustomTokenObtainPairSerializer, UserCustomCreateSerializer,
-    UserCustomGetSerializer)
+    UserCustomGetSerializer, SimpleLoginSerializer)
 from backend.services.image_validator_service import ImageValidatorService
 
 from ..api_exceptions import InvalidFaceError, InvalidToken
@@ -74,3 +74,21 @@ class TokenError(Exception):
 
 
 token_obtain_pair = CustomTokenObtainPairView.as_view()
+
+
+class SimpleLoginView(GenericAPIView):
+    """
+    Vista de login simple sin OAuth de FIUBA.
+    Permite autenticarse con DNI (y opcionalmente contraseña).
+    """
+    permission_classes = ()
+    authentication_classes = ()
+    serializer_class = SimpleLoginSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+
+
+simple_login = SimpleLoginView.as_view()

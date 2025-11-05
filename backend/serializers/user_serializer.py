@@ -100,3 +100,35 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 
     def _get_siu_user(self, is_student, dni):
         return SiuService().get_student(dni) if is_student else SiuService().get_teacher(dni)
+
+
+class SimpleLoginSerializer(serializers.Serializer):
+    dni = serializers.CharField(required=True)
+    password = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
+    def validate(self, attrs):
+        dni = attrs.get('dni')
+        password = attrs.get('password', None)
+
+        try:
+            user = User.objects.get(dni=dni)
+        except User.DoesNotExist:
+            raise serializers.ValidationError({'dni': 'Usuario no encontrado'})
+
+        # Si el usuario tiene contraseña configurada, validarla
+        if user.has_usable_password() and password:
+            if not user.check_password(password):
+                raise serializers.ValidationError({'password': 'Contraseña incorrecta'})
+        elif user.has_usable_password() and not password:
+            raise serializers.ValidationError({'password': 'Se requiere contraseña'})
+
+        # Generar tokens JWT
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+        }
+
+        return data
