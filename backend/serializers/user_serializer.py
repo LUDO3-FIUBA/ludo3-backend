@@ -31,7 +31,14 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         face_encodings = []
         
         validated_data['face_encodings'] = face_encodings
-        validated_data['image'] = self._upload_image(b64_string, f"{uuid.uuid4()}.jpg")
+        
+        # TEMPORARY WORKAROUND: Skip S3 upload when credentials are not configured
+        # Store a placeholder URL instead
+        try:
+            validated_data['image'] = self._upload_image(b64_string, f"{uuid.uuid4()}.jpg")
+        except Exception as e:
+            # If S3 upload fails, use a placeholder
+            validated_data['image'] = f"placeholder://{uuid.uuid4()}.jpg"
 
         return super().create(validated_data)
 

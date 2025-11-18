@@ -40,6 +40,17 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'salty-badlands-32978.herokuapp.com', 'ludo-backend.herokuapp.com']
 
+# CORS configuration for web app
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:19006",
+    "http://127.0.0.1:19006",
+]
+CORS_ALLOW_CREDENTIALS = True
+
+# Allow all origins in development (temporary solution)
+# TODO: Remove in production
+CORS_ALLOW_ALL_ORIGINS = True
+
 AUTH_USER_MODEL = 'backend.User'
 
 LANGUAGE_CODE = 'es-AR'
@@ -70,11 +81,13 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
 
     'push_notifications',
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
