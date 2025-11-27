@@ -286,6 +286,12 @@
       "padron": 102707,
       "dni": 41835723,
       "email": "jandresen@fi.uba.ar"
+    },
+    {
+      "id": 8,
+      "padron": 105738,
+      "dni": 42817479,
+      "email": "mgonzalezp@fi.uba.ar"
     }
   ],
   "docentes": [
@@ -318,6 +324,12 @@
       "legajo": 100608,
       "dni": 41107811,
       "email": "fgiordano@fi.uba.ar"
+    },
+    {
+      "id": 9,
+      "padron": 105738,
+      "dni": 42817479,
+      "email": "mgonzalezp@fi.uba.ar"
     }
   ],
   "finales": [
