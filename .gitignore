@@ -4,3 +4,5 @@ ludo2-fiuba.json
 .DS_Store
 .cursorignore
 .vscode/
+__pycache__/
+.idea/
