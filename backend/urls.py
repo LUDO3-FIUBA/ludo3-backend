@@ -6,7 +6,7 @@ from rest_framework_nested import routers
 
 from . import views
 from .views import CustomGCMDeviceViewSet
-from .views.user_views import UserCustomViewSet
+from .views.user_views import UserCustomViewSet, token_obtain_pair, simple_login
 
 router = routers.SimpleRouter()
 router.register(r'final_exams', views.FinalExamStudentViewSet, 'final_exam')
@@ -55,7 +55,8 @@ urlpatterns = [
     path('auth/', include('djoser.urls.jwt')),
 
     path('', include(auth_router.urls)),
-    re_path(r'^auth/oauth/$', views.user_views.token_obtain_pair, name='api-oauth'),
+    re_path(r'^auth/oauth/$', token_obtain_pair, name='api-oauth'),
+    re_path(r'^auth/login/$', simple_login, name='api-login'),
     
     path('docs/', schema_view.with_ui('swagger', cache_timeout=0),name='schema-swagger-ui')
 ]

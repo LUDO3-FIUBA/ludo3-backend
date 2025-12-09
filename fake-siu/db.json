@@ -280,6 +280,12 @@
       "padron": 101049,
       "dni": 41318038,
       "email": "airibarren@fi.uba.ar"
+    },
+    {
+      "id": 7,
+      "padron": 102707,
+      "dni": 41835723,
+      "email": "jandresen@fi.uba.ar"
     }
   ],
   "docentes": [
