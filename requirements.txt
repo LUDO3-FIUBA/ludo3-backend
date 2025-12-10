@@ -18,6 +18,7 @@ gunicorn
 markdown
 python-stdnum
 psycopg2-binary
+setuptools
 requests
 rest_condition
 qrcode
