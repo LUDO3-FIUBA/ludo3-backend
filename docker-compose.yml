@@ -32,6 +32,8 @@ services:
     stop_grace_period: 1s
     ports:
       - 3000:3000
+    volumes:
+      - ./fake-siu/db.json:/app/db.json
 
 volumes:
   postgres_data:
