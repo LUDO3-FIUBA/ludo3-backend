@@ -41,8 +41,8 @@ class UserCustomViewSet(UserViewSet):
 
 class SimpleLoginView(GenericAPIView):
     """
-    Vista de login simple sin OAuth de FIUBA.
-    Permite autenticarse con DNI (y opcionalmente contraseña).
+    Vista de login simple.
+    Permite autenticarse con DNI y contraseña.
     """
     permission_classes = ()
     authentication_classes = ()

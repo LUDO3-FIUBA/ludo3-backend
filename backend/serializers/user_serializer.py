@@ -10,15 +10,38 @@ from backend.services.image_validator_service import ImageValidatorService
 
 
 class UserCustomCreateSerializer(UserCreateSerializer):
+    # Campo padron no está en User, lo definimos explícitamente
+    padron = serializers.CharField(
+        required=False,
+        min_length=5,
+        max_length=7,
+        help_text="Padrón del estudiante (5 a 7 dígitos)"
+    )
+
     class Meta:
         model = User
-        fields = ('dni', 'email', 'is_student', 'is_teacher')
+        fields = ('dni', 'email', 'is_student', 'is_teacher', 'padron', 'password')
+
+    def validate(self, attrs):
+        is_student = attrs.get('is_student', False)
+        padron = attrs.get('padron')
+        password = attrs.get('password')
+
+        if is_student:
+            if not padron:
+                raise serializers.ValidationError({'padron': 'El padrón es obligatorio para estudiantes'})
+            if not padron.isdigit():
+                raise serializers.ValidationError({'padron': 'El padrón debe contener solo números'})
+            if not password:
+                raise serializers.ValidationError({'password': 'La contraseña es obligatoria para estudiantes'})
+
+        return attrs
 
     def create(self, validated_data):
-        b64_string = self.context['request'].data['image']
         
         # TEMPORARY WORKAROUND: Skip face detection for testing
         # TODO: Re-enable face detection once proper images are available
+        #b64_string = self.context['request'].data['image']
         # try:
         #     face_encodings, image = ImageValidatorService(b64_string).validate_image()
         # except InvalidImageError as e:
@@ -31,16 +54,13 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         
         # TEMPORARY WORKAROUND: Skip S3 upload when credentials are not configured
         # Store a placeholder URL instead
-        try:
-            validated_data['image'] = self._upload_image(b64_string, f"{uuid.uuid4()}.jpg")
-        except Exception as e:
-            # If S3 upload fails, use a placeholder
-            validated_data['image'] = f"placeholder://{uuid.uuid4()}.jpg"
+        # try:
+        #     validated_data['image'] = self._upload_image(b64_string, f"{uuid.uuid4()}.jpg")
+        # except Exception as e:
+        #     # If S3 upload fails, use a placeholder
+        #     validated_data['image'] = f"placeholder://{uuid.uuid4()}.jpg"
 
         return super().create(validated_data)
-
-    def validate(self, attrs):
-        return attrs
 
     def _upload_image(self, image_b64, image_name):
         return AwsS3Service().upload_b64_image(image_b64, image_name)
