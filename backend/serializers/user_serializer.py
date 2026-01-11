@@ -74,23 +74,20 @@ class UserCustomGetSerializer(UserSerializer):
 
 class SimpleLoginSerializer(serializers.Serializer):
     dni = serializers.CharField(required=True)
-    password = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    password = serializers.CharField(required=True, write_only=True)
 
     def validate(self, attrs):
         dni = attrs.get('dni')
-        password = attrs.get('password', None)
+        password = attrs.get('password')
 
         try:
             user = User.objects.get(dni=dni)
         except User.DoesNotExist:
             raise serializers.ValidationError({'dni': 'Usuario no encontrado'})
 
-        # Si el usuario tiene contraseña configurada, validarla
-        if user.has_usable_password() and password:
-            if not user.check_password(password):
-                raise serializers.ValidationError({'password': 'Contraseña incorrecta'})
-        elif user.has_usable_password() and not password:
-            raise serializers.ValidationError({'password': 'Se requiere contraseña'})
+        # Validar contraseña
+        if not user.check_password(password):
+            raise serializers.ValidationError({'password': 'Contraseña incorrecta'})
 
         # Generar tokens JWT
         from rest_framework_simplejwt.tokens import RefreshToken
