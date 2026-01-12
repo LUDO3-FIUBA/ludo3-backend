@@ -22,23 +22,27 @@ class CustomUserManager(UserManager):
 
         image = extra_fields.pop("image", None)
         face_encodings = extra_fields.pop("face_encodings", None)
+        padron = extra_fields.pop("padron", None)
 
         user = self.model(email=email, **extra_fields)
 
-        if extra_fields['is_staff']:
+        if extra_fields.get('is_student', False):
+            # Estudiantes tienen contraseña obligatoria
+            if not password:
+                raise ValidationError('Password is required for students')
             user.set_password(password)
             user.save(using=self._db)
-            return user
-
-        user.set_unusable_password()
-        user.save(using=self._db)
-
-        if extra_fields.get('is_teacher', False):
+            Student(user=user, image=image, face_encodings=face_encodings, padron=padron).save()
+        elif extra_fields.get('is_teacher', False):
+            user.set_unusable_password()
+            user.save(using=self._db)
             Teacher(user=user, face_encodings=face_encodings).save()
-        elif extra_fields.get('is_student', False):
-            Student(user=user, image=image, face_encodings=face_encodings).save()
+        elif extra_fields.get('is_staff', False):
+            user.set_password(password)
+            user.save(using=self._db)
         else:
-            raise ValidationError('Either is_student or is_teacher is needed')
+            raise ValidationError('Either is_student, is_teacher or is_staff is needed')
+        
         return user
 
     def create_superuser(self, email, password, username=None, **extra_fields):

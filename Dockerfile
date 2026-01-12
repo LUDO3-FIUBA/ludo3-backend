@@ -20,6 +20,7 @@ RUN apt-get update \
         libopenblas-dev \
         liblapack-dev \
         libjpeg-dev \
+        netcat-openbsd \
     && rm -rf /var/lib/apt/lists/*
 
 # install dependencies
@@ -34,6 +35,13 @@ COPY . .
 
 # collect static files
 RUN python manage.py collectstatic --noinput
+
+# copy entrypoint and give execute permissions
+COPY entrypoint.sh .
+RUN chmod +x /usr/src/ludo/entrypoint.sh
+
+# run entrypoint.sh (waits for db and runs migrations)
+ENTRYPOINT ["/usr/src/ludo/entrypoint.sh"]
 
 CMD gunicorn ludo.wsgi:application --bind 0.0.0.0:$PORT
 
