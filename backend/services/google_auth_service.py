@@ -43,6 +43,8 @@ class GoogleAuthService:
             'google_data': {
                 'sub': sub,
                 'email': email,
+                'first_name': claims.get("given_name", ""),
+                'last_name': claims.get("family_name", ""),
             }
         }
 
