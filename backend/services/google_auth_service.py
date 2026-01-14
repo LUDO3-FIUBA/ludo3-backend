@@ -12,6 +12,8 @@ User = get_user_model()
 
 
 class GoogleAuthService:
+    ALLOWED_DOMAINS = {'fi.uba.ar'}
+
     def __init__(self):
         self.client = GoogleAuthClient()
 
@@ -24,6 +26,10 @@ class GoogleAuthService:
         if not sub or not email:
             raise ValidationError("Invalid Google ID token: missing sub or email")
         
+        email_domain = email.split('@')[-1]
+        if email_domain not in self.ALLOWED_DOMAINS:
+            raise ValidationError("Email domain not allowed")
+
         identity = AuthIdentity.objects.select_related("user").filter(
             provider=AuthIdentity.Provider.GOOGLE,
             provider_user_id=sub,
