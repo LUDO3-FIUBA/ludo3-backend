@@ -1,6 +1,6 @@
 import logging
 from django.contrib.auth import get_user_model
-from rest_framework.exceptions import ValidationError
+from backend.api_exceptions import ValidationError
 
 from backend.client.google_auth_client import GoogleAuthClient
 from backend.models.auth_identity import AuthIdentity
