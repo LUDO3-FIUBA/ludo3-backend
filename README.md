@@ -53,13 +53,13 @@ The server will start by default on the port 8007. Admin dashboard URL is http:/
 
 For the first time, you'll need to run a migration and seed the DB. For this run:
 ```bash
-docker exec -it ludo2-backend-web-1 python3 manage.py migrate
-docker exec -it ludo2-backend-web-1 python3 manage.py initdata
+docker exec -it web python3 manage.py migrate
+docker exec -it web python3 manage.py initdata
 ```
 
 Debug: in case you want to explore the DB using PSQL, you can run:
 ```bash
-docker exec -it ludo2-backend-db-1 psql --user ludo --db ludo_dev
+docker exec -it db psql --user ludo --db ludo_dev
 ```
 
 And explore present tables with `\d [TABLE]`:
