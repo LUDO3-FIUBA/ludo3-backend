@@ -26,13 +26,20 @@ def google_sign_in(request):
     
     try:
         result = service.authenticate(id_token)
-        user = result['user']
-        refresh = RefreshToken.for_user(user)
         
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_200_OK)
+        if result['status'] == 'existing_user':
+            user = result['user']
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+            }, status=status.HTTP_200_OK)
+        
+        elif result['status'] == 'needs_registration':
+            return Response({
+                'data': result['google_data']
+            }, status=status.HTTP_409_CONFLICT)
     
     except ValidationError as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

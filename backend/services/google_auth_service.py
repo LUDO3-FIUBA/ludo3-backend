@@ -30,7 +30,6 @@ class GoogleAuthService:
         if email_domain not in self.ALLOWED_DOMAINS:
             raise ValidationError("Email domain not allowed")
 
-        # 1. Buscar si ya existe una identidad de Google con este sub
         identity = AuthIdentity.objects.select_related("user").filter(
             provider=AuthIdentity.Provider.GOOGLE,
             provider_user_id=sub,
@@ -42,36 +41,17 @@ class GoogleAuthService:
                 'user': identity.user,
             }
         
-        # 2. Buscar si ya existe una identidad con este email
-        identity_by_email = AuthIdentity.objects.select_related("user").filter(
-            email__iexact=email,
-        ).first()
-
-        if identity_by_email:
-            # Ya existe una identidad con este email, usar ese usuario
-            return {
-                'status': 'existing_user',
-                'user': identity_by_email.user,
-            }
-        
-        # 3. Buscar si el usuario ya existe por email (pre-registrado)
-        existing_user = User.objects.filter(email__iexact=email).first()
-        
-        if not existing_user:
-            # Usuario no pre-registrado, no puede loguearse
-            raise ValidationError("Usuario no registrado. Debe registrarse primero.")
-        
-        # Vincular la cuenta de Google con el usuario existente
-        AuthIdentity.objects.create(
-            user=existing_user,
-            provider=AuthIdentity.Provider.GOOGLE,
-            provider_user_id=sub,
-            email=email,
-        )
-        logger.info(f"Linked Google account to existing user: {email}")
+        if AuthIdentity.objects.filter(email__iexact=email).exists():
+            raise ValidationError("Email is already registered.")
+                
         return {
-            'status': 'existing_user',
-            'user': existing_user,
+            'status': 'needs_registration',
+            'google_data': {
+                'sub': sub,
+                'email': email,
+                'first_name': claims.get("given_name", ""),
+                'last_name': claims.get("family_name", ""),
+            }
         }
 
     def complete_registration(self, sub, email, dni, padron=None, first_name='', last_name='', 
