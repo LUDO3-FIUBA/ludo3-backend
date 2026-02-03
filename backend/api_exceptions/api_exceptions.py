@@ -32,17 +32,6 @@ class UserTypeMisMatch(APIException):
     default_code = 'invalid_user_type'
 
 
-class InvalidToken(APIException):
-    status_code = status.HTTP_401_UNAUTHORIZED
-    # default_detail = _('Token is invalid or expired')
-    default_code = 'token_not_valid'
-
-
-class StudentNotApprovedYetError(APIException):
-    status_code = status.HTTP_401_UNAUTHORIZED
-    default_code = 'user_not_approved'
-
-
 class InvalidSubjectCodeError(APIException):
     status_code = status.HTTP_404_NOT_FOUND
     default_code = 'invalid_subject_code'

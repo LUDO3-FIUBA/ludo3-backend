@@ -2,26 +2,46 @@ import uuid
 
 from djoser.serializers import UserCreateSerializer, User, UserSerializer
 from rest_framework import serializers
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-from backend.api_exceptions import InvalidImageError, StudentNotApprovedYetError
+from backend.api_exceptions import InvalidImageError
 from backend.models import User
 from backend.services import AwsS3Service
-from backend.services.auth_fiuba_service import AuthFiubaService
 from backend.services.image_validator_service import ImageValidatorService
-from backend.services.siu_service import SiuService
 
 
 class UserCustomCreateSerializer(UserCreateSerializer):
+    # Campo padron no está en User, lo definimos explícitamente
+    padron = serializers.CharField(
+        required=False,
+        min_length=5,
+        max_length=7,
+        help_text="Padrón del estudiante (5 a 7 dígitos)"
+    )
+
     class Meta:
         model = User
-        fields = ('dni', 'email', 'is_student', 'is_teacher')
+        fields = ('dni', 'email', 'is_student', 'is_teacher', 'padron', 'password')
+
+    def validate(self, attrs):
+        is_student = attrs.get('is_student', False)
+        padron = attrs.get('padron')
+        password = attrs.get('password')
+
+        if is_student:
+            if not padron:
+                raise serializers.ValidationError({'padron': 'El padrón es obligatorio para estudiantes'})
+            if not padron.isdigit():
+                raise serializers.ValidationError({'padron': 'El padrón debe contener solo números'})
+            if not password:
+                raise serializers.ValidationError({'password': 'La contraseña es obligatoria para estudiantes'})
+
+        return attrs
 
     def create(self, validated_data):
-        b64_string = self.context['request'].data['image']
         
         # TEMPORARY WORKAROUND: Skip face detection for testing
         # TODO: Re-enable face detection once proper images are available
+        #b64_string = self.context['request'].data['image']
         # try:
         #     face_encodings, image = ImageValidatorService(b64_string).validate_image()
         # except InvalidImageError as e:
@@ -34,16 +54,13 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         
         # TEMPORARY WORKAROUND: Skip S3 upload when credentials are not configured
         # Store a placeholder URL instead
-        try:
-            validated_data['image'] = self._upload_image(b64_string, f"{uuid.uuid4()}.jpg")
-        except Exception as e:
-            # If S3 upload fails, use a placeholder
-            validated_data['image'] = f"placeholder://{uuid.uuid4()}.jpg"
+        # try:
+        #     validated_data['image'] = self._upload_image(b64_string, f"{uuid.uuid4()}.jpg")
+        # except Exception as e:
+        #     # If S3 upload fails, use a placeholder
+        #     validated_data['image'] = f"placeholder://{uuid.uuid4()}.jpg"
 
         return super().create(validated_data)
-
-    def validate(self, attrs):
-        return attrs
 
     def _upload_image(self, image_b64, image_name):
         return AwsS3Service().upload_b64_image(image_b64, image_name)
@@ -55,79 +72,22 @@ class UserCustomGetSerializer(UserSerializer):
         fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'file')
 
 
-class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
-    username_field = 'code'
-
-    class Meta:
-        model = User
-        fields = ('code',)
-
-    def validate(self, attrs):
-        token_response = self._fiuba_service().get_token(self.context['request'].data['code'], self.context['request'].data['redirect_uri'])
-
-        auth_user_info = self._fiuba_service().userinfo(token_response['access_token'])
-
-        user = User.objects.get(dni=auth_user_info['sub'])
-
-        if not user.first_name:
-            self._update_user(user, auth_user_info)
-
-        data = {}
-
-        refresh = self.get_token(user)
-
-        data['refresh'] = str(refresh)
-        data['access'] = str(refresh.access_token)
-        self._validated_data = data
-
-        return data
-
-    def is_valid(self, raise_exception=False):
-        return self.validate(self.initial_data)
-
-    def _fiuba_service(self):
-        return AuthFiubaService()
-
-    def _update_user(self, user, auth_user_info):
-        siu_user_info = self._get_siu_user(user.is_student, user.dni)
-        # siu_user_info = { 'file': '328123' }
-
-        user.first_name = auth_user_info['name']
-        user.last_name = auth_user_info['family_name']
-
-        if user.is_student:
-            if not user.student.inscripto:
-                raise StudentNotApprovedYetError()
-            user.student.padron = siu_user_info['file']
-            user.student.save()
-        else:
-            user.teacher.legajo = siu_user_info['file']
-            user.teacher.save()
-        user.save()
-
-    def _get_siu_user(self, is_student, dni):
-        return SiuService().get_student(dni) if is_student else SiuService().get_teacher(dni)
-
-
 class SimpleLoginSerializer(serializers.Serializer):
     dni = serializers.CharField(required=True)
-    password = serializers.CharField(required=False, allow_blank=True, write_only=True)
+    password = serializers.CharField(required=True, write_only=True)
 
     def validate(self, attrs):
         dni = attrs.get('dni')
-        password = attrs.get('password', None)
+        password = attrs.get('password')
 
         try:
             user = User.objects.get(dni=dni)
         except User.DoesNotExist:
             raise serializers.ValidationError({'dni': 'Usuario no encontrado'})
 
-        # Si el usuario tiene contraseña configurada, validarla
-        if user.has_usable_password() and password:
-            if not user.check_password(password):
-                raise serializers.ValidationError({'password': 'Contraseña incorrecta'})
-        elif user.has_usable_password() and not password:
-            raise serializers.ValidationError({'password': 'Se requiere contraseña'})
+        # Validar contraseña
+        if not user.check_password(password):
+            raise serializers.ValidationError({'password': 'Contraseña incorrecta'})
 
         # Generar tokens JWT
         from rest_framework_simplejwt.tokens import RefreshToken
