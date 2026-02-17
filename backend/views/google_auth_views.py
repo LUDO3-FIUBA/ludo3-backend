@@ -61,6 +61,7 @@ def google_complete_registration(request):
             sub=serializer.validated_data['sub'],
             email=serializer.validated_data['email'],
             dni=serializer.validated_data['dni'],
+            password=serializer.validated_data['password'],
             padron=serializer.validated_data.get('padron'),
             first_name=serializer.validated_data.get('first_name', ''),
             last_name=serializer.validated_data.get('last_name', ''),

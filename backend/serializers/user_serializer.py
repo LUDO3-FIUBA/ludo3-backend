@@ -67,9 +67,16 @@ class UserCustomCreateSerializer(UserCreateSerializer):
 
 
 class UserCustomGetSerializer(UserSerializer):
+    legajo = serializers.SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'file')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'file', 'legajo')
+
+    def get_legajo(self, obj):
+        if obj.is_teacher:
+            return obj.teacher.legajo
+        return None
 
 
 class SimpleLoginSerializer(serializers.Serializer):
