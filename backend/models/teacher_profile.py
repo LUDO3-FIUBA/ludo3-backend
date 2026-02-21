@@ -11,6 +11,7 @@ class TeacherProfile(models.Model):
     current_position = models.CharField(max_length=255, verbose_name="Cargo actual")
     years_of_experience = models.PositiveIntegerField(null=True, blank=True, validators=[MaxValueValidator(70)])
     certifications = models.TextField(blank=True)
+    linkedin_url = models.URLField(max_length=255, blank=True, verbose_name="LinkedIn")
 
     class Meta:
         verbose_name = 'Perfil Profesional Docente'

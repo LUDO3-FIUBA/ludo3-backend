@@ -15,7 +15,7 @@ class TeacherProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TeacherProfile
-        fields = ['university', 'degree', 'bio', 'current_position', 'years_of_experience', 'certifications', 'work_experience']
+        fields = ['university', 'degree', 'bio', 'current_position', 'years_of_experience', 'certifications', 'linkedin_url', 'work_experience']
 
     def create(self, validated_data):
         work_experience_data = validated_data.pop('work_experience', [])
