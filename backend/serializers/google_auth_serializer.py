@@ -9,6 +9,7 @@ class GoogleRegistrationSerializer(serializers.Serializer):
     sub = serializers.CharField(required=True, help_text="Google user ID (sub claim)")
     email = serializers.EmailField(required=True)
     dni = serializers.CharField(required=True, min_length=7, max_length=9, help_text="DNI del usuario")
+    password = serializers.CharField(required=True, write_only=True, help_text="Contraseña del usuario")
     padron = serializers.CharField(required=False, min_length=5, max_length=7, help_text="Padrón (solo estudiantes)")
     is_student = serializers.BooleanField(default=True)
     is_teacher = serializers.BooleanField(default=False)

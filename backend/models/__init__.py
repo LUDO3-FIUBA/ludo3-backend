@@ -14,3 +14,4 @@ from .attendance import Attendance
 from .attendance_qr_code import AttendanceQRCode
 from .audit_log import AuditLog
 from .auth_identity import AuthIdentity
+from .teacher_profile import TeacherProfile, WorkExperience

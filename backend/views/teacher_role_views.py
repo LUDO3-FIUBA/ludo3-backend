@@ -18,6 +18,11 @@ class TeacherRoleViewSet(BaseViewSet):
     permission_classes = [IsAuthenticated, IsTeacher]
     queryset = TeacherRole.objects.all()
     serializer_class = TeacherRolePostSerializer
+
+    def get_permissions(self):
+        if self.action == 'list':
+            return [IsAuthenticated()]
+        return [IsAuthenticated(), IsTeacher()]
     
     @swagger_auto_schema(
         tags=["Commission Teachers"],

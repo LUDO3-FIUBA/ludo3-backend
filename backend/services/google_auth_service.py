@@ -54,7 +54,7 @@ class GoogleAuthService:
             }
         }
 
-    def complete_registration(self, sub, email, dni, padron=None, first_name='', last_name='', 
+    def complete_registration(self, sub, email, dni, password, padron=None, first_name='', last_name='',
                              is_student=True, is_teacher=False):
 
         if AuthIdentity.objects.filter(provider=AuthIdentity.Provider.GOOGLE, provider_user_id=sub).exists():
@@ -75,12 +75,14 @@ class GoogleAuthService:
             is_teacher=is_teacher,
             username=email,
         )
-        user.set_unusable_password()
+        if not password:
+            raise ValidationError("Password is required")
+        user.set_password(password)
         user.save()
         
         if is_student:
             Student.objects.create(user=user, padron=padron, face_encodings=[])
-        elif is_teacher:
+        if is_teacher:
             Teacher.objects.create(user=user, face_encodings=[])
         
         AuthIdentity.objects.create(

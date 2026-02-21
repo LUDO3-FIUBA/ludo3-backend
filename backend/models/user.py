@@ -26,22 +26,22 @@ class CustomUserManager(UserManager):
 
         user = self.model(email=email, **extra_fields)
 
-        if extra_fields.get('is_student', False):
-            # Estudiantes tienen contraseña obligatoria
-            if not password:
-                raise ValidationError('Password is required for students')
-            user.set_password(password)
-            user.save(using=self._db)
-            Student(user=user, image=image, face_encodings=face_encodings, padron=padron).save()
-        elif extra_fields.get('is_teacher', False):
-            user.set_unusable_password()
-            user.save(using=self._db)
-            Teacher(user=user, face_encodings=face_encodings).save()
-        elif extra_fields.get('is_staff', False):
-            user.set_password(password)
-            user.save(using=self._db)
-        else:
+        is_student = extra_fields.get('is_student', False)
+        is_teacher = extra_fields.get('is_teacher', False)
+        is_staff = extra_fields.get('is_staff', False)
+
+        if not is_student and not is_teacher and not is_staff:
             raise ValidationError('Either is_student, is_teacher or is_staff is needed')
+
+        if not password:
+            raise ValidationError('Password is required')
+        user.set_password(password)
+        user.save(using=self._db)
+
+        if is_student:
+            Student(user=user, image=image, face_encodings=face_encodings, padron=padron).save()
+        if is_teacher:
+            Teacher(user=user, face_encodings=face_encodings).save()
         
         return user
 
@@ -81,5 +81,9 @@ class User(AbstractUser):
         return f"{self.dni}, {self.first_name} {self.last_name}"
 
     def file(self):
-        return self.student.padron if self.is_student else self.teacher.legajo
+        if self.is_student:
+            return self.student.padron
+        if self.is_teacher:
+            return self.teacher.legajo
+        return None
 
