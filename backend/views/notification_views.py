@@ -1,6 +1,7 @@
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -9,6 +10,7 @@ from backend.models.user import User
 from backend.serializers.notification_serializer import (
     NotificationCreateSerializer,
     NotificationSerializer,
+    UserNotificationSerializer,
 )
 from backend.views.base_view import BaseViewSet
 
@@ -16,7 +18,42 @@ from backend.views.base_view import BaseViewSet
 class NotificationViewSet(BaseViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Notification.objects.all()
-    serializer_class = NotificationCreateSerializer
+    serializer_class = UserNotificationSerializer
+
+    @action(detail=False, methods=['GET'])
+    @swagger_auto_schema(
+        tags=["Notifications"],
+        operation_summary="Get all notifications for the authenticated user",
+    )
+    def my_notifications(self, request):
+        user_notifications = UserNotification.objects.filter(
+            user=request.user
+        ).select_related('notification')
+
+        return Response(
+            UserNotificationSerializer(user_notifications, many=True).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=['PATCH'])
+    @swagger_auto_schema(
+        tags=["Notifications"],
+        operation_summary="Mark a notification as read",
+    )
+    def mark_as_read(self, request, pk=None):
+        user_notification = get_object_or_404(
+            UserNotification.objects,
+            pk=pk,
+            user=request.user,
+        )
+
+        user_notification.is_read = True
+        user_notification.save()
+
+        return Response(
+            UserNotificationSerializer(user_notification).data,
+            status=status.HTTP_200_OK,
+        )
 
     @action(detail=False, methods=['POST'])
     @swagger_auto_schema(
