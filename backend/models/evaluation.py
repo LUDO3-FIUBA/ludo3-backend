@@ -1,9 +1,11 @@
 from django.db import models
 
 from .semester import Semester
+from .commission import Commission
 
 
 class Evaluation(models.Model):
+    commission = models.ForeignKey(Commission, on_delete=models.CASCADE, related_name='evaluations', verbose_name="Comisión", default=1)
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name='evaluations', verbose_name="Evaluaciones")
     evaluation_name = models.CharField(max_length=100, db_index=True, editable=False, verbose_name="Nombre de Evaluacion")
     is_graded = models.BooleanField(default=True)
