@@ -20,6 +20,16 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
         model = EvaluationSubmission
         fields = ('evaluation', 'student', 'grade', 'grader', 'created_at', 'updated_at')
 
+    def validate(self, attrs):
+        file = attrs.get("file") or getattr(self.instance, "file", None)
+        url = attrs.get("submission_url") or getattr(self.instance, "submission_url", None)
+        text = attrs.get("submission_text") or getattr(self.instance, "submission_text", None)
+
+        if not any([file, url, text]):
+            raise serializers.ValidationError(
+                "Provide at least one of: file, submission_url, submission_text."
+            )
+        return attrs
 
 class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     evaluation = EvaluationWithMakeupSerializer()
