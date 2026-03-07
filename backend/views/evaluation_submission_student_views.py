@@ -32,8 +32,16 @@ class EvaluationSubmissionViewSet(BaseViewSet):
         if(request.user.student not in evaluation.semester.students.all()):
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)
 
-        submission = EvaluationSubmission(student=request.user.student, evaluation=evaluation)
+        submission = EvaluationSubmission(
+            student=request.user.student,
+            evaluation=evaluation,
+            file=request.FILES.get("file"),
+            submission_url=request.data.get("submission_url"),
+            submission_text=request.data.get("submission_text"),
+        )
+
         EvaluationSubmissionValidator(submission).validate()
+        submission.full_clean()
         submission.save()
 
         AuditLogService().log(request.user, None, f"Estudiante realizo una entrega en la evaluación: {evaluation}")

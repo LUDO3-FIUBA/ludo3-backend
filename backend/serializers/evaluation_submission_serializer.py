@@ -18,18 +18,11 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('evaluation', 'student', 'grade', 'grader', 'created_at', 'updated_at')
-
-    def validate(self, attrs):
-        file = attrs.get("file") or getattr(self.instance, "file", None)
-        url = attrs.get("submission_url") or getattr(self.instance, "submission_url", None)
-        text = attrs.get("submission_text") or getattr(self.instance, "submission_text", None)
-
-        if not any([file, url, text]):
-            raise serializers.ValidationError(
-                "Provide at least one of: file, submission_url, submission_text."
-            )
-        return attrs
+        fields = (
+            'evaluation', 'student', 'grade', 'grader',
+            'file', 'submission_url', 'submission_text',
+            'created_at', 'updated_at'
+        )
 
 class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     evaluation = EvaluationWithMakeupSerializer()
@@ -41,8 +34,11 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('evaluation', 'student', 'grade', 'grader', 'created_at', 'updated_at')
-
+        fields = (
+            'evaluation', 'student', 'grade', 'grader',
+            'file', 'submission_url', 'submission_text',
+            'created_at', 'updated_at'
+        )
 
 class EvaluationSubmissionPutSerializer(serializers.ModelSerializer):
 
@@ -63,7 +59,7 @@ class EvaluationSubmissionPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('evaluation', 'student')
+        fields = ('evaluation', 'student', 'file', 'submission_url', 'submission_text')
 
 
 class EvaluationSubmissionCorrectionSerializer(serializers.ModelSerializer):

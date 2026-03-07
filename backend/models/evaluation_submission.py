@@ -1,7 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
-from backend.api_exceptions.api_exceptions import ValidationError
+from django.core.exceptions import ValidationError
 
 from .evaluation import Evaluation
 from .student import Student
