@@ -13,6 +13,7 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
     student = StudentSerializer()
     grade = serializers.IntegerField()
     grader = TeacherSerializer()
+    file = serializers.FileField(use_url=False)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
 
@@ -29,6 +30,7 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     student = StudentSerializer()
     grade = serializers.IntegerField()
     grader = TeacherSerializer()
+    file = serializers.FileField(use_url=False)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
 

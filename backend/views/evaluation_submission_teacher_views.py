@@ -1,5 +1,6 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from django.http import FileResponse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -166,8 +167,15 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
         if teacher_not_in_commission_staff(request.user.teacher, commission):
             return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
         
-        submission = EvaluationSubmission(student=student, evaluation=evaluation)
+        submission = EvaluationSubmission(
+            student=student,
+            evaluation=evaluation,
+            file=request.FILES.get("file"),
+            submission_url=request.data.get("submission_url"),
+            submission_text=request.data.get("submission_text"),
+        )
         EvaluationSubmissionValidator(submission).validate()
+        submission.full_clean()
         submission.save()
 
         AuditLogService().log(request.user, student.user, f"Docente agrego una entrega manualmente para la evaluacion: {evaluation}")
@@ -179,3 +187,24 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
             AuditLogService().log(request.user, submission.student.user, f"Docente corrigio una entrega {submission}")
 
         return Response(EvaluationSubmissionSerializer(submission).data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['GET'], url_path='download-file')
+    @swagger_auto_schema(
+        tags=["Evaluation Submissions"],
+        operation_summary="Downloads a submission file if teacher belongs to the commission"
+    )
+    def download_file(self, request, pk=None):
+        submission = get_object_or_404(self.queryset, pk=pk)
+
+        commission = submission.evaluation.semester.commission
+        if teacher_not_in_commission_staff(request.user.teacher, commission):
+            return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
+
+        if not submission.file:
+            return Response("Submission has no file", status=status.HTTP_404_NOT_FOUND)
+
+        return FileResponse(
+            submission.file.open('rb'),
+            as_attachment=True,
+            filename=submission.file.name.split('/')[-1]
+        )

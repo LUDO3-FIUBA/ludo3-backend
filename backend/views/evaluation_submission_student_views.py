@@ -1,4 +1,5 @@
 from drf_yasg.utils import swagger_auto_schema
+from django.http import FileResponse
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -57,3 +58,23 @@ class EvaluationSubmissionViewSet(BaseViewSet):
 
         result = self.queryset.filter(student=request.user.student).all()
         return Response(EvaluationSubmissionSerializer(result, many=True).data, status.HTTP_200_OK)
+
+    @action(detail=True, methods=['GET'], url_path='download-file')
+    @swagger_auto_schema(
+        tags=["Evaluation Submissions"],
+        operation_summary="Downloads the logged in student's submission file"
+    )
+    def download_file(self, request, pk=None):
+        submission = get_object_or_404(self.queryset, pk=pk)
+
+        if submission.student != request.user.student:
+            return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
+
+        if not submission.file:
+            return Response("Submission has no file", status=status.HTTP_404_NOT_FOUND)
+
+        return FileResponse(
+            submission.file.open('rb'),
+            as_attachment=True,
+            filename=submission.file.name.split('/')[-1]
+        )
