@@ -395,7 +395,7 @@
   },
   {
     "model": "backend.teacher",
-    "pk": 8,
+    "pk": 9,
     "fields": {
       "siu_id": 10,
       "legajo": 104503,
@@ -952,7 +952,7 @@
     "model": "backend.commission",
     "pk": 6,
     "fields": {
-      "chief_teacher": 8,
+      "chief_teacher": 15,
       "subject_siu_id": 5,
       "subject_name": "Algoritmos y Programación I",
       "siu_id": 6
