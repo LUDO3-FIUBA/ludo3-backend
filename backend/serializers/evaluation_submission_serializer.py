@@ -21,7 +21,7 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
         model = EvaluationSubmission
         fields = (
             'evaluation', 'student', 'grade', 'grader',
-            'file', 'submission_url', 'submission_text',
+            'file', 'submission_text',
             'created_at', 'updated_at'
         )
 
@@ -38,7 +38,7 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
         model = EvaluationSubmission
         fields = (
             'evaluation', 'student', 'grade', 'grader',
-            'file', 'submission_url', 'submission_text',
+            'file', 'submission_text',
             'created_at', 'updated_at'
         )
 
@@ -61,7 +61,7 @@ class EvaluationSubmissionPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('evaluation', 'student', 'file', 'submission_url', 'submission_text')
+        fields = ('evaluation', 'student', 'file', 'submission_text')
 
 
 class EvaluationSubmissionCorrectionSerializer(serializers.ModelSerializer):

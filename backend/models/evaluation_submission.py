@@ -15,14 +15,13 @@ class EvaluationSubmission(models.Model):
     grader = models.ForeignKey(Teacher, null=True, blank=True, on_delete=models.CASCADE, related_name='grader', verbose_name="Grader")
     
     file = models.FileField(upload_to='evaluation_submissions/', null=True, blank=True)
-    submission_url = models.URLField(null=True, blank=True)
     submission_text = models.TextField(null=True, blank=True)
     
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")
     updated_at = models.DateTimeField(default=timezone.now, verbose_name="Última actualización")
 
     # def clean(self):
-    #     if not any([self.file, self.submission_url, self.submission_text]):
+    #     if not any([self.file, self.submission_text]):
     #         raise ValidationError("At least one submission format is required: file, URL, or text.")
 
     def __str__(self):
