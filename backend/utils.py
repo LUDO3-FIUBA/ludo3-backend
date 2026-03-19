@@ -1,6 +1,7 @@
 import base64
 import collections
 import functools
+from datetime import datetime, timezone
 
 from rest_framework import exceptions
 from rest_framework.response import Response
@@ -68,3 +69,25 @@ class memoized(object):
 
     def __get__(self, obj, objtype):
         return functools.partial(self.__call__, obj)
+
+
+def get_current_datetime():
+    return datetime.now(timezone.utc)
+
+
+def is_before_current_datetime(date):
+    datetime_object = date
+    if isinstance(date, str):
+        datetime_object = datetime.fromisoformat(date)
+
+    return datetime_object < get_current_datetime()
+
+
+def datetime_format(date):
+    datetime_object = date
+    if isinstance(date, str):
+        try:
+            datetime_object = datetime.fromisoformat(date)
+        except ValueError:
+            datetime_object = None
+    return datetime_object
