@@ -11,10 +11,12 @@ class EvaluationSerializer(serializers.ModelSerializer):
     passing_grade = serializers.IntegerField()
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
+    requires_qr = serializers.BooleanField()
+    requires_identity = serializers.BooleanField()
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'is_graded', 'passing_grade', 'start_date', 'end_date')
+        fields = ('id', 'evaluation_name', 'is_graded', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
 
 
 class EvaluationWithMakeupSerializer(serializers.ModelSerializer):
@@ -23,10 +25,12 @@ class EvaluationWithMakeupSerializer(serializers.ModelSerializer):
     passing_grade = serializers.IntegerField()
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
+    requires_qr = serializers.BooleanField()
+    requires_identity = serializers.BooleanField()
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'is_graded', 'passing_grade', 'start_date', 'end_date', 'make_up_evaluation')
+        fields = ('id', 'evaluation_name', 'is_graded', 'passing_grade', 'start_date', 'end_date', 'make_up_evaluation', 'requires_qr', 'requires_identity')
     
     def get_fields(self):
         fields = super(EvaluationWithMakeupSerializer, self).get_fields()
@@ -50,11 +54,13 @@ class EvaluationSemesterSerializer(serializers.ModelSerializer):
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
     semester = SemesterEvaluationsSerializer()
+    requires_qr = serializers.BooleanField()
+    requires_identity = serializers.BooleanField()
 
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'passing_grade', 'start_date', 'end_date', 'semester')
+        fields = ('id', 'evaluation_name', 'passing_grade', 'start_date', 'end_date', 'semester', 'requires_qr', 'requires_identity')
 
 
 class EvaluationPostSerializer(serializers.ModelSerializer):
@@ -64,7 +70,9 @@ class EvaluationPostSerializer(serializers.ModelSerializer):
     passing_grade = serializers.IntegerField()
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
+    requires_qr = serializers.BooleanField()
+    requires_identity = serializers.BooleanField()
 
     class Meta:
         model = Evaluation
-        fields = ('semester_id', 'evaluation_name', 'is_graded', 'passing_grade', 'start_date', 'end_date')
+        fields = ('semester_id', 'evaluation_name', 'is_graded', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
