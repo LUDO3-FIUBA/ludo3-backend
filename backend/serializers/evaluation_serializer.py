@@ -76,3 +76,17 @@ class EvaluationPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = Evaluation
         fields = ('semester_id', 'evaluation_name', 'is_graded', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
+
+class EvaluationUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Evaluation
+        fields = (
+            "evaluation_name",
+            "is_graded",
+            "passing_grade",
+            "start_date",
+            "end_date",
+            "requires_qr",
+            "requires_identity",
+        )
+        extra_kwargs = {field: {"required": False} for field in fields}
