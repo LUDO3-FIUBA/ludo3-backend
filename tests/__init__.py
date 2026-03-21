@@ -1,3 +1,3 @@
-# from .views.final_exam_student_views_tests import StudentFinalExamViewsTests
-# from .views.final_exam_teacher_views_tests import FinalExamTeacherViewsTests
+from .views.final_exam_student_views_tests import StudentFinalExamViewsTests
+from .views.final_exam_teacher_views_tests import FinalExamTeacherViewsTests
 from .views.evaluation_submission_teacher_views_tests import GraderAssignmentServiceTests

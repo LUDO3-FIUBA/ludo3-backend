@@ -91,6 +91,7 @@ class EvaluationFactory(factory.django.DjangoModelFactory):
         model = "backend.Evaluation"
 
     semester = factory.SubFactory(SemesterFactory)
+    commission = factory.SelfAttribute("semester.commission")
     evaluation_name = factory.Faker("sentence")
     is_graded = factory.Faker("boolean")
     passing_grade = factory.Faker("random_int", min=0, max=10)
