@@ -1,3 +1,4 @@
+from backend.permissions import IsTeacher
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action
@@ -14,7 +15,7 @@ from backend.views.utils import datetime_format
 
 
 class EvaluationTeacherViewSet(BaseViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsTeacher]
     queryset = Evaluation.objects.all()
     serializer_class = EvaluationPostSerializer
     
@@ -28,9 +29,11 @@ class EvaluationTeacherViewSet(BaseViewSet):
         evaluation_serializer = EvaluationPostSerializer(data=evaluation_data)
         if evaluation_serializer.is_valid():
             semester = self._semester(evaluation_serializer.initial_data["semester_id"])
-            if (semester.commission.chief_teacher == request.user.teacher):
-                evaluation_serializer.save()
-                return Response(evaluation_serializer.data, status=status.HTTP_201_CREATED) 
+            if semester.commission.chief_teacher != request.user.teacher:
+                return Response("Teacher not chief teacher in commission", status=status.HTTP_403_FORBIDDEN)
+            
+            evaluation_serializer.save()
+            return Response(evaluation_serializer.data, status=status.HTTP_201_CREATED) 
         return Response(evaluation_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def _semester(self, semester_pk):
@@ -43,6 +46,9 @@ class EvaluationTeacherViewSet(BaseViewSet):
     )
     def update_evaluation(self, request):
         evaluation = get_object_or_404(Evaluation.objects, id=request.data["evaluation_id"])
+        if evaluation.semester.commission.chief_teacher != request.user.teacher:
+            return Response("Teacher not chief teacher in commission", status=status.HTTP_403_FORBIDDEN)
+        
         serializer = EvaluationUpdateSerializer(evaluation, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
