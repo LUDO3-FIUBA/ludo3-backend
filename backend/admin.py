@@ -33,8 +33,6 @@ class AuditLogAdmin(admin.ModelAdmin):
 
 admin.site.register(AuditLog, AuditLogAdmin)
 admin.site.register(Commission)
-admin.site.register(Semester)
-
 @memoized
 def subjects():
     return SiuService().list_subjects()
@@ -378,7 +376,7 @@ class FinalAdmin(admin.ModelAdmin):
     title = "Final"
     fields = ('subject_name', 'teacher', 'date', 'qrid')
     exclude = ('updated_at',)
-    readonly_fields = ('subject_name', 'subject_siu_id', 'date', 'qrid')
+    readonly_fields = ('subject_name', 'subject_siu_id', 'qrid')
     ordering = ('subject_name', 'teacher', 'date')
 
     def get_queryset(self, request):
@@ -434,3 +432,18 @@ class FinalAdmin(admin.ModelAdmin):
         file_response['Content-Disposition'] = f"attachment; filename={final.teacher.user.last_name}-{final.date.strftime('%Y-%m-%d_%H_%M')}.png"
         return file_response
     download_action.short_description="Descargar QR"
+
+
+class SemesterScheduleInline(admin.TabularInline):
+    model = SemesterSchedule
+    extra = 1
+    fields = ('day_of_week', 'start_time', 'end_time')
+
+
+class SemesterAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'commission', 'start_date', 'year_moment')
+    search_fields = ('commission__subject_name',)
+    inlines = [SemesterScheduleInline]
+
+
+admin.site.register(Semester, SemesterAdmin)
