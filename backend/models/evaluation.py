@@ -8,6 +8,7 @@ class Evaluation(models.Model):
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name='evaluations', verbose_name="Evaluaciones")
     evaluation_name = models.CharField(max_length=100, db_index=True, editable=False, verbose_name="Nombre de Evaluacion")
     is_graded = models.BooleanField(default=True)
+    is_gradeable = models.BooleanField(default=True, verbose_name="Requiere nota numérica")
     passing_grade = models.IntegerField(db_index=True, null=True, blank=True, verbose_name="Nota de Aprobacion")
     requires_qr = models.BooleanField(default=False, verbose_name="Requiere escanear QR")
     requires_identity = models.BooleanField(default=False, verbose_name="Requiere verificación de identidad")

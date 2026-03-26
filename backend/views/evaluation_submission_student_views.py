@@ -37,7 +37,6 @@ class EvaluationSubmissionViewSet(BaseViewSet):
             student=request.user.student,
             evaluation=evaluation,
             file=request.FILES.get("file"),
-            submission_url=request.data.get("submission_url"),
             submission_text=request.data.get("submission_text"),
         )
 

@@ -93,6 +93,7 @@ class EvaluationFactory(factory.django.DjangoModelFactory):
     semester = factory.SubFactory(SemesterFactory)
     evaluation_name = factory.Faker("sentence")
     is_graded = factory.Faker("boolean")
+    is_gradeable = factory.Faker("boolean")
     passing_grade = factory.Faker("random_int", min=0, max=10)
     start_date = factory.Faker("date_time", tzinfo=timezone.utc)
     end_date = factory.Faker("date_time", tzinfo=timezone.utc)
@@ -104,6 +105,7 @@ class SubmissionFactory(factory.django.DjangoModelFactory):
 
     evaluation = factory.SubFactory(EvaluationFactory)
     student = factory.SubFactory(StudentFactory)
+    status = None  # Default to None or another default value
     grade = None  # Default to None or another default value
     grader = None  # Default to None or another default value
     created_at = factory.Faker("date_time", tzinfo=timezone.utc)

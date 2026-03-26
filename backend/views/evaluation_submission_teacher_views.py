@@ -1,6 +1,7 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.http import FileResponse
+from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -56,7 +57,8 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
         operation_summary="Grades an evaluation submission"
     )
     def grade(self, request):
-        grade = request.data['grade']
+        grade = request.data.get('grade')
+        submission_status = request.data.get('submission_status')
         submission = self.queryset.filter(student__user__id=request.data['student'], evaluation__id=request.data['evaluation']).first()
 
         if not submission:
@@ -67,7 +69,14 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
             return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
 
         submissions_service = EvaluationSubmissionService()
-        submissions_service.set_grade(submission, request.user.teacher, grade)
+        try:
+            if submission_status is not None:
+                submissions_service.set_status(submission, request.user.teacher, submission_status)
+            else:
+                submissions_service.set_grade(submission, request.user.teacher, grade)
+        except ValidationError as e:
+            payload = getattr(e, "message_dict", None) or {"detail": e.messages}
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLogService().log(request.user, submission.student.user, f"Docente corrigio una entrega: {submission}")
 
