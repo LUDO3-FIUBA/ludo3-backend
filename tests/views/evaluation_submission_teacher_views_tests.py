@@ -13,6 +13,7 @@ from tests.factories import (
     SubmissionFactory,
     TeacherFactory,
     TeacherRoleFactory,
+    StudentFactory,
 )
 
 
@@ -22,8 +23,26 @@ class GraderAssignmentServiceTests(APITestCase):
         self.teacher = TeacherFactory()
         self.commission = CommissionFactory(chief_teacher=self.teacher)
         self.semester = SemesterFactory(commission=self.commission)
-        self.evaluation = EvaluationFactory(semester=self.semester)
+        self.student = StudentFactory()
+
+        self.evaluation = EvaluationFactory(semester=self.semester, is_gradeable=True)
+        self.non_numeric_evaluation = EvaluationFactory(semester=self.semester, is_gradeable=False)
+        
         self.submissions = SubmissionFactory.create_batch(5, evaluation=self.evaluation)
+        
+        self.numeric_submission = SubmissionFactory(
+            evaluation=self.evaluation,
+            student=self.student,
+            grade=None,
+            status=None,
+        )
+        
+        self.non_numeric_submission = SubmissionFactory(
+            student=self.student,
+            evaluation=self.non_numeric_evaluation,
+            grade=None,
+            status=None,
+        )
         self.teacher_roles = TeacherRoleFactory.create_batch(
             5, commission=self.commission
         )
@@ -32,6 +51,8 @@ class GraderAssignmentServiceTests(APITestCase):
         self.auto_assign_graders_uri = (
             "/api/teacher/evaluations/submissions/auto_assign_graders/"
         )
+
+        self.grade_uri = "/api/teacher/evaluations/submissions/grade/"
 
     @mock.patch.object(GraderAssignmentService, "auto_assign")
     def test_auto_assign_graders_success(self, mocked_grader_assignment_service):
@@ -349,7 +370,6 @@ class GraderAssignmentServiceTests(APITestCase):
         teacher_a = TeacherRoleFactory(commission=self.commission, grader_weight=1.0)
         teacher_b = TeacherRoleFactory(commission=self.commission, grader_weight=2.0)
         teacher_roles = [teacher_a, teacher_b]
-
         # Create submissions and assign a grader to one of them
         submissions = SubmissionFactory.create_batch(3, evaluation=self.evaluation)
 
@@ -370,6 +390,9 @@ class GraderAssignmentServiceTests(APITestCase):
         self.assertEqual(assigned_submissions[2].grade, 2)
 
     def test_auto_assign_graders_with_many_submissions(self):
+        """
+        Should correctly assign graders when there are many submissions.
+        """
         # Create teacher roles
         teacher_a = TeacherRoleFactory(commission=self.commission, grader_weight=55.0)
         teacher_b = TeacherRoleFactory(commission=self.commission, grader_weight=35.0)
@@ -396,3 +419,78 @@ class GraderAssignmentServiceTests(APITestCase):
         self.assertEqual(len(teacher_a_subs), 17)
         self.assertEqual(len(teacher_b_subs), 10)
         self.assertEqual(len(teacher_c_subs), 3)
+    
+    def test_grade_numeric_evaluation_rejects_status(self):
+        """
+        Should reject a status when grading a numeric evaluation.
+        """
+        self.client.force_authenticate(user=self.teacher.user)
+
+        response = self.client.put(
+            self.grade_uri,
+            {
+                "student": self.student.user.id,
+                "evaluation": self.evaluation.id,
+                "submission_status": "APROBADO",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_grade_non_numeric_evaluation_rejects_numeric_grade(self):
+        """
+        Should reject a numeric grade when grading a non-numeric evaluation.
+        """
+        self.client.force_authenticate(user=self.teacher.user)
+
+        response = self.client.put(
+            self.grade_uri,
+            {
+                "student": self.student.user.id,
+                "evaluation": self.non_numeric_evaluation.id,
+                "grade": 8,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_grade_non_numeric_evaluation_accepts_status(self):
+        """
+        Should accept a valid status when grading a non-numeric evaluation and update the submission status accordingly.
+        """
+        self.client.force_authenticate(user=self.teacher.user)
+
+        response = self.client.put(
+            self.grade_uri,
+            {
+                "student": self.student.user.id,
+                "evaluation": self.non_numeric_evaluation.id,
+                "submission_status": "APROBADO",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.non_numeric_submission.refresh_from_db()
+        self.assertEqual(self.non_numeric_submission.status, "APROBADO")
+        self.assertIsNone(self.non_numeric_submission.grade)
+
+    def test_grade_non_numeric_evaluation_rejects_invalid_status(self):
+        """
+        Should reject an invalid status when grading a non-numeric evaluation.
+        """
+        self.client.force_authenticate(user=self.teacher.user)
+
+        response = self.client.put(
+            self.grade_uri,
+            {
+                "student": self.student.user.id,
+                "evaluation": self.non_numeric_evaluation.id,
+                "submission_status": "INVALID",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)

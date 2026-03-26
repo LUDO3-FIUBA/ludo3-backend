@@ -31,13 +31,13 @@ class EvaluationSubmission(models.Model):
     def clean(self):
         # No permitir nota numérica y estado aprobado/desaprobado al mismo tiempo
         if self.grade is not None and self.status is not None:
-            raise ValidationError("Use either numeric grade or pass/fail status, not both.")
+            raise ValidationError("Usar calificación numérica o estado APROBADO/DESAPROBADO, no ambas")
 
-        if self.evaluation.is_gradeable and self.grade is not None:
-            raise ValidationError({"grade": ["This evaluation uses pass/fail grading."]})
+        if not self.evaluation.is_gradeable and self.grade is not None:
+            raise ValidationError({"grade": ["Esta evaluación usa estado APROBADO/DESAPROBADO."]})
 
-        if not self.evaluation.is_gradeable and self.status is not None:
-            raise ValidationError({"status": ["This evaluation uses numeric grading."]})
+        if self.evaluation.is_gradeable and self.status is not None:
+            raise ValidationError({"status": ["Esta evaluación usa calificación numérica."]})
 
     def __str__(self):
         return f"{self.student} - {self.evaluation} - {self.grade}"

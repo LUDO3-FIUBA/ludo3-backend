@@ -198,3 +198,20 @@ class EvaluationTeacherViewsTests(APITestCase):
         response = self.client.put(self.update_uri, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_evaluation_updates_is_gradeable(self):
+        """
+        Should update is_gradeable field.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        payload = {
+            "evaluation_id": self.evaluation.id,
+            "is_gradeable": False,
+        }
+
+        response = self.client.put(self.update_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.evaluation.refresh_from_db()
+        self.assertFalse(self.evaluation.is_gradeable)
