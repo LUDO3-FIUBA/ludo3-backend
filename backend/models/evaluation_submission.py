@@ -20,7 +20,7 @@ class EvaluationSubmission(models.Model):
     
     file = models.FileField(upload_to='evaluation_submissions/', null=True, blank=True)
     submission_text = models.TextField(null=True, blank=True)
-    status = models.CharField(max_length=12, choices=SubmissionStatus.choices, null=True, blank=True, db_index=True, verbose_name="Estado de la entrega")
+    submission_status = models.CharField(max_length=12, choices=SubmissionStatus.choices, null=True, blank=True, db_index=True, verbose_name="Estado de la entrega")
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")
     updated_at = models.DateTimeField(default=timezone.now, verbose_name="Última actualización")
 
@@ -30,14 +30,14 @@ class EvaluationSubmission(models.Model):
 
     def clean(self):
         # No permitir nota numérica y estado aprobado/desaprobado al mismo tiempo
-        if self.grade is not None and self.status is not None:
+        if self.grade is not None and self.submission_status is not None:
             raise ValidationError("Usar calificación numérica o estado APROBADO/DESAPROBADO, no ambas")
 
         if not self.evaluation.is_gradeable and self.grade is not None:
             raise ValidationError({"grade": ["Esta evaluación usa estado APROBADO/DESAPROBADO."]})
 
-        if self.evaluation.is_gradeable and self.status is not None:
-            raise ValidationError({"status": ["Esta evaluación usa calificación numérica."]})
+        if self.evaluation.is_gradeable and self.submission_status is not None:
+            raise ValidationError({"submission_status": ["Esta evaluación usa calificación numérica."]})
 
     def __str__(self):
         return f"{self.student} - {self.evaluation} - {self.grade}"
