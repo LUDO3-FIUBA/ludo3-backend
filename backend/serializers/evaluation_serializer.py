@@ -7,6 +7,7 @@ class EvaluationSerializer(serializers.ModelSerializer):
     evaluation_name = serializers.CharField()
     is_graded = serializers.BooleanField()
     is_gradeable = serializers.BooleanField()
+    parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', allow_null=True)
     passing_grade = serializers.IntegerField(allow_null=True)
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
@@ -15,13 +16,14 @@ class EvaluationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'is_graded', 'is_gradeable', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
+        fields = ('id', 'evaluation_name', 'is_graded', 'is_gradeable', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
 
 
 class EvaluationWithMakeupSerializer(serializers.ModelSerializer):
     evaluation_name = serializers.CharField()
     is_graded = serializers.BooleanField()
     is_gradeable = serializers.BooleanField()
+    parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', allow_null=True)
     passing_grade = serializers.IntegerField(allow_null=True)
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
@@ -30,7 +32,7 @@ class EvaluationWithMakeupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'is_graded', 'is_gradeable', 'passing_grade', 'start_date', 'end_date', 'make_up_evaluation', 'requires_qr', 'requires_identity')
+        fields = ('id', 'evaluation_name', 'is_graded', 'is_gradeable', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'make_up_evaluation', 'requires_qr', 'requires_identity')
     
     def get_fields(self):
         fields = super(EvaluationWithMakeupSerializer, self).get_fields()
@@ -50,6 +52,7 @@ class SemesterEvaluationsSerializer(serializers.ModelSerializer):
 
 class EvaluationSemesterSerializer(serializers.ModelSerializer):
     evaluation_name = serializers.CharField()
+    parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', allow_null=True)
     passing_grade = serializers.IntegerField(allow_null=True)
     start_date = serializers.DateTimeField()
     end_date = serializers.DateTimeField()
@@ -60,7 +63,7 @@ class EvaluationSemesterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'passing_grade', 'start_date', 'end_date', 'semester', 'requires_qr', 'requires_identity')
+        fields = ('id', 'evaluation_name', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'semester', 'requires_qr', 'requires_identity')
 
 
 class EvaluationPostSerializer(serializers.ModelSerializer):
