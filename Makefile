@@ -10,3 +10,7 @@ up:
 down:
 	docker compose -f docker-compose.yml down
 .PHONY: down
+
+test:
+	docker exec -it web python3 manage.py test
+.PHONY: test
