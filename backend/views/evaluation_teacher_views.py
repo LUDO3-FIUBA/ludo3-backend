@@ -1,5 +1,6 @@
 from backend.permissions import IsTeacher
 from django.core.exceptions import ValidationError
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action
@@ -13,7 +14,7 @@ from backend.serializers.evaluation_serializer import (
 from backend.services.evaluation_service import EvaluationService
 from backend.services.notification_service import NotificationService
 from backend.views.base_view import BaseViewSet
-from backend.views.utils import datetime_format
+from backend.views.utils import datetime_format, teacher_not_in_commission_staff
 
 
 class EvaluationTeacherViewSet(BaseViewSet):
@@ -67,6 +68,22 @@ class EvaluationTeacherViewSet(BaseViewSet):
         
         return Response(EvaluationSerializer(evaluation).data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['GET'])
+    @swagger_auto_schema(
+        tags=["Evaluations"],
+        operation_summary="Gets all evaluations in a semester",
+        manual_parameters=[
+            openapi.Parameter('semester', openapi.IN_QUERY, description="Id of semester to get evaluations from", type=openapi.FORMAT_INT64)
+        ]
+    )
+    def get_evaluations(self, request):
+        semester = get_object_or_404(Semester.objects, id=request.query_params["semester"])
+        
+        if teacher_not_in_commission_staff(request.user.teacher, semester.commission):
+            return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
+        
+        evaluations = Evaluation.objects.filter(semester=semester).all()
+        return Response(EvaluationSerializer(evaluations, many=True).data, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['POST'])
     @swagger_auto_schema(

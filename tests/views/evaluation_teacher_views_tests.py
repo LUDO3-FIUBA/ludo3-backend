@@ -305,3 +305,99 @@ class EvaluationTeacherViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("parent_evaluation", response.data)
+
+    def test_get_evaluations_success_teacher_in_commission(self):
+        """
+        Should retrieve all evaluations for a semester when teacher is in commission staff.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        get_uri = "/api/teacher/evaluations/get_evaluations/"
+        response = self.client.get(get_uri, {"semester": self.semester.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["id"], self.evaluation.id)
+        self.assertEqual(response.data[0]["evaluation_name"], "Parcial 1")
+
+    def test_get_evaluations_returns_multiple_evaluations(self):
+        """
+        Should retrieve all evaluations for a semester when multiple exist.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        eval2 = EvaluationFactory(
+            semester=self.semester,
+            evaluation_name="Parcial 2",
+            is_graded=True,
+            passing_grade=5,
+        )
+        eval3 = EvaluationFactory(
+            semester=self.semester,
+            evaluation_name="Final",
+            is_graded=True,
+            passing_grade=4,
+        )
+
+        get_uri = "/api/teacher/evaluations/get_evaluations/"
+        response = self.client.get(get_uri, {"semester": self.semester.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 3)
+        evaluation_names = {e["evaluation_name"] for e in response.data}
+        self.assertEqual(evaluation_names, {"Parcial 1", "Parcial 2", "Final"})
+
+    def test_get_evaluations_empty_semester(self):
+        """
+        Should return empty list for a semester with no evaluations.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        empty_semester = SemesterFactory(commission=self.commission)
+        get_uri = "/api/teacher/evaluations/get_evaluations/"
+        response = self.client.get(get_uri, {"semester": empty_semester.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 0)
+
+    def test_get_evaluations_forbidden_teacher_not_in_commission(self):
+        """
+        Should return 403 when teacher is not in commission staff.
+        """
+        self.client.force_authenticate(user=self.other_teacher.user)
+
+        get_uri = "/api/teacher/evaluations/get_evaluations/"
+        response = self.client.get(get_uri, {"semester": self.semester.id})
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_get_evaluations_unauthenticated(self):
+        """
+        Should return 401 if user is not authenticated.
+        """
+        get_uri = "/api/teacher/evaluations/get_evaluations/"
+        response = self.client.get(get_uri, {"semester": self.semester.id})
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_get_evaluations_forbidden_for_student(self):
+        """
+        Should return 403 when student tries to get evaluations.
+        """
+        self.client.force_authenticate(user=self.student.user)
+
+        get_uri = "/api/teacher/evaluations/get_evaluations/"
+        response = self.client.get(get_uri, {"semester": self.semester.id})
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_get_evaluations_semester_not_found(self):
+        """
+        Should return 404 when semester does not exist.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        get_uri = "/api/teacher/evaluations/get_evaluations/"
+        response = self.client.get(get_uri, {"semester": 999999})
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
