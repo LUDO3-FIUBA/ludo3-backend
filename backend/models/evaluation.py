@@ -25,7 +25,7 @@ class Evaluation(models.Model):
         verbose_name_plural = "Evaluation"
 
     def clean(self):
-        if self.id is not None and self.parent_evaluation_id is not None and self.parent_evaluation_id == self.id:
+        if self.parent_evaluation and self.parent_evaluation_id == self.id:
             raise ValidationError({"parent_evaluation": ["Una evaluación no puede ser su propio padre."]})
 
         if self.parent_evaluation and self.parent_evaluation.semester != self.semester:
