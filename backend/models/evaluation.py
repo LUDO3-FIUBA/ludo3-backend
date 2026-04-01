@@ -1,7 +1,7 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from .semester import Semester
-from .commission import Commission
 
 
 class Evaluation(models.Model):
@@ -23,6 +23,13 @@ class Evaluation(models.Model):
     class Meta:
         verbose_name = "Evaluation"
         verbose_name_plural = "Evaluation"
+
+    def clean(self):
+        if self.parent_evaluation and self.parent_evaluation_id == self.id:
+            raise ValidationError({"parent_evaluation": ["Una evaluación no puede ser su propio padre."]})
+
+        if self.parent_evaluation and self.parent_evaluation.semester != self.semester:
+            raise ValidationError({"parent_evaluation": ["Evaluación padre debe pertenecer al mismo semestre."]})
 
     def __str__(self):
         return f"{self.semester} - {self.evaluation_name}"

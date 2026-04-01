@@ -1,9 +1,7 @@
 from rest_framework import serializers
-
 from backend.models import Evaluation, Semester
 
 from .commission_serializer import CommissionSerializer
-
 
 class EvaluationSerializer(serializers.ModelSerializer):
     evaluation_name = serializers.CharField()
@@ -67,6 +65,7 @@ class EvaluationSemesterSerializer(serializers.ModelSerializer):
 
 class EvaluationPostSerializer(serializers.ModelSerializer):
     semester_id = serializers.IntegerField()
+    parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', required=False, allow_null=True)
     evaluation_name = serializers.CharField()
     is_graded = serializers.BooleanField()
     is_gradeable = serializers.BooleanField()
@@ -78,9 +77,16 @@ class EvaluationPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Evaluation
-        fields = ('semester_id', 'evaluation_name', 'is_graded', 'is_gradeable', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
+        fields = ('semester_id', 'parent_evaluation', 'evaluation_name', 'is_graded', 'is_gradeable', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
+
+    def create(self, validated_data):
+        instance = Evaluation(**validated_data)
+        instance.save()
+        return instance
 
 class EvaluationUpdateSerializer(serializers.ModelSerializer):
+    parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', required=False, allow_null=True)
+
     class Meta:
         model = Evaluation
         fields = (
@@ -92,5 +98,13 @@ class EvaluationUpdateSerializer(serializers.ModelSerializer):
             "end_date",
             "requires_qr",
             "requires_identity",
+            "parent_evaluation",
+            "semester_id",
         )
         extra_kwargs = {field: {"required": False} for field in fields}
+
+    def update(self, instance, validated_data):
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        return instance

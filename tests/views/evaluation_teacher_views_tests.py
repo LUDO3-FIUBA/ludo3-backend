@@ -215,3 +215,93 @@ class EvaluationTeacherViewsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.evaluation.refresh_from_db()
         self.assertFalse(self.evaluation.is_gradeable)
+
+    def test_add_evaluation_with_parent_same_semester(self):
+        """
+        Should create evaluation with parent_evaluation when parent belongs to same semester.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        parent = EvaluationFactory(semester=self.semester)
+        now = datetime.now(timezone.utc)
+        payload = {
+            "semester_id": self.semester.id,
+            "parent_evaluation": parent.id,
+            "evaluation_name": "Recuperatorio Parcial 1",
+            "is_graded": True,
+            "is_gradeable": True,
+            "passing_grade": 6,
+            "start_date": self._iso(now + timedelta(days=5)),
+            "end_date": self._iso(now + timedelta(days=6)),
+            "requires_qr": False,
+            "requires_identity": False,
+        }
+
+        response = self.client.post(self.add_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        created = Evaluation.objects.get(evaluation_name="Recuperatorio Parcial 1")
+        self.assertEqual(created.parent_evaluation_id, parent.id)
+
+    def test_add_evaluation_rejects_parent_from_other_semester(self):
+        """
+        Should reject parent_evaluation when parent belongs to another semester.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        other_semester = SemesterFactory()
+        other_parent = EvaluationFactory(semester=other_semester)
+        now = datetime.now(timezone.utc)
+        payload = {
+            "semester_id": self.semester.id,
+            "parent_evaluation": other_parent.id,
+            "evaluation_name": "Recuperatorio Invalido",
+            "is_graded": True,
+            "is_gradeable": True,
+            "passing_grade": 6,
+            "start_date": self._iso(now + timedelta(days=5)),
+            "end_date": self._iso(now + timedelta(days=6)),
+            "requires_qr": False,
+            "requires_identity": False,
+        }
+
+        response = self.client.post(self.add_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("parent_evaluation", response.data)
+
+    def test_update_evaluation_sets_parent_same_semester(self):
+        """
+        Should update parent_evaluation when parent belongs to same semester.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        parent = EvaluationFactory(semester=self.semester)
+        payload = {
+            "evaluation_id": self.evaluation.id,
+            "parent_evaluation": parent.id,
+        }
+
+        response = self.client.put(self.update_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.evaluation.refresh_from_db()
+        self.assertEqual(self.evaluation.parent_evaluation_id, parent.id)
+
+    def test_update_evaluation_rejects_parent_from_other_semester(self):
+        """
+        Should reject parent_evaluation update when parent belongs to another semester.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        other_semester = SemesterFactory()
+        other_parent = EvaluationFactory(semester=other_semester)
+        payload = {
+            "evaluation_id": self.evaluation.id,
+            "parent_evaluation": other_parent.id,
+        }
+
+        response = self.client.put(self.update_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("parent_evaluation", response.data)

@@ -34,14 +34,14 @@ class GraderAssignmentServiceTests(APITestCase):
             evaluation=self.evaluation,
             student=self.student,
             grade=None,
-            status=None,
+            submission_status=None,
         )
         
         self.non_numeric_submission = SubmissionFactory(
             student=self.student,
             evaluation=self.non_numeric_evaluation,
             grade=None,
-            status=None,
+            submission_status=None,
         )
         self.teacher_roles = TeacherRoleFactory.create_batch(
             5, commission=self.commission
@@ -474,7 +474,7 @@ class GraderAssignmentServiceTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.non_numeric_submission.refresh_from_db()
-        self.assertEqual(self.non_numeric_submission.status, "APROBADO")
+        self.assertEqual(self.non_numeric_submission.submission_status, "APROBADO")
         self.assertIsNone(self.non_numeric_submission.grade)
 
     def test_grade_non_numeric_evaluation_rejects_invalid_status(self):

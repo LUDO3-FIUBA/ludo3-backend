@@ -105,7 +105,7 @@ class SubmissionFactory(factory.django.DjangoModelFactory):
 
     evaluation = factory.SubFactory(EvaluationFactory)
     student = factory.SubFactory(StudentFactory)
-    status = None  # Default to None or another default value
+    submission_status = None  # Default to None or another default value
     grade = None  # Default to None or another default value
     grader = None  # Default to None or another default value
     created_at = factory.Faker("date_time", tzinfo=timezone.utc)
