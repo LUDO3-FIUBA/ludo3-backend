@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -53,7 +55,7 @@ class EvaluationViewSet(BaseViewSet):
         result = (
             self.queryset.filter(
                 semester__students=request.user.student,
-                end_date__gt=get_current_datetime(),
+                end_date__gt=get_current_datetime() - timedelta(days=7),
             )
             .order_by("end_date")
             .all()
