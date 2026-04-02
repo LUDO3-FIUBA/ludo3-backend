@@ -16,3 +16,4 @@ from .audit_log import AuditLog
 from .auth_identity import AuthIdentity
 from .teacher_profile import TeacherProfile, WorkExperience
 from .notification import Notification, UserNotification
+from .department import Department

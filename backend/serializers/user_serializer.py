@@ -71,7 +71,7 @@ class UserCustomGetSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'file', 'legajo')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'file', 'legajo')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
