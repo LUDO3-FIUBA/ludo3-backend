@@ -27,6 +27,7 @@ class EvaluationTeacherViewsTests(APITestCase):
 
         self.add_uri = "/api/teacher/evaluations/add_evaluation/"
         self.update_uri = "/api/teacher/evaluations/update_evaluation/"
+        self.delete_uri = "/api/teacher/evaluations/delete_evaluation/"
 
     def _iso(self, dt: datetime) -> str:
         return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -198,6 +199,62 @@ class EvaluationTeacherViewsTests(APITestCase):
         response = self.client.put(self.update_uri, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_delete_evaluation_success_chief_teacher(self):
+        """
+        Should delete an evaluation when authenticated user is the commission chief teacher.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        payload = {"evaluation_id": self.evaluation.id}
+        response = self.client.delete(self.delete_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(Evaluation.objects.filter(id=self.evaluation.id).exists())
+
+    def test_delete_evaluation_not_found(self):
+        """
+        Should return 404 when evaluation does not exist.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        payload = {"evaluation_id": 999999}
+        response = self.client.delete(self.delete_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_delete_evaluation_unauthenticated(self):
+        """
+        Should return 401 if user is not authenticated.
+        """
+        payload = {"evaluation_id": self.evaluation.id}
+        response = self.client.delete(self.delete_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_delete_evaluation_forbidden_for_non_chief_teacher(self):
+        """
+        Should return 403 when authenticated teacher is not chief teacher.
+        """
+        self.client.force_authenticate(user=self.other_teacher.user)
+
+        payload = {"evaluation_id": self.evaluation.id}
+        response = self.client.delete(self.delete_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Evaluation.objects.filter(id=self.evaluation.id).exists())
+
+    def test_delete_evaluation_forbidden_for_student(self):
+        """
+        Should return 403 when student tries to delete an evaluation.
+        """
+        self.client.force_authenticate(user=self.student.user)
+
+        payload = {"evaluation_id": self.evaluation.id}
+        response = self.client.delete(self.delete_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertTrue(Evaluation.objects.filter(id=self.evaluation.id).exists())
 
     def test_update_evaluation_updates_is_gradeable(self):
         """

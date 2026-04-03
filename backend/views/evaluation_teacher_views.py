@@ -68,6 +68,19 @@ class EvaluationTeacherViewSet(BaseViewSet):
         
         return Response(EvaluationSerializer(evaluation).data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['DELETE'])
+    @swagger_auto_schema(
+        tags=["Evaluations"],
+        operation_summary="Deletes an evaluation for a semester"
+    )
+    def delete_evaluation(self, request):
+        evaluation = get_object_or_404(Evaluation.objects, id=request.data["evaluation_id"])
+        if evaluation.semester.commission.chief_teacher != request.user.teacher:
+            return Response("Teacher not chief teacher in commission", status=status.HTTP_403_FORBIDDEN)
+
+        evaluation.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=False, methods=['GET'])
     @swagger_auto_schema(
         tags=["Evaluations"],
