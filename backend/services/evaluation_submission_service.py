@@ -1,6 +1,6 @@
 from backend.models.evaluation_submission import EvaluationSubmission
 from backend.models.teacher import Teacher
-from backend.views.utils import get_current_datetime
+from backend.utils import get_current_datetime
 
 
 class EvaluationSubmissionService:
