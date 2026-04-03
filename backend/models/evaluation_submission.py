@@ -18,15 +18,10 @@ class EvaluationSubmission(models.Model):
     grade = models.IntegerField(null=True, blank=True, db_index=True, validators=[MinValueValidator(0), MaxValueValidator(10)], verbose_name="Nota")
     grader = models.ForeignKey(Teacher, null=True, blank=True, on_delete=models.CASCADE, related_name='grader', verbose_name="Grader")
     
-    file = models.FileField(upload_to='evaluation_submissions/', null=True, blank=True)
     submission_text = models.TextField(null=True, blank=True)
     submission_status = models.CharField(max_length=12, choices=SubmissionStatus.choices, null=True, blank=True, db_index=True, verbose_name="Estado de la entrega")
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")
     updated_at = models.DateTimeField(default=timezone.now, verbose_name="Última actualización")
-
-    # def clean(self):
-    #     if not any([self.file, self.submission_text]):
-    #         raise ValidationError("At least one submission format is required: file, URL, or text.")
 
     def clean(self):
         # No permitir nota numérica y estado aprobado/desaprobado al mismo tiempo
