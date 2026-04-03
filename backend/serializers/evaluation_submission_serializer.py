@@ -72,7 +72,9 @@ class EvaluationSubmissionCorrectionSerializer(serializers.ModelSerializer):
     grade = serializers.IntegerField()
     grader = TeacherSerializer()
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
+    created_at = serializers.DateTimeField()
+    updated_at = serializers.DateTimeField()
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('student', 'grade', 'grader', 'submission_status')
+        fields = ('student', 'grade', 'grader', 'submission_status', 'submission_text', 'created_at', 'updated_at')
