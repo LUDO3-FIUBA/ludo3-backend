@@ -179,9 +179,6 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
         submission = EvaluationSubmission(
             student=student,
             evaluation=evaluation,
-            file=request.FILES.get("file"),
-            submission_url=request.data.get("submission_url"),
-            submission_text=request.data.get("submission_text"),
         )
         EvaluationSubmissionValidator(submission).validate()
         submission.full_clean()
