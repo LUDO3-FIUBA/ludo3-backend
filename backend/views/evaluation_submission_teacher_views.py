@@ -183,9 +183,13 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
             student=student,
             evaluation=evaluation,
         )
-        EvaluationSubmissionValidator(submission).validate()
-        submission.full_clean()
-        submission.save()
+        try:
+            EvaluationSubmissionValidator(submission).validate()
+            submission.full_clean()
+            submission.save()
+        except ValidationError as e:
+            payload = getattr(e, "message_dict", None) or {"detail": e.messages}
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLogService().log(request.user, student.user, f"Docente agrego una entrega manualmente para la evaluacion: {evaluation}")
 

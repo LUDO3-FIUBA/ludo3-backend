@@ -1,4 +1,5 @@
 from drf_yasg.utils import swagger_auto_schema
+from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -38,9 +39,13 @@ class EvaluationSubmissionViewSet(BaseViewSet):
             submission_text=request.data.get("submission_text"),
         )
 
-        EvaluationSubmissionValidator(submission).validate()
-        submission.full_clean()
-        submission.save()
+        try:
+            EvaluationSubmissionValidator(submission).validate()
+            submission.full_clean()
+            submission.save()
+        except ValidationError as e:
+            payload = getattr(e, "message_dict", None) or {"detail": e.messages}
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLogService().log(request.user, None, f"Estudiante realizo una entrega en la evaluación: {evaluation}")
 

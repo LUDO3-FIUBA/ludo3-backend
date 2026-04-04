@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
+from unittest import mock
 
+from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
 from rest_framework.test import APITestCase
@@ -85,6 +87,20 @@ class EvaluationSubmissionStudentViewsTests(APITestCase):
         response = self.client.post(self.submit_uri, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @mock.patch("backend.views.evaluation_submission_student_views.EvaluationSubmission.full_clean")
+    def test_submit_evaluation_returns_400_when_model_validation_fails(self, mocked_full_clean):
+        self.client.force_authenticate(user=self.student.user)
+        mocked_full_clean.side_effect = ValidationError({"grade": ["invalid"]})
+
+        payload = {
+            "evaluation": self.evaluation.id,
+            "submission_text": "Mi resolucion",
+        }
+        response = self.client.post(self.submit_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("grade", response.data)
 
     def test_my_evaluations_returns_only_logged_student_submissions(self):
         own_submission = EvaluationSubmission.objects.create(

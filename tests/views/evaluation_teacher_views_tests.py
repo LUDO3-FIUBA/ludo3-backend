@@ -319,6 +319,17 @@ class EvaluationTeacherViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_delete_evaluation_requires_evaluation_id(self):
+        """
+        Should return 400 when evaluation_id is missing.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        response = self.client.delete(self.delete_uri, {}, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("evaluation_id", response.data)
+
     def test_delete_evaluation_unauthenticated(self):
         """
         Should return 401 if user is not authenticated.

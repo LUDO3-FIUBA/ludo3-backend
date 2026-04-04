@@ -1,6 +1,7 @@
 import logging
 from unittest import mock
 
+from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -53,6 +54,7 @@ class GraderAssignmentServiceTests(APITestCase):
         )
 
         self.grade_uri = "/api/teacher/evaluations/submissions/grade/"
+        self.add_submission_uri = "/api/teacher/evaluations/submissions/add_evaluation_submission/"
 
     @mock.patch.object(GraderAssignmentService, "auto_assign")
     def test_auto_assign_graders_success(self, mocked_grader_assignment_service):
@@ -532,3 +534,24 @@ class GraderAssignmentServiceTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    @mock.patch("backend.views.evaluation_submission_teacher_views.EvaluationSubmission.full_clean")
+    def test_add_evaluation_submission_returns_400_when_model_validation_fails(self, mocked_full_clean):
+        self.client.force_authenticate(user=self.teacher.user)
+        mocked_full_clean.side_effect = ValidationError({"grade": ["invalid"]})
+
+        new_student = StudentFactory()
+        self.semester.students.add(new_student)
+
+        response = self.client.post(
+            self.add_submission_uri,
+            {
+                "student": new_student.user.id,
+                "evaluation": self.evaluation.id,
+                "grade": 8,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("grade", response.data)

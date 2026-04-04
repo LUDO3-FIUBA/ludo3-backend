@@ -53,7 +53,11 @@ class EvaluationTeacherViewSet(BaseViewSet):
         operation_summary="Updates an evaluation for a semester"
     )
     def update_evaluation(self, request):
-        evaluation = get_object_or_404(Evaluation.objects, id=request.data["evaluation_id"])
+        evaluation_id = request.data.get("evaluation_id")
+        if evaluation_id is None:
+            return Response({"evaluation_id": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        evaluation = get_object_or_404(Evaluation.objects, id=evaluation_id)
         if evaluation.semester.commission.chief_teacher != request.user.teacher:
             return Response("Teacher not chief teacher in commission", status=status.HTTP_403_FORBIDDEN)
 
@@ -74,7 +78,11 @@ class EvaluationTeacherViewSet(BaseViewSet):
         operation_summary="Deletes an evaluation for a semester"
     )
     def delete_evaluation(self, request):
-        evaluation = get_object_or_404(Evaluation.objects, id=request.data["evaluation_id"])
+        evaluation_id = request.data.get("evaluation_id")
+        if evaluation_id is None:
+            return Response({"evaluation_id": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        evaluation = get_object_or_404(Evaluation.objects, id=evaluation_id)
         if evaluation.semester.commission.chief_teacher != request.user.teacher:
             return Response("Teacher not chief teacher in commission", status=status.HTTP_403_FORBIDDEN)
 
