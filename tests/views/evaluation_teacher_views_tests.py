@@ -131,6 +131,78 @@ class EvaluationTeacherViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    def test_add_evaluation_rejects_passing_grade_below_zero(self):
+        """
+        Should return 400 when passing_grade is below the allowed range.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        now = datetime.now(timezone.utc)
+        payload = {
+            "semester_id": self.semester.id,
+            "evaluation_name": "Parcial invalido",
+            "is_graded": True,
+            "is_gradeable": True,
+            "passing_grade": -1,
+            "start_date": self._iso(now + timedelta(days=1)),
+            "end_date": self._iso(now + timedelta(days=2)),
+            "requires_qr": False,
+            "requires_identity": False,
+        }
+
+        response = self.client.post(self.add_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("passing_grade", response.data)
+
+    def test_add_evaluation_rejects_passing_grade_above_ten(self):
+        """
+        Should return 400 when passing_grade is above the allowed range.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        now = datetime.now(timezone.utc)
+        payload = {
+            "semester_id": self.semester.id,
+            "evaluation_name": "Parcial invalido",
+            "is_graded": True,
+            "is_gradeable": True,
+            "passing_grade": 11,
+            "start_date": self._iso(now + timedelta(days=1)),
+            "end_date": self._iso(now + timedelta(days=2)),
+            "requires_qr": False,
+            "requires_identity": False,
+        }
+
+        response = self.client.post(self.add_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("passing_grade", response.data)
+
+    def test_add_evaluation_rejects_floating_point_passing_grade(self):
+        """
+        Should return 400 when passing_grade is a floating point number.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        now = datetime.now(timezone.utc)
+        payload = {
+            "semester_id": self.semester.id,
+            "evaluation_name": "Parcial invalido",
+            "is_graded": True,
+            "is_gradeable": True,
+            "passing_grade": 5.5,
+            "start_date": self._iso(now + timedelta(days=1)),
+            "end_date": self._iso(now + timedelta(days=2)),
+            "requires_qr": False,
+            "requires_identity": False,
+        }
+
+        response = self.client.post(self.add_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("passing_grade", response.data)
+
     def test_update_evaluation_success_chief_teacher(self):
         """
         Should update an evaluation when authenticated user is the commission chief teacher.
@@ -199,6 +271,30 @@ class EvaluationTeacherViewsTests(APITestCase):
         response = self.client.put(self.update_uri, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_update_evaluation_rejects_passing_grade_below_zero(self):
+        """
+        Should return 400 when passing_grade is below the allowed range.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        payload = {"evaluation_id": self.evaluation.id, "passing_grade": -1}
+        response = self.client.put(self.update_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("passing_grade", response.data)
+
+    def test_update_evaluation_rejects_passing_grade_above_ten(self):
+        """
+        Should return 400 when passing_grade is above the allowed range.
+        """
+        self.client.force_authenticate(user=self.chief_teacher.user)
+
+        payload = {"evaluation_id": self.evaluation.id, "passing_grade": 11}
+        response = self.client.put(self.update_uri, payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("passing_grade", response.data)
 
     def test_delete_evaluation_success_chief_teacher(self):
         """

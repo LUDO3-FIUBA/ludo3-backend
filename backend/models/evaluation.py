@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from .semester import Semester
@@ -9,7 +10,13 @@ class Evaluation(models.Model):
     evaluation_name = models.CharField(max_length=100, db_index=True, editable=False, verbose_name="Nombre de Evaluacion")
     is_graded = models.BooleanField(default=True)
     is_gradeable = models.BooleanField(default=True, verbose_name="Requiere nota numérica")
-    passing_grade = models.IntegerField(db_index=True, null=True, blank=True, verbose_name="Nota de Aprobacion")
+    passing_grade = models.IntegerField(
+        db_index=True,
+        null=True,
+        blank=True,
+        verbose_name="Nota de Aprobacion",
+        validators=[MinValueValidator(0), MaxValueValidator(10)],
+    )
     requires_qr = models.BooleanField(default=False, verbose_name="Requiere escanear QR")
     requires_identity = models.BooleanField(default=False, verbose_name="Requiere verificación de identidad")
 
