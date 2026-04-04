@@ -12,5 +12,5 @@ down:
 .PHONY: down
 
 test:
-	docker exec -it web python3 manage.py test
+	docker exec web python3 manage.py test
 .PHONY: test

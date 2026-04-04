@@ -473,9 +473,47 @@ class GraderAssignmentServiceTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIsNone(response.data["grade"])
+        self.assertEqual(response.data["submission_status"], "APROBADO")
         self.non_numeric_submission.refresh_from_db()
         self.assertEqual(self.non_numeric_submission.submission_status, "APROBADO")
         self.assertIsNone(self.non_numeric_submission.grade)
+
+    def test_grade_requires_exactly_one_of_grade_or_submission_status(self):
+        """
+        Should reject requests that provide both grade and submission_status.
+        """
+        self.client.force_authenticate(user=self.teacher.user)
+
+        response = self.client.put(
+            self.grade_uri,
+            {
+                "student": self.student.user.id,
+                "evaluation": self.non_numeric_evaluation.id,
+                "grade": 8,
+                "submission_status": "APROBADO",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_grade_requires_grade_or_submission_status(self):
+        """
+        Should reject requests that provide neither grade nor submission_status.
+        """
+        self.client.force_authenticate(user=self.teacher.user)
+
+        response = self.client.put(
+            self.grade_uri,
+            {
+                "student": self.student.user.id,
+                "evaluation": self.non_numeric_evaluation.id,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_grade_non_numeric_evaluation_rejects_invalid_status(self):
         """

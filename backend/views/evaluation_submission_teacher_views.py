@@ -56,9 +56,13 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
         operation_summary="Grades an evaluation submission"
     )
     def grade(self, request):
-        grade = request.data.get('grade')
-        submission_status = request.data.get('submission_status')
-        submission = self.queryset.filter(student__user__id=request.data['student'], evaluation__id=request.data['evaluation']).first()
+        serializer = EvaluationSubmissionPutSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        grade = serializer.validated_data.get('grade')
+        submission_status = serializer.validated_data.get('submission_status')
+        evaluation_id = serializer.validated_data['evaluation']
+        student_id = serializer.validated_data['student']
+        submission = self.queryset.filter(student__user__id=student_id, evaluation__id=evaluation_id).first()
 
         if not submission:
             return Response("Submission not found", status=status.HTTP_404_NOT_FOUND)
