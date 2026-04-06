@@ -447,3 +447,11 @@ class SemesterAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Semester, SemesterAdmin)
+
+
+@admin.register(AcademicCalendarEvent)
+class AcademicCalendarEventAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'year', 'start_date', 'end_date')
+    list_filter = ('category', 'year')
+    search_fields = ('name',)
+    ordering = ('year', 'start_date')
