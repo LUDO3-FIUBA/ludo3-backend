@@ -51,6 +51,11 @@ CORS_ALLOW_CREDENTIALS = True
 # TODO: Remove in production
 CORS_ALLOW_ALL_ORIGINS = True
 
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+PASSWORD_RESET_CODE_TTL_MINUTES = int(os.environ.get('PASSWORD_RESET_CODE_TTL_MINUTES', 15))
+PASSWORD_RESET_MAX_ATTEMPTS = int(os.environ.get('PASSWORD_RESET_MAX_ATTEMPTS', 5))
+
 AUTH_USER_MODEL = 'backend.User'
 
 LANGUAGE_CODE = 'es-AR'
