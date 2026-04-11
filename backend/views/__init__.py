@@ -27,3 +27,5 @@ from .teacher_role_views import TeacherRoleViewSet
 from .teacher_views import TeacherViews
 from .notification_views import NotificationViewSet
 from .department_views import DepartmentViewSet
+from .commission_admin_views import CommissionAdminViewSet
+from .user_admin_views import UserAdminViewSet
