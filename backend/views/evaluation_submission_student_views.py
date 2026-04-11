@@ -27,8 +27,12 @@ class EvaluationSubmissionViewSet(BaseViewSet):
         operation_summary="Submit an evaluation"
     )
     def submit_evaluation(self, request):
-        
-        evaluation = get_object_or_404(Evaluation.objects, id=request.data["evaluation"])
+
+        evaluation_id = request.data.get("evaluation")
+        if not evaluation_id:
+            return Response({"evaluation": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        evaluation = get_object_or_404(Evaluation.objects, id=evaluation_id)
 
         if(request.user.student not in evaluation.semester.students.all()):
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)

@@ -98,7 +98,10 @@ class EvaluationTeacherViewSet(BaseViewSet):
         ]
     )
     def get_evaluations(self, request):
-        semester = get_object_or_404(Semester.objects, id=request.query_params["semester"])
+        semester_id = request.query_params.get("semester")
+        if not semester_id:
+            return Response({"semester": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        semester = get_object_or_404(Semester.objects, id=semester_id)
         
         if teacher_not_in_commission_staff(request.user.teacher, semester.commission):
             return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
@@ -114,6 +117,9 @@ class EvaluationTeacherViewSet(BaseViewSet):
     def notify_grades(self, request, pk=None):
 
         evaluation = get_object_or_404(Evaluation.objects, id=pk)
+
+        if teacher_not_in_commission_staff(request.user.teacher, evaluation.semester.commission):
+            return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
 
         NotificationService().notify_evaluation_grade(evaluation)
         return Response(status=status.HTTP_200_OK)

@@ -39,8 +39,11 @@ class EvaluationViewSet(BaseViewSet):
         ],
     )
     def list(self, request):
+        semester_id = request.query_params.get("semester_id")
+        if not semester_id:
+            return Response({"semester_id": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
         result = self.get_queryset().filter(
-            semester=request.query_params["semester_id"]
+            semester=semester_id
         )
         return Response(
             EvaluationSemesterSerializer(result, many=True).data, status.HTTP_200_OK

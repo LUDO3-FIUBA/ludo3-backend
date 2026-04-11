@@ -41,13 +41,17 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
     )
     def get_submissions(self, request):
 
-        evaluation = get_object_or_404(Evaluation.objects, id=request.query_params["evaluation"])
+        evaluation_id = request.query_params.get("evaluation")
+        if not evaluation_id:
+            return Response({"evaluation": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        evaluation = get_object_or_404(Evaluation.objects, id=evaluation_id)
 
         commission = evaluation.semester.commission
         if teacher_not_in_commission_staff(request.user.teacher, commission):
             return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
 
-        result = self.queryset.filter(evaluation=request.query_params['evaluation']).all()
+        result = self.queryset.filter(evaluation=evaluation_id).all()
         return Response(EvaluationSubmissionCorrectionSerializer(result, many=True).data, status.HTTP_200_OK)
     
     @action(detail=False, methods=['PUT'])
@@ -146,13 +150,20 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
     )
     def get_submissions_from_student(self, request):
 
-        semester = get_object_or_404(Semester.objects, id=request.query_params["semester"])
+        semester_id = request.query_params.get("semester")
+        student_id = request.query_params.get("student")
+        if not semester_id:
+            return Response({"semester": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        if not student_id:
+            return Response({"student": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        semester = get_object_or_404(Semester.objects, id=semester_id)
 
         commission = semester.commission
         if teacher_not_in_commission_staff(request.user.teacher, commission):
             return Response("Forbidden", status=status.HTTP_403_FORBIDDEN)
 
-        result = self.queryset.filter(evaluation__semester=semester).filter(student__user__id=request.query_params["student"]).all()
+        result = self.queryset.filter(evaluation__semester=semester).filter(student__user__id=student_id).all()
         return Response(EvaluationSubmissionCorrectionSerializer(result, many=True).data, status.HTTP_200_OK)
     
     @action(detail=False, methods=['POST'])
@@ -161,11 +172,18 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
         operation_summary="Adds an evaluation submission for a student"
     )
     def add_evaluation_submission(self, request):
-        grade = request.data['grade']
+        grade = request.data.get('grade')
 
-        evaluation = get_object_or_404(Evaluation.objects, id=request.data["evaluation"])
+        evaluation_id = request.data.get("evaluation")
+        student_id = request.data.get("student")
+        if not evaluation_id:
+            return Response({"evaluation": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        if not student_id:
+            return Response({"student": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
 
-        student = get_object_or_404(Student.objects, user__id=request.data["student"])
+        evaluation = get_object_or_404(Evaluation.objects, id=evaluation_id)
+
+        student = get_object_or_404(Student.objects, user__id=student_id)
 
         if(student not in evaluation.semester.students.all()):
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)

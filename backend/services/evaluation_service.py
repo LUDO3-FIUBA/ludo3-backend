@@ -12,6 +12,9 @@ class EvaluationService:
         for attr, value in validated_data.items():
             setattr(evaluation, attr, value)
 
+        if not evaluation.is_gradeable:
+            evaluation.passing_grade = None
+
         evaluation.full_clean()
         evaluation.save()
         return evaluation

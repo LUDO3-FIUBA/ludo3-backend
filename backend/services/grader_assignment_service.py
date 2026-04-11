@@ -38,10 +38,7 @@ class GraderAssignmentService:
             )
             return submissions
 
-        for teacher_role in teacher_roles:
-            if teacher_role.grader_weight <= 0:
-                teacher_roles.remove(teacher_role)
-                print(f"Removed {teacher_role}")
+        teacher_roles = [r for r in teacher_roles if r.grader_weight > 0]
 
         submissions_not_yet_graded = [submission for submission in submissions if not submission.grade]
         submissions_already_graded = [submission for submission in submissions if submission.grade]

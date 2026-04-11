@@ -38,5 +38,11 @@ class Evaluation(models.Model):
         if self.parent_evaluation and self.parent_evaluation.semester != self.semester:
             raise ValidationError({"parent_evaluation": ["Evaluación padre debe pertenecer al mismo semestre."]})
 
+        if self.start_date and self.end_date and self.start_date >= self.end_date:
+            raise ValidationError({"end_date": ["La fecha de entrega debe ser posterior a la fecha de inicio."]})
+
+        if not self.is_gradeable and self.passing_grade is not None:
+            raise ValidationError({"passing_grade": ["Una evaluación sin nota numérica no puede tener nota de aprobación."]})
+
     def __str__(self):
         return f"{self.semester} - {self.evaluation_name}"
