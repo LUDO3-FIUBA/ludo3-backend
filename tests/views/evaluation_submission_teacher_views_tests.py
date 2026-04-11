@@ -458,6 +458,32 @@ class GraderAssignmentServiceTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
+    def test_grade_preserves_previously_assigned_grader(self):
+        """
+        Should keep an already assigned grader when a grade is set.
+        """
+        other_teacher = TeacherFactory()
+        TeacherRoleFactory(commission=self.commission, teacher=other_teacher)
+
+        submissions_service = EvaluationSubmissionService()
+        submissions_service.set_grader(self.numeric_submission, other_teacher)
+
+        self.client.force_authenticate(user=self.teacher.user)
+        response = self.client.put(
+            self.grade_uri,
+            {
+                "student": self.student.user.id,
+                "evaluation": self.evaluation.id,
+                "grade": 8,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.numeric_submission.refresh_from_db()
+        self.assertIsNotNone(self.numeric_submission.grader)
+        self.assertEqual(self.numeric_submission.grader.user_id, other_teacher.user_id)
+
     def test_grade_non_numeric_evaluation_accepts_status(self):
         """
         Should accept a valid status when grading a non-numeric evaluation and update the submission status accordingly.
