@@ -1,5 +1,6 @@
 from unittest import mock
 
+from backend.models.final import Final
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -13,7 +14,7 @@ class StudentFinalExamViewsTests(APITestCase):
         self.student = StudentFactory()
         self.teacher = TeacherFactory()
 
-        self.final = FinalFactory(teacher=self.teacher)
+        self.final = FinalFactory(teacher=self.teacher, status=Final.Status.OPEN)
 
         self.take_exam_uri = "/api/final_exams/take_exam/"
 

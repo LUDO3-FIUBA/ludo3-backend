@@ -1,0 +1,24 @@
+version: '3.7'
+
+services:
+  web:
+    container_name: web
+    build: .
+    command: python manage.py runserver 0.0.0.0:8007
+    volumes:
+      - ./:/usr/src/ludo/
+    ports:
+      - 8007:8007
+    env_file:
+      - .env
+    environment:
+      - SIU_URL=${SIU_URL:-http://fake-siu:3000}
+      - SIU_API_KEY=${SIU_API_KEY:-}
+  fake-siu:
+    container_name: fake-siu
+    build: fake-siu
+    stop_grace_period: 1s
+    ports:
+      - 3000:3000
+    volumes:
+      - ./fake-siu/db.json:/app/db.json

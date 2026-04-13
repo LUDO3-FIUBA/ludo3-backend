@@ -1,6 +1,6 @@
 import rule_engine
 
-from backend.views.utils import datetime_format, is_before_current_datetime
+from backend.utils import datetime_format, is_before_current_datetime
 
 
 class RuleEngineService:

@@ -4,14 +4,12 @@ from rest_framework.decorators import action
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from rest_framework_simplejwt.authentication import AUTH_HEADER_TYPES
 
 from backend.serializers.user_serializer import (
-    CustomTokenObtainPairSerializer, UserCustomCreateSerializer,
-    UserCustomGetSerializer)
+    UserCustomCreateSerializer, UserCustomGetSerializer, SimpleLoginSerializer)
 from backend.services.image_validator_service import ImageValidatorService
 
-from ..api_exceptions import InvalidFaceError, InvalidToken
+from ..api_exceptions import InvalidFaceError
 from ..models import User
 
 
@@ -41,36 +39,19 @@ class UserCustomViewSet(UserViewSet):
         return Response(serializer.data)
 
 
-class CustomTokenObtainPairView(GenericAPIView):
+class SimpleLoginView(GenericAPIView):
+    """
+    Vista de login simple.
+    Permite autenticarse con DNI y contraseña.
+    """
     permission_classes = ()
     authentication_classes = ()
-
-    serializer_class = CustomTokenObtainPairSerializer
-
-    www_authenticate_realm = 'api'
-
-    def get_authenticate_header(self, request):
-        return '{0} realm="{1}"'.format(
-            AUTH_HEADER_TYPES[0],
-            self.www_authenticate_realm,
-        )
+    serializer_class = SimpleLoginSerializer
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-
-        try:
-            serializer.is_valid(raise_exception=True)
-        except TokenError as e:
-            raise InvalidToken(e.args[0])
-
+        serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data, status=status.HTTP_200_OK)
 
-    def get(self, request, *args, **kwargs):
-        return self.post(request, *args, **kwargs)
 
-
-class TokenError(Exception):
-    pass
-
-
-token_obtain_pair = CustomTokenObtainPairView.as_view()
+simple_login = SimpleLoginView.as_view()

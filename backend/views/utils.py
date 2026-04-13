@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime
 
 from rest_framework import status
 from rest_framework.response import Response
@@ -8,6 +8,7 @@ from backend.models.commission import Commission
 from backend.models.teacher import Teacher
 from backend.models.teacher_role import TeacherRole
 from backend.services.image_validator_service import ImageValidatorService
+from backend.utils import get_current_datetime, is_before_current_datetime, datetime_format
 
 
 def respond(result, response_status=status.HTTP_200_OK):
@@ -50,32 +51,11 @@ def get_current_year():
     return 2024
 
 
-def get_current_datetime():
-    return datetime.now(timezone.utc)
-
-
 def get_hours_from_current_time(past_datetime):
     SECONDS_IN_ONE_HOUR = 3600
     return (
         get_current_datetime() - past_datetime
     ).total_seconds() / SECONDS_IN_ONE_HOUR
-
-
-def is_before_current_datetime(date):
-    datetime_object = date
-    if isinstance(date, str):
-        datetime_object = datetime.fromisoformat(date)
-
-    return datetime_object < get_current_datetime()
-
-def datetime_format(date):
-    datetime_object = date
-    if isinstance(date, str):
-        try:
-            datetime_object = datetime.fromisoformat(date)
-        except ValueError:
-            datetime_object = None
-    return datetime_object
 
 def teacher_not_in_commission_staff(teacher: Teacher, commission: Commission) -> bool:
     return (

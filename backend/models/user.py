@@ -22,23 +22,30 @@ class CustomUserManager(UserManager):
 
         image = extra_fields.pop("image", None)
         face_encodings = extra_fields.pop("face_encodings", None)
+        padron = extra_fields.pop("padron", None)
 
         user = self.model(email=email, **extra_fields)
 
-        if extra_fields['is_staff']:
-            user.set_password(password)
-            user.save(using=self._db)
-            return user
+        is_student = extra_fields.get('is_student', False)
+        is_teacher = extra_fields.get('is_teacher', False)
+        is_staff = extra_fields.get('is_staff', False)
 
-        user.set_unusable_password()
+        if not is_student and not is_teacher and not is_staff:
+            raise ValidationError('Either is_student, is_teacher or is_staff is needed')
+
+        if is_staff and (is_student or is_teacher):
+            raise ValidationError('Los usuarios admin no pueden ser también estudiantes o docentes')
+
+        if not password:
+            raise ValidationError('Password is required')
+        user.set_password(password)
         user.save(using=self._db)
 
-        if extra_fields.get('is_teacher', False):
+        if is_student:
+            Student(user=user, image=image, face_encodings=face_encodings, padron=padron).save()
+        if is_teacher:
             Teacher(user=user, face_encodings=face_encodings).save()
-        elif extra_fields.get('is_student', False):
-            Student(user=user, image=image, face_encodings=face_encodings).save()
-        else:
-            raise ValidationError('Either is_student or is_teacher is needed')
+        
         return user
 
     def create_superuser(self, email, password, username=None, **extra_fields):
@@ -77,5 +84,9 @@ class User(AbstractUser):
         return f"{self.dni}, {self.first_name} {self.last_name}"
 
     def file(self):
-        return self.student.padron if self.is_student else self.teacher.legajo
+        if self.is_student:
+            return self.student.padron
+        if self.is_teacher:
+            return self.teacher.legajo
+        return None
 
