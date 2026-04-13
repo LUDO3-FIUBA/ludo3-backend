@@ -1,6 +1,8 @@
+from django import forms
 from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -434,3 +436,66 @@ class FinalAdmin(admin.ModelAdmin):
         file_response['Content-Disposition'] = f"attachment; filename={final.teacher.user.last_name}-{final.date.strftime('%Y-%m-%d_%H_%M')}.png"
         return file_response
     download_action.short_description="Descargar QR"
+
+
+class NotificationAdminForm(forms.ModelForm):
+    recipients = forms.ModelMultipleChoiceField(
+        queryset=User.objects.all(),
+        required=False,
+        label="Destinatarios",
+        help_text="Seleccioná uno o más usuarios que recibirán esta notificación.",
+    )
+
+    class Meta:
+        model = Notification
+        fields = ('title', 'message', 'is_urgent', 'send_push', 'send_email', 'recipients')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        recipients = cleaned_data.get('recipients')
+        if self.instance.pk is None and (not recipients or recipients.count() == 0):
+            raise forms.ValidationError("Debés seleccionar al menos un destinatario.")
+        return cleaned_data
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    form = NotificationAdminForm
+    list_display = ('title', 'sender', 'is_urgent', 'send_push', 'send_email', 'created_at', 'recipient_count')
+    search_fields = ('title', 'message', 'sender__first_name', 'sender__last_name', 'sender__dni')
+    readonly_fields = ('sender', 'created_at')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('user_notifications')
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['recipients'].queryset = User.objects.order_by('last_name', 'first_name')
+        return form
+
+    def save_model(self, request, obj, form, change):
+        recipients = form.cleaned_data.get('recipients')
+
+        with transaction.atomic():
+            is_new = obj.pk is None
+            if is_new:
+                obj.sender = request.user
+
+            super().save_model(request, obj, form, change)
+
+            if is_new and recipients:
+                UserNotification.objects.bulk_create([
+                    UserNotification(notification=obj, user=user)
+                    for user in recipients
+                ])
+
+    def recipient_count(self, obj):
+        return obj.user_notifications.count()
+    recipient_count.short_description = 'Destinatarios'
+
+
+@admin.register(UserNotification)
+class UserNotificationAdmin(admin.ModelAdmin):
+    list_display = ('notification', 'user', 'is_read')
+    list_filter = ('is_read',)
+    search_fields = ('notification__title', 'user__first_name', 'user__last_name', 'user__dni')

@@ -35,7 +35,7 @@ class NotificationViewSet(BaseViewSet):
             status=status.HTTP_200_OK,
         )
 
-    @action(detail=True, methods=['PATCH'])
+    @action(detail=True, methods=['PATCH', 'POST'])
     @swagger_auto_schema(
         tags=["Notifications"],
         operation_summary="Mark a notification as read",
@@ -81,6 +81,9 @@ class NotificationViewSet(BaseViewSet):
             title=data['title'],
             message=data['message'],
             sender=request.user,
+            is_urgent=data.get('is_urgent', False),
+            send_push=data.get('send_push', False),
+            send_email=data.get('send_email', False),
         )
 
         UserNotification.objects.bulk_create([
