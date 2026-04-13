@@ -17,3 +17,10 @@ class IsTeacher(permissions.BasePermission):
 
     def has_permission(self, request, view):
         return request.user.is_teacher
+
+
+class IsAdmin(permissions.BasePermission):
+    """Custom permission to only allow staff/admin users"""
+
+    def has_permission(self, request, view):
+        return request.user.is_staff

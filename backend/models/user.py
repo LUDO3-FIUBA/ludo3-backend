@@ -33,6 +33,9 @@ class CustomUserManager(UserManager):
         if not is_student and not is_teacher and not is_staff:
             raise ValidationError('Either is_student, is_teacher or is_staff is needed')
 
+        if is_staff and (is_student or is_teacher):
+            raise ValidationError('Los usuarios admin no pueden ser también estudiantes o docentes')
+
         if not password:
             raise ValidationError('Password is required')
         user.set_password(password)

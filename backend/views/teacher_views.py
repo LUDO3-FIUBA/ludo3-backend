@@ -10,11 +10,16 @@ from backend.views.base_view import BaseViewSet
 from ..models import Teacher
 
 
+class IsTeacherOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_teacher or request.user.is_staff
+
+
 class TeacherViews(BaseViewSet):
-    permission_classes = [IsAuthenticated, IsTeacher]
+    permission_classes = [IsAuthenticated, IsTeacherOrAdmin]
     queryset = Teacher.objects.all()
     serializer_class = TeacherSerializer
-    
+
     @swagger_auto_schema(
         tags=["Teachers"],
         operation_summary="Get a list of all teachers"
