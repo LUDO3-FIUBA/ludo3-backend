@@ -15,5 +15,9 @@ up-remote:
 .PHONY: up-remote
 
 down:
-	docker compose -f docker-compose.yml -f docker-compose.remote.yml down --remove-orphans
+	docker compose -f docker-compose.yml down
 .PHONY: down
+
+test:
+	docker exec web python3 manage.py test
+.PHONY: test

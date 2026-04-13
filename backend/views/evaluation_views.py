@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
@@ -37,8 +39,11 @@ class EvaluationViewSet(BaseViewSet):
         ],
     )
     def list(self, request):
+        semester_id = request.query_params.get("semester_id")
+        if not semester_id:
+            return Response({"semester_id": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
         result = self.get_queryset().filter(
-            semester=request.query_params["semester_id"]
+            semester=semester_id
         )
         return Response(
             EvaluationSemesterSerializer(result, many=True).data, status.HTTP_200_OK
@@ -53,7 +58,7 @@ class EvaluationViewSet(BaseViewSet):
         result = (
             self.queryset.filter(
                 semester__students=request.user.student,
-                end_date__gt=get_current_datetime(),
+                end_date__gt=get_current_datetime() - timedelta(days=7),
             )
             .order_by("end_date")
             .all()

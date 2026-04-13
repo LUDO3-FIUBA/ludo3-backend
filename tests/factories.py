@@ -1,4 +1,4 @@
-from datetime import timezone
+from datetime import timedelta, timezone
 
 import factory
 from faker import Faker
@@ -93,9 +93,10 @@ class EvaluationFactory(factory.django.DjangoModelFactory):
     semester = factory.SubFactory(SemesterFactory)
     evaluation_name = factory.Faker("sentence")
     is_graded = factory.Faker("boolean")
+    is_gradeable = True
     passing_grade = factory.Faker("random_int", min=0, max=10)
     start_date = factory.Faker("date_time", tzinfo=timezone.utc)
-    end_date = factory.Faker("date_time", tzinfo=timezone.utc)
+    end_date = factory.LazyAttribute(lambda obj: obj.start_date + timedelta(days=1))
 
 
 class SubmissionFactory(factory.django.DjangoModelFactory):
@@ -104,6 +105,7 @@ class SubmissionFactory(factory.django.DjangoModelFactory):
 
     evaluation = factory.SubFactory(EvaluationFactory)
     student = factory.SubFactory(StudentFactory)
+    submission_status = None  # Default to None or another default value
     grade = None  # Default to None or another default value
     grader = None  # Default to None or another default value
     created_at = factory.Faker("date_time", tzinfo=timezone.utc)

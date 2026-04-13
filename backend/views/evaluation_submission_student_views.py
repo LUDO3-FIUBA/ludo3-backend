@@ -1,4 +1,5 @@
 from drf_yasg.utils import swagger_auto_schema
+from django.core.exceptions import ValidationError
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -26,15 +27,29 @@ class EvaluationSubmissionViewSet(BaseViewSet):
         operation_summary="Submit an evaluation"
     )
     def submit_evaluation(self, request):
-        
-        evaluation = get_object_or_404(Evaluation.objects, id=request.data["evaluation"])
+
+        evaluation_id = request.data.get("evaluation")
+        if not evaluation_id:
+            return Response({"evaluation": ["This field is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        evaluation = get_object_or_404(Evaluation.objects, id=evaluation_id)
 
         if(request.user.student not in evaluation.semester.students.all()):
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)
 
-        submission = EvaluationSubmission(student=request.user.student, evaluation=evaluation)
-        EvaluationSubmissionValidator(submission).validate()
-        submission.save()
+        submission = EvaluationSubmission(
+            student=request.user.student,
+            evaluation=evaluation,
+            submission_text=request.data.get("submission_text"),
+        )
+
+        try:
+            EvaluationSubmissionValidator(submission).validate()
+            submission.full_clean()
+            submission.save()
+        except ValidationError as e:
+            payload = getattr(e, "message_dict", None) or {"detail": e.messages}
+            return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLogService().log(request.user, None, f"Estudiante realizo una entrega en la evaluación: {evaluation}")
 
