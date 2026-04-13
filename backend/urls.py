@@ -8,6 +8,7 @@ from . import views
 from .views import CustomGCMDeviceViewSet
 from .views.user_views import UserCustomViewSet, simple_login
 from .views.google_auth_views import google_sign_in, google_complete_registration
+from .views.password_views import change_password, forgot_password, reset_password_confirm
 
 router = routers.SimpleRouter()
 router.register(r'final_exams', views.FinalExamStudentViewSet, 'final_exam')
@@ -62,6 +63,9 @@ urlpatterns = [
 
     path('', include(auth_router.urls)),
     re_path(r'^auth/login/$', simple_login, name='api-login'),
+    path('auth/password/change/', change_password, name='password-change'),
+    path('auth/password/forgot/', forgot_password, name='password-forgot'),
+    path('auth/password/reset/confirm/', reset_password_confirm, name='password-reset-confirm'),
     
     path('auth/google/', google_sign_in, name='google-sign-in'),
     path('auth/google/registration/', google_complete_registration, name='google-registration'),
