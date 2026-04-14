@@ -33,6 +33,8 @@ SECRET_KEY="v4@)^40(m^%j-z)260(e7pw#9i2jyxmnx5bw7jh4%zr)&85lw_"
 DEBUG = int(os.environ.get("DEBUG", default=1))
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 CSRF_COOKIE_SECURE=False
 

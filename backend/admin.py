@@ -438,23 +438,39 @@ class FinalAdmin(admin.ModelAdmin):
     download_action.short_description="Descargar QR"
 
 
+RECIPIENT_GROUP_CHOICES = [
+    ('all', 'Todos los usuarios'),
+    ('students', 'Alumnos'),
+    ('teachers', 'Docentes'),
+    ('staff', 'Administrativos'),
+]
+
+
 class NotificationAdminForm(forms.ModelForm):
+    recipient_groups = forms.MultipleChoiceField(
+        choices=RECIPIENT_GROUP_CHOICES,
+        required=False,
+        label="Grupos destinatarios",
+        widget=forms.CheckboxSelectMultiple,
+    )
     recipients = forms.ModelMultipleChoiceField(
         queryset=User.objects.all(),
         required=False,
-        label="Destinatarios",
-        help_text="Seleccioná uno o más usuarios que recibirán esta notificación.",
+        label="Destinatarios individuales",
+        help_text="Usuarios específicos además de los grupos seleccionados.",
     )
 
     class Meta:
         model = Notification
-        fields = ('title', 'message', 'is_urgent', 'send_push', 'send_email', 'recipients')
+        fields = ('title', 'message', 'is_urgent', 'send_push', 'send_email', 'image', 'recipient_groups', 'recipients')
 
     def clean(self):
         cleaned_data = super().clean()
-        recipients = cleaned_data.get('recipients')
-        if self.instance.pk is None and (not recipients or recipients.count() == 0):
-            raise forms.ValidationError("Debés seleccionar al menos un destinatario.")
+        if self.instance.pk is None:
+            groups = cleaned_data.get('recipient_groups')
+            recipients = cleaned_data.get('recipients')
+            if not groups and (not recipients or recipients.count() == 0):
+                raise forms.ValidationError("Debés seleccionar al menos un grupo o destinatario.")
         return cleaned_data
 
 
@@ -474,6 +490,7 @@ class NotificationAdmin(admin.ModelAdmin):
         return form
 
     def save_model(self, request, obj, form, change):
+        recipient_groups = form.cleaned_data.get('recipient_groups', [])
         recipients = form.cleaned_data.get('recipients')
 
         with transaction.atomic():
@@ -483,10 +500,13 @@ class NotificationAdmin(admin.ModelAdmin):
 
             super().save_model(request, obj, form, change)
 
-            if is_new and recipients:
+            if is_new:
+                from backend.views.notification_views import _resolve_recipients
+                individual_ids = list(recipients.values_list('id', flat=True)) if recipients else []
+                target_users = _resolve_recipients(recipient_groups, individual_ids)
                 UserNotification.objects.bulk_create([
                     UserNotification(notification=obj, user=user)
-                    for user in recipients
+                    for user in target_users
                 ])
 
     def recipient_count(self, obj):

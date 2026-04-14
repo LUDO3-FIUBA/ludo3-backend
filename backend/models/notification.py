@@ -17,6 +17,7 @@ class Notification(models.Model):
     is_urgent = models.BooleanField(default=False, verbose_name="Urgente")
     send_push = models.BooleanField(default=False, verbose_name="Enviar push")
     send_email = models.BooleanField(default=False, verbose_name="Enviar email")
+    image = models.ImageField(upload_to='notifications/', null=True, blank=True, verbose_name="Imagen")
 
     class Meta:
         verbose_name = "Notificación"
