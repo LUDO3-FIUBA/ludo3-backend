@@ -32,6 +32,27 @@ class AuditLogAdmin(admin.ModelAdmin):
 
 
 admin.site.register(AuditLog, AuditLogAdmin)
+
+
+@admin.register(PasswordResetOTP)
+class PasswordResetOTPAdmin(admin.ModelAdmin):
+    list_display = ('user', 'expires_at', 'attempts', 'max_attempts', 'is_used', 'created_at')
+    list_filter = ('is_used', 'created_at')
+    search_fields = ('user__dni', 'user__email')
+    readonly_fields = (
+        'user',
+        'code_hash',
+        'expires_at',
+        'attempts',
+        'max_attempts',
+        'is_used',
+        'created_at',
+        'updated_at',
+    )
+
+    def has_add_permission(self, request):
+        return False
+
 admin.site.register(Commission)
 @memoized
 def subjects():

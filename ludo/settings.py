@@ -51,6 +51,11 @@ CORS_ALLOW_CREDENTIALS = True
 # TODO: Remove in production
 CORS_ALLOW_ALL_ORIGINS = True
 
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
+PASSWORD_RESET_CODE_TTL_MINUTES = int(os.environ.get('PASSWORD_RESET_CODE_TTL_MINUTES', 15))
+PASSWORD_RESET_MAX_ATTEMPTS = int(os.environ.get('PASSWORD_RESET_MAX_ATTEMPTS', 5))
+
 AUTH_USER_MODEL = 'backend.User'
 
 LANGUAGE_CODE = 'es-AR'
@@ -140,14 +145,6 @@ DATABASES = {
     }
 }
 
-import dj_database_url
-
-# DATABASES['default'] = dj_database_url.config(conn_max_age=500)
-
-# DATABASE_URL = os.environ.get('DATABASE_URL')
-# db_from_env = django_heroku.dj_database_url.config(default=DATABASE_URL)
-# DATABASES['default'] = db_from_env
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.0/ref/settings/#auth-password-validators
@@ -208,7 +205,7 @@ STATIC_URL = '/static/'
 # Activate Django-Heroku.
 django_heroku.settings(locals(), databases=False)
 
-# Configure DATABASE_URL manually for local development without SSL
+# If DATABASE_URL is set, use it (supports both local and remote databases)
 if os.environ.get('DATABASE_URL'):
     import dj_database_url
     DATABASES['default'] = dj_database_url.config(
@@ -216,4 +213,7 @@ if os.environ.get('DATABASE_URL'):
         conn_max_age=500,
         ssl_require=False
     )
-    DATABASES['default']['OPTIONS'] = {'sslmode': 'disable'}
+    # Use sslmode from the URL if present (e.g. ?sslmode=require for Supabase),
+    # otherwise default to 'disable' for local development.
+    if 'sslmode' not in os.environ.get('DATABASE_URL', ''):
+        DATABASES['default'].setdefault('OPTIONS', {})['sslmode'] = 'disable'

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if [ "$DATABASE" = "postgres" ]
+if [ "$DATABASE" = "postgres" ] && [ -n "$SQL_HOST" ]
 then
     echo "Waiting for postgres..."
 

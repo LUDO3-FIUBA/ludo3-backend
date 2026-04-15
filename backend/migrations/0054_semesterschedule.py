@@ -7,7 +7,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0042_notification_usernotification'),
+        ('backend', '0053_merge_20260413_2247'),
     ]
 
     operations = [

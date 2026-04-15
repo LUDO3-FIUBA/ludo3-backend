@@ -40,14 +40,31 @@ The server will start by default on the port 8000
 
 ## Run with Docker
 
-### Run server
+### Setup
 Duplicate `.env.template` and rename to `.env`. Complete the secrets with the correct values.
 
-Then, run
+### `make up-local`
+Starts the full local environment: Django server, PostgreSQL database, and fake SIU service, all in Docker containers. The DB runs in a `postgres:12` container with data persisted in a Docker volume. Uses `.env.compose` + `.env` for configuration.
+
+```bash
+make up-local   # or just `make up`
 ```
-docker compose up --build
+
+### `make up-remote`
+Starts the Django server and fake SIU service **without** a local database container. Connects to an external PostgreSQL database configured via the `SQL_*` variables in your `.env` file. Useful for working against a shared or cloud-hosted database.
+
+```bash
+make up-remote
 ```
-The server will start by default on the port 8007. Admin dashboard URL is http://localhost:8007/admin
+
+### `make down`
+Stops and removes all containers from both configurations.
+
+```bash
+make down
+```
+
+In both cases, the server runs on port **8007**. Admin dashboard URL is http://localhost:8007/admin
 
 #### Populate the Database
 

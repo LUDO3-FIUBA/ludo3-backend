@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: ludo-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "0"
+      - key: GOOGLE_APPLICATION_CREDENTIALS
+        sync: false
+      - key: AUTH_FIUBA_URL
+        sync: false
+      - key: AUTH_CLIENT_ID
+        sync: false
+      - key: AUTH_CLIENT_SECRET
+        sync: false
+      - key: AWS_DOMAIN_URL
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_BUCKET_NAME
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false

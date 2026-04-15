@@ -8,6 +8,7 @@ from . import views
 from .views import CustomGCMDeviceViewSet
 from .views.user_views import UserCustomViewSet, simple_login
 from .views.google_auth_views import google_sign_in, google_complete_registration
+from .views.password_views import change_password, forgot_password, reset_password_confirm
 
 router = routers.SimpleRouter()
 router.register(r'final_exams', views.FinalExamStudentViewSet, 'final_exam')
@@ -35,6 +36,9 @@ router.register(r'statistics/teacher', views.StatisticsTeacherViewSet, 'statisti
 router.register(r'notifications', views.NotificationViewSet, 'notification')
 router.register(r'device/gcm', CustomGCMDeviceViewSet)
 router.register(r'academic_calendar', views.AcademicCalendarEventViewSet, 'academic_calendar')
+router.register(r'departments', views.DepartmentViewSet, 'department')
+router.register(r'admin/commissions', views.CommissionAdminViewSet, 'admin-commission')
+router.register(r'admin/users', views.UserAdminViewSet, 'admin-user')
 
 teacher_finals_router = routers.NestedSimpleRouter(router, r'finals', lookup='final')
 teacher_finals_router.register(r'final_exams', views.FinalExamTeacherViews, basename='final-final_exams')
@@ -60,6 +64,9 @@ urlpatterns = [
 
     path('', include(auth_router.urls)),
     re_path(r'^auth/login/$', simple_login, name='api-login'),
+    path('auth/password/change/', change_password, name='password-change'),
+    path('auth/password/forgot/', forgot_password, name='password-forgot'),
+    path('auth/password/reset/confirm/', reset_password_confirm, name='password-reset-confirm'),
     
     path('auth/google/', google_sign_in, name='google-sign-in'),
     path('auth/google/registration/', google_complete_registration, name='google-registration'),
