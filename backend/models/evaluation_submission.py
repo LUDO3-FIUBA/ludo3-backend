@@ -34,6 +34,18 @@ class EvaluationSubmission(models.Model):
         if self.evaluation.is_gradeable and self.submission_status is not None:
             raise ValidationError({"submission_status": ["Esta evaluación usa calificación numérica."]})
 
+    def is_passed(self):
+        if self.evaluation is None:
+            return False
+
+        if self.evaluation.is_gradeable:
+            if self.grade is None or self.evaluation.passing_grade is None:
+                return False
+
+            return self.grade >= self.evaluation.passing_grade
+
+        return self.submission_status == self.SubmissionStatus.APROBADO
+
     def __str__(self):
         return f"{self.student} - {self.evaluation} - {self.grade}"
 
