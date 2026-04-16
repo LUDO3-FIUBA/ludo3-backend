@@ -1,0 +1,816 @@
+[
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 1,
+    "fields": {
+      "name": "Período de Clases - 1er Cuatrimestre",
+      "start_date": "2026-03-16",
+      "end_date": "2026-07-04",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 2,
+    "fields": {
+      "name": "Período de Clases - 2do Cuatrimestre",
+      "start_date": "2026-08-03",
+      "end_date": "2026-11-28",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 3,
+    "fields": {
+      "name": "Evaluaciones Parciales - 1er Cuatrimestre",
+      "start_date": "2026-04-27",
+      "end_date": "2026-06-13",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 4,
+    "fields": {
+      "name": "Evaluaciones Parciales - 1ra Recuperación (1C)",
+      "start_date": "2026-06-15",
+      "end_date": "2026-06-27",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 5,
+    "fields": {
+      "name": "Evaluaciones Parciales - 2da Recuperación (1C)",
+      "start_date": "2026-06-29",
+      "end_date": "2026-07-04",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 6,
+    "fields": {
+      "name": "Evaluaciones Parciales - 2do Cuatrimestre",
+      "start_date": "2026-09-28",
+      "end_date": "2026-11-07",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 7,
+    "fields": {
+      "name": "Evaluaciones Parciales - 1ra Recuperación (2C)",
+      "start_date": "2026-11-09",
+      "end_date": "2026-11-21",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 8,
+    "fields": {
+      "name": "Evaluaciones Parciales - 2da Recuperación (2C)",
+      "start_date": "2026-11-23",
+      "end_date": "2026-11-28",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 9,
+    "fields": {
+      "name": "Período para completar encuestas estudiantiles (1C)",
+      "start_date": "2026-06-15",
+      "end_date": "2026-06-27",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 10,
+    "fields": {
+      "name": "Período para completar encuestas estudiantiles (2C)",
+      "start_date": "2026-11-16",
+      "end_date": "2026-11-28",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 11,
+    "fields": {
+      "name": "Inscripción para Evaluaciones Integradoras (1C)",
+      "start_date": "2026-06-08",
+      "end_date": "2026-06-13",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 12,
+    "fields": {
+      "name": "Evaluaciones Integradoras (1C)",
+      "start_date": "2026-06-29",
+      "end_date": "2026-07-04",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 13,
+    "fields": {
+      "name": "Inscripción para Evaluaciones Integradoras (2C)",
+      "start_date": "2026-11-02",
+      "end_date": "2026-11-07",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 14,
+    "fields": {
+      "name": "Evaluaciones Integradoras (2C)",
+      "start_date": "2026-11-30",
+      "end_date": "2026-12-05",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 15,
+    "fields": {
+      "name": "Presentación de Certificados de Trabajo / Discapacidad (1C)",
+      "start_date": "2026-03-16",
+      "end_date": "2026-04-04",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 16,
+    "fields": {
+      "name": "Presentación de Certificados de Trabajo / Discapacidad (2C)",
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-22",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 17,
+    "fields": {
+      "name": "Publicación oferta horaria para cursar (2C)",
+      "start_date": "2026-06-22",
+      "end_date": "2026-06-27",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 18,
+    "fields": {
+      "name": "Publicación de Prioridades para Inscripción (2C)",
+      "start_date": "2026-06-29",
+      "end_date": "2026-07-04",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 19,
+    "fields": {
+      "name": "Inscripción para Cursar Asignaturas (2C)",
+      "start_date": "2026-07-06",
+      "end_date": "2026-07-18",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 20,
+    "fields": {
+      "name": "Desinscripción de Asignaturas (2C)",
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-15",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 21,
+    "fields": {
+      "name": "Publicación oferta horaria para cursar (1C 2027)",
+      "start_date": "2026-11-02",
+      "end_date": "2026-11-07",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 22,
+    "fields": {
+      "name": "Publicación de Prioridades para Inscripción (1C 2027)",
+      "start_date": "2026-11-23",
+      "end_date": "2026-11-28",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 23,
+    "fields": {
+      "name": "Inscripción para Cursar Asignaturas (1C 2027)",
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-19",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 24,
+    "fields": {
+      "name": "Desinscripción de Asignaturas (1C 2027)",
+      "start_date": "2027-01-11",
+      "end_date": "2027-01-23",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 25,
+    "fields": {
+      "name": "Admisión de estudiantes del CBC (1C)",
+      "start_date": "2026-02-09",
+      "end_date": "2026-03-07",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 26,
+    "fields": {
+      "name": "Admisión de estudiantes del CBC (2C)",
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-22",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 27,
+    "fields": {
+      "name": "Período postulaciones movilidad académica saliente (2C)",
+      "start_date": "2026-04-06",
+      "end_date": "2026-04-25",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 28,
+    "fields": {
+      "name": "Período postulaciones movilidad académica saliente (1C 2027)",
+      "start_date": "2026-09-28",
+      "end_date": "2026-10-17",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 29,
+    "fields": {
+      "name": "Charla de Bienvenida a estudiantes de movilidad académica (1C)",
+      "start_date": "2026-03-16",
+      "end_date": "2026-03-21",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 30,
+    "fields": {
+      "name": "Charla de Bienvenida a estudiantes de movilidad académica (2C)",
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-08",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 31,
+    "fields": {
+      "name": "Período de Solicitud de Prórrogas de Asignaturas Vencidas (1C→2C)",
+      "start_date": "2026-07-06",
+      "end_date": "2026-07-25",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 32,
+    "fields": {
+      "name": "Período de Solicitud de Prórrogas de Asignaturas Vencidas (2C→1C)",
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-26",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 33,
+    "fields": {
+      "name": "Período de Solicitud de Excepciones de Correlatividades (1C→2C)",
+      "start_date": "2026-07-06",
+      "end_date": "2026-07-18",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 34,
+    "fields": {
+      "name": "Período de Solicitud de Excepciones de Correlatividades (2C→1C)",
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-19",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 35,
+    "fields": {
+      "name": "Período para abonar trámite de convalidación (2C)",
+      "start_date": "2026-03-16",
+      "end_date": "2026-04-04",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 36,
+    "fields": {
+      "name": "Período para abonar trámite de convalidación (1C 2027)",
+      "start_date": "2026-08-17",
+      "end_date": "2026-09-05",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 37,
+    "fields": {
+      "name": "Período para mesas de examen especiales (verano)",
+      "start_date": "2026-01-05",
+      "end_date": "2026-02-28",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 38,
+    "fields": {
+      "name": "Período para mesas de examen especiales (receso invernal)",
+      "start_date": "2026-07-13",
+      "end_date": "2026-07-25",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 39,
+    "fields": {
+      "name": "Recepción de trámites de simultaneidad entre carreras de FIUBA (1C)",
+      "start_date": "2026-02-09",
+      "end_date": "2026-02-28",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 40,
+    "fields": {
+      "name": "Recepción de trámites de simultaneidad entre carreras de FIUBA (2C)",
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-22",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 41,
+    "fields": {
+      "name": "Charla de Ingresantes",
+      "start_date": "2026-02-23",
+      "end_date": "2026-02-28",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 42,
+    "fields": {
+      "name": "Recepción de otros trámites para el cuatrimestre siguiente (1C→2C)",
+      "start_date": "2026-05-04",
+      "end_date": "2026-07-04",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 43,
+    "fields": {
+      "name": "Recepción de otros trámites para el cuatrimestre siguiente (2C→1C)",
+      "start_date": "2026-10-05",
+      "end_date": "2026-12-05",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 44,
+    "fields": {
+      "name": "Publicación oferta horaria de Cursos de Verano 2027",
+      "start_date": "2026-10-05",
+      "end_date": "2026-10-10",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 45,
+    "fields": {
+      "name": "Inscripción para Cursos de Verano 2027",
+      "start_date": "2026-11-16",
+      "end_date": "2026-11-21",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 46,
+    "fields": {
+      "name": "Desinscripción de Cursos de Verano 2027",
+      "start_date": "2026-12-14",
+      "end_date": "2026-12-19",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 47,
+    "fields": {
+      "name": "Inicio de los Cursos de Verano 2027",
+      "start_date": "2027-01-25",
+      "end_date": "2027-02-27",
+      "category": "student",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 48,
+    "fields": {
+      "name": "Registro de notas de cursadas en Guaraní (1C)",
+      "start_date": "2026-07-06",
+      "end_date": "2026-07-25",
+      "category": "teacher",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 49,
+    "fields": {
+      "name": "Registro de notas de evaluaciones integradoras en Guaraní (1C)",
+      "start_date": "2026-07-06",
+      "end_date": "2026-07-18",
+      "category": "teacher",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 50,
+    "fields": {
+      "name": "Fecha límite presentación de planificaciones (1C)",
+      "start_date": "2026-02-23",
+      "end_date": "2026-02-28",
+      "category": "teacher",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 51,
+    "fields": {
+      "name": "Registro de notas de cursadas en Guaraní (2C)",
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-19",
+      "category": "teacher",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 52,
+    "fields": {
+      "name": "Registro de notas de evaluaciones integradoras en Guaraní (2C)",
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-14",
+      "category": "teacher",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 53,
+    "fields": {
+      "name": "Fecha límite presentación de planificaciones (2C)",
+      "start_date": "2026-07-27",
+      "end_date": "2026-08-01",
+      "category": "teacher",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 54,
+    "fields": {
+      "name": "Fecha límite presentación planificaciones de Cursos de Verano 2027",
+      "start_date": "2026-10-26",
+      "end_date": "2026-10-31",
+      "category": "teacher",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 55,
+    "fields": {
+      "name": "Oferta horaria y vacantes (2C)",
+      "start_date": "2026-05-04",
+      "end_date": "2026-06-06",
+      "category": "department",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 56,
+    "fields": {
+      "name": "Oferta horaria y vacantes (1C 2027)",
+      "start_date": "2026-10-05",
+      "end_date": "2026-11-07",
+      "category": "department",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 57,
+    "fields": {
+      "name": "Cierre de Actas de cursadas en Guaraní (1C)",
+      "start_date": "2026-07-20",
+      "end_date": "2026-07-25",
+      "category": "department",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 58,
+    "fields": {
+      "name": "Cierre de Actas de cursadas en Guaraní (2C)",
+      "start_date": "2026-12-14",
+      "end_date": "2026-12-19",
+      "category": "department",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 59,
+    "fields": {
+      "name": "Cierre de Actas de Evaluaciones integradoras en Guaraní (1C)",
+      "start_date": "2026-07-13",
+      "end_date": "2026-07-18",
+      "category": "department",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 60,
+    "fields": {
+      "name": "Cierre de Actas de Evaluaciones integradoras en Guaraní (2C)",
+      "start_date": "2026-12-07",
+      "end_date": "2026-12-12",
+      "category": "department",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 61,
+    "fields": {
+      "name": "Creación de Mesas de Evaluaciones Integradoras (1C)",
+      "start_date": "2026-05-25",
+      "end_date": "2026-06-06",
+      "category": "department",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 62,
+    "fields": {
+      "name": "Creación de Mesas de Evaluaciones Integradoras (2C)",
+      "start_date": "2026-10-26",
+      "end_date": "2026-11-07",
+      "category": "department",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 63,
+    "fields": {
+      "name": "Período de entrega de dictámenes para Convalidaciones",
+      "start_date": "2026-04-06",
+      "end_date": "2026-06-27",
+      "category": "career",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 64,
+    "fields": {
+      "name": "Revisión de Planificaciones (1C)",
+      "start_date": "2026-03-02",
+      "end_date": "2026-03-14",
+      "category": "career",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 65,
+    "fields": {
+      "name": "Revisión de Planificaciones (2C)",
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-15",
+      "category": "career",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 66,
+    "fields": {
+      "name": "Control de Superposiciones Horarias (2C)",
+      "start_date": "2026-06-08",
+      "end_date": "2026-06-20",
+      "category": "career",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 67,
+    "fields": {
+      "name": "Control de Superposiciones Horarias (1C 2027)",
+      "start_date": "2026-11-09",
+      "end_date": "2026-11-21",
+      "category": "career",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 68,
+    "fields": {
+      "name": "Asignación de aulas (2C)",
+      "start_date": "2026-06-22",
+      "end_date": "2026-07-18",
+      "category": "bedelia",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 69,
+    "fields": {
+      "name": "Asignación de aulas (1C 2027)",
+      "start_date": "2026-11-23",
+      "end_date": "2026-12-19",
+      "category": "bedelia",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 70,
+    "fields": {
+      "name": "Verificación de regularidad de los estudiantes (1C)",
+      "start_date": "2026-03-09",
+      "end_date": "2026-03-14",
+      "category": "systems",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 71,
+    "fields": {
+      "name": "Verificación de regularidad de los estudiantes (2C)",
+      "start_date": "2026-08-03",
+      "end_date": "2026-08-08",
+      "category": "systems",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 72,
+    "fields": {
+      "name": "Procesamiento de matrices de equivalencias",
+      "start_date": "2026-04-06",
+      "end_date": "2026-04-25",
+      "category": "systems",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 73,
+    "fields": {
+      "name": "Confirmación de inscripciones pendientes (2C)",
+      "start_date": "2026-07-27",
+      "end_date": "2026-08-08",
+      "category": "systems",
+      "year": 2026
+    }
+  },
+  {
+    "model": "backend.academiccalendarevent",
+    "pk": 74,
+    "fields": {
+      "name": "Confirmación de inscripciones pendientes (1C 2027)",
+      "start_date": "2027-01-18",
+      "end_date": "2027-01-30",
+      "category": "systems",
+      "year": 2026
+    }
+  }
+]

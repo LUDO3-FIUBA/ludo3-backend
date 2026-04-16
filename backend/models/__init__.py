@@ -16,5 +16,7 @@ from .audit_log import AuditLog
 from .auth_identity import AuthIdentity
 from .teacher_profile import TeacherProfile, WorkExperience
 from .notification import Notification, UserNotification
+from .semester_schedule import SemesterSchedule
+from .academic_calendar_event import AcademicCalendarEvent
 from .department import Department
 from .password_reset_otp import PasswordResetOTP
