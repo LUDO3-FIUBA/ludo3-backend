@@ -6,13 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models import AttendanceQRCode, EvaluationSubmission, Semester
-from backend.serializers.attendance_serializer import \
-    AttendanceQRCodeStudentsSerializerNoSemester
-from backend.serializers.evaluation_submission_serializer import \
-    EvaluationSubmissionSerializer
-from backend.serializers.semester_serializer import (
-    SemesterSerializer, SemesterWithMakeupSerializer)
-from backend.serializers.student_serializer import StudentSerializer
+from backend.serializers.semester_serializer import SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import get_current_semester, get_current_year
@@ -75,24 +69,18 @@ class SemesterViewSet(BaseViewSet):
     )
     def is_passing(self, request):
         semester = self.get_queryset().filter(id=request.query_params['semester_id']).first()
+        if semester is None:
+            return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
 
-        attendance_qrs = AttendanceQRCode.objects.all().filter(semester=semester).all()
-        evaluation_submissions = EvaluationSubmission.objects.all().filter(evaluation__semester=semester, student=request.user.student).all()
+        attendance_qrs = AttendanceQRCode.objects.filter(semester=semester).prefetch_related('attendances')
+        evaluation_submissions = EvaluationSubmission.objects.filter(
+            evaluation__semester=semester,
+            student=request.user.student,
+        ).select_related('evaluation', 'grader')
         
         rule_engine_service = RuleEngineService()
-        rule_engine_service.generate_passed_rules(SemesterWithMakeupSerializer(semester).data)
-
-
-        passed = rule_engine_service.is_student_passed(AttendanceQRCodeStudentsSerializerNoSemester(attendance_qrs, many=True).data, 
-                                               EvaluationSubmissionSerializer(evaluation_submissions, many=True).data,
-                                               StudentSerializer(request.user.student).data, SemesterWithMakeupSerializer(semester).data)
-        
-        rule_engine_service = RuleEngineService()
-        rule_engine_service.generate_failed_rules(SemesterWithMakeupSerializer(semester).data)
-
-        failed = rule_engine_service.is_student_failed(AttendanceQRCodeStudentsSerializerNoSemester(attendance_qrs, many=True).data, 
-                                               EvaluationSubmissionSerializer(evaluation_submissions, many=True).data,
-                                               StudentSerializer(request.user.student).data)
+        passed = rule_engine_service.is_student_passed(attendance_qrs, evaluation_submissions, request.user.student, semester)
+        failed = rule_engine_service.is_student_failed(attendance_qrs, evaluation_submissions, request.user.student, semester)
         
         response = {'passed': passed, 'failed': failed}
 

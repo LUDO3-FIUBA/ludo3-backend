@@ -1,165 +1,134 @@
-import rule_engine
-
-from backend.utils import datetime_format, is_before_current_datetime
+from django.utils import timezone
 
 
-class RuleEngineService:
+class AttendanceRule:
+    def __init__(self, semester):
+        self.semester = semester
+
+    def has_requirement(self):
+        return self.semester.classes_amount is not None and self.semester.minimum_attendance is not None
+
+    def max_absences(self):
+        return self.semester.classes_amount - (self.semester.classes_amount * self.semester.minimum_attendance)
+
+    def remaining_lectures(self, attendance_qrs):
+        return self.semester.classes_amount - len(attendance_qrs)
     
-    def __init__(self):
-        self.rules = []
-        self.evaluation_rules = []
-
-
-    def generate_passed_rules(self, semester):
-        print("PASSED RULES:")
-        if(semester['classes_amount'] and semester['minimum_attendance']):
-            max_absences = semester['classes_amount'] - (semester['classes_amount'] * semester['minimum_attendance'])
-            self.add_remaining_assistance_threshold(max_absences)
-
-        evaluations_accounted_for = []
-        evaluations = semester['evaluations']
-        evaluations.sort(key=lambda x: datetime_format(x['end_date']))
-        for evaluation in evaluations:
-            if (evaluation not in evaluations_accounted_for) and evaluation['is_graded']:
-                evaluations_for_rule = []
-                evaluations_for_rule.append(evaluation)
-                while evaluation['make_up_evaluation']:
-                    evaluation = evaluation['make_up_evaluation']
-                    evaluations_for_rule.append(evaluation)
-                self.add_evaluation_passed_rule(evaluations_for_rule)
-                evaluations_accounted_for.extend(evaluations_for_rule)
-
-
-    def add_evaluation_passed_rule(self, evaluations):
-        rule_string = ""
-        for evaluation in evaluations:
-            rule_string += f'(evaluation.evaluation_name == "{evaluation["evaluation_name"]}" and grade != null and grade >= {evaluation["passing_grade"]}) or '
-        rule_string = rule_string[:-4]
-        rule = rule_engine.Rule(rule_string)
-        print(rule_string)
-        self.evaluation_rules.append(rule)
-
-
-    def add_remaining_assistance_threshold(self, max_absences):
-        rule = rule_engine.Rule(f'(absences + remaining_lectures) <= {max_absences}')
-        print(f'(absences + remaining_lectures) <= {max_absences}')
-        self.rules.append(rule)
-
-
-    
-    def is_student_passed(self, attendanceQRs, evaluation_submissions, student, semester):
-        print("PASSED EVALUATION:")
-        model_for_rules = {}
-        model_for_rules['absences'] = self.get_absences(attendanceQRs, student)
-        model_for_rules['remaining_lectures'] = semester['classes_amount'] - len(attendanceQRs)
-        print(model_for_rules)
-        is_passing = True
-
-        for rule in self.rules:
-            is_passing = is_passing and rule.evaluate(model_for_rules)
-
-        print(is_passing)
-
-        for rule in self.evaluation_rules:
-            passing_evaluations = rule.filter(evaluation_submissions)
-            is_empty = True
-            for evaluation in passing_evaluations:
-                is_empty = False
-            is_passing = is_passing and not is_empty
-
-        print(is_passing)
-        
-        return is_passing
-
-
-    def add_evaluation_failed_rule(self, evaluations):
-        rule_string = ""
-        for evaluation in evaluations:
-            rule_string += f'(evaluation.evaluation_name == "{evaluation["evaluation_name"]}" and (grader == null or grade >= {evaluation["passing_grade"]})) or '
-        rule_string = rule_string[:-4]
-        rule = rule_engine.Rule(rule_string)
-        print(rule_string)
-        self.evaluation_rules.append(rule)
-    
-
-    def add_assistance_threshold(self, max_absences):
-        rule = rule_engine.Rule(f'absences <= {max_absences}')
-        print(f'absences <= {max_absences}')
-        self.rules.append(rule)
-
-
-    def generate_failed_rules(self, semester):
-        print("FAILED RULES:")
-        if(semester['classes_amount'] and semester['minimum_attendance']):
-            max_absences = semester['classes_amount'] - (semester['classes_amount'] * semester['minimum_attendance'])
-            self.add_assistance_threshold(max_absences)
-
-        evaluations_accounted_for = []
-        evaluations = semester['evaluations']
-        evaluations.sort(key=lambda x: datetime_format(x['end_date']))
-        for evaluation in evaluations:
-            if (evaluation not in evaluations_accounted_for) and evaluation['is_graded']:
-                add_rule = True
-                evaluations_for_rule = []
-                evaluations_for_rule.append(evaluation)
-                if(not is_before_current_datetime(evaluation['end_date'])):     #Todavia se puede entregar
-                    add_rule = False
-                while evaluation['make_up_evaluation']:
-                    evaluation = evaluation['make_up_evaluation']
-                    evaluations_for_rule.append(evaluation)
-                    if(not is_before_current_datetime(evaluation['end_date'])): #Todavia se puede recuperar
-                        add_rule = False
-                if add_rule:
-                    self.add_evaluation_failed_rule(evaluations_for_rule)
-                evaluations_accounted_for.extend(evaluations_for_rule)
-
-    
-    def is_student_failed(self, attendanceQRs, evaluation_submissions, student):
-        print("FAILED EVALUATION:")
-        model_for_rules = {}
-        model_for_rules['absences'] = self.get_absences(attendanceQRs, student)
-        is_still_passing = True
-
-        for rule in self.rules:
-            is_still_passing = is_still_passing and rule.evaluate(model_for_rules)
-
-        for rule in self.evaluation_rules:
-            passing_evaluations = rule.filter(evaluation_submissions)
-            is_empty = True
-            for evaluation in passing_evaluations:
-                is_empty = False
-            is_still_passing = is_still_passing and not is_empty
-
-        print(not is_still_passing)
-        print(model_for_rules)
-        
-        return not is_still_passing
-        
-
-    
-    def get_absences(self, attendanceQRs, student):
+    def get_absences(self, attendance_qrs, student):
         absences = 0
-        for attendances in attendanceQRs:
+        for attendance_qr in attendance_qrs:
             is_absent = True
-            for attendance in attendances['attendances']:
-                a_student = attendance['student']
-                if a_student['id'] == student['id']:
+            for attendance in attendance_qr.attendances.all():
+                if attendance.student_id == student.id:
                     is_absent = False
+                    break
             if is_absent:
                 absences = absences + 1
         return absences
 
+    def is_passed(self, attendance_qrs, student):
+        if not self.has_requirement():
+            return True
+
+        absences = self.get_absences(attendance_qrs, student)
+        remaining_lectures = self.remaining_lectures(attendance_qrs)
+        return absences + remaining_lectures <= self.max_absences()
+
+    def is_failed(self, attendance_qrs, student):
+        if not self.has_requirement():
+            return False
+
+        return self.get_absences(attendance_qrs, student) > self.max_absences()
 
 
-""" rule = rule_engine.Rule(f'average.exam >= 7 and average.name == "Examen 1"')
-isValid = rule.is_valid(f'average.exam >= 7 and average.name == "Examen 1"')
-evaluateReturn = rule.evaluate({'average': {'exam': 7, 'name': 'Examen 1'}})
-matchesReturn = rule.matches({'average': {'exam': 6}})
-filterReturn = rule.filter([{'average': {'exam': 7, 'name': 'Examen 1'}}, {'average': {'exam': 7, 'name': 'Examen 2'}}])
-isValid = True
-isEmpty = True
-for result in filterReturn:
-    isEmpty = False
-    currentResult = result
-isTrue = isValid and not isEmpty
-isValid = True """
+class EvaluationChainRule:
+    def __init__(self, semester):
+        self.semester = semester
+        self.evaluation_chains = self._evaluation_chains()
+
+    def _semester_evaluations(self):
+        evaluations = self.semester.evaluations
+        return sorted(list(evaluations), key=lambda evaluation: evaluation.end_date)
+
+    def _evaluation_chains(self):
+        chains = []
+
+        for evaluation in self._semester_evaluations():
+            if not evaluation.is_graded or evaluation.parent_evaluation is not None:
+                continue
+
+            chain = [evaluation]
+            current_evaluation = evaluation
+
+            while True:
+                make_up_evaluation = getattr(current_evaluation, "make_up_evaluation", None)
+                if make_up_evaluation is None:
+                    break
+
+                chain.append(make_up_evaluation)
+                current_evaluation = make_up_evaluation
+
+            chains.append(chain)
+
+        return chains
+
+    def _submissions_for_chain(self, evaluation_chain, evaluation_submissions):
+        evaluation_ids = {evaluation.id for evaluation in evaluation_chain}
+        return [submission for submission in evaluation_submissions if submission.evaluation_id in evaluation_ids]
+
+    def chain_has_passing_submission(self, evaluation_chain, evaluation_submissions):
+        chain_submissions = self._submissions_for_chain(evaluation_chain, evaluation_submissions)
+        return any(submission.is_passed() for submission in chain_submissions)
+
+    def chain_is_closed(self, evaluation_chain):
+        current_datetime = timezone.now()
+        return all(evaluation.end_date < current_datetime for evaluation in evaluation_chain)
+
+    def chain_is_failed(self, evaluation_chain, evaluation_submissions):
+        chain_submissions = self._submissions_for_chain(evaluation_chain, evaluation_submissions)
+
+        if any(submission.grader is None for submission in chain_submissions):
+            return False
+
+        return not any(submission.is_passed() for submission in chain_submissions)
+
+    def is_passed(self, evaluation_submissions):
+        for evaluation_chain in self.evaluation_chains:
+            if not self.chain_has_passing_submission(evaluation_chain, evaluation_submissions):
+                return False
+
+        return True
+
+    def is_failed(self, evaluation_submissions):
+        for evaluation_chain in self.evaluation_chains:
+            if self.chain_is_closed(evaluation_chain) and self.chain_is_failed(evaluation_chain, evaluation_submissions):
+                return True
+
+        return False
+
+
+class RuleEngineService:
+    def get_absences(self, attendance_qrs, student):
+        return AttendanceRule(None).get_absences(attendance_qrs, student)
+
+    def is_student_passed(self, attendance_qrs, evaluation_submissions, student, semester):
+        attendance_qrs = list(attendance_qrs)
+        evaluation_submissions = list(evaluation_submissions)
+        attendance_rule = AttendanceRule(semester)
+        chain_rule = EvaluationChainRule(semester)
+
+        if not attendance_rule.is_passed(attendance_qrs, student):
+            return False
+
+        return chain_rule.is_passed(evaluation_submissions)
+
+    def is_student_failed(self, attendance_qrs, evaluation_submissions, student, semester):
+        attendance_qrs = list(attendance_qrs)
+        evaluation_submissions = list(evaluation_submissions)
+        attendance_rule = AttendanceRule(semester)
+        chain_rule = EvaluationChainRule(semester)
+
+        if attendance_rule.is_failed(attendance_qrs, student):
+            return True
+
+        return chain_rule.is_failed(evaluation_submissions)
