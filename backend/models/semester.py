@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 
 from .commission import Commission
@@ -38,3 +39,16 @@ class Semester(models.Model):
 
     def __str__(self):
         return f"{self.commission} - {self.start_date.year} {self.year_moment}"
+
+    def clean(self):
+        errors = {}
+        
+        if self.classes_amount is not None and self.classes_amount <= 0:
+            errors['classes_amount'] = 'classes_amount must be greater than 0'
+        
+        if self.minimum_attendance is not None:
+            if self.minimum_attendance < 0 or self.minimum_attendance > 1:
+                errors['minimum_attendance'] = 'minimum_attendance must be between 0 and 1'
+        
+        if errors:
+            raise ValidationError(errors)
