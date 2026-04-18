@@ -1,19 +1,8 @@
 from django.utils import timezone
-import math
 
 class AttendanceRule:
     def __init__(self, semester):
         self.semester = semester
-
-    def has_requirement(self):
-        return self.semester.classes_amount is not None and self.semester.minimum_attendance is not None and self.semester.minimum_attendance > 0
-
-    def max_absences(self):
-        required_attendances = math.ceil(self.semester.classes_amount * self.semester.minimum_attendance)
-        return self.semester.classes_amount - required_attendances
-
-    def remaining_lectures(self, attendance_qrs):
-        return self.semester.classes_amount - len(attendance_qrs)
     
     def get_absences(self, attendance_qrs, student):
         absences = 0
@@ -27,53 +16,17 @@ class AttendanceRule:
                 absences = absences + 1
         return absences
 
-    def is_passed(self, attendance_qrs, student):
-        if not self.has_requirement():
-            return True
-
-        absences = self.get_absences(attendance_qrs, student)
-        remaining_lectures = self.remaining_lectures(attendance_qrs)
-        return absences + remaining_lectures <= self.max_absences()
-
     def is_failed(self, attendance_qrs, student):
-        if not self.has_requirement():
+        if not self.semester.has_attendance_requirement():
             return False
 
-        return self.get_absences(attendance_qrs, student) > self.max_absences()
+        return self.get_absences(attendance_qrs, student) > self.semester.max_absences()
 
 
 class EvaluationChainRule:
     def __init__(self, semester):
         self.semester = semester
-        self.evaluation_chains = self._evaluation_chains()
-
-    def _semester_evaluations(self):
-        evaluations = self.semester.evaluations
-        if hasattr(evaluations, "all"):
-            evaluations = evaluations.all()
-        return sorted(list(evaluations), key=lambda evaluation: evaluation.end_date)
-
-    def _evaluation_chains(self):
-        chains = []
-
-        for evaluation in self._semester_evaluations():
-            if not evaluation.is_graded or evaluation.parent_evaluation is not None:
-                continue
-
-            chain = [evaluation]
-            current_evaluation = evaluation
-
-            while True:
-                make_up_evaluation = getattr(current_evaluation, "make_up_evaluation", None)
-                if make_up_evaluation is None:
-                    break
-
-                chain.append(make_up_evaluation)
-                current_evaluation = make_up_evaluation
-
-            chains.append(chain)
-
-        return chains
+        self.evaluation_chains = self.semester.evaluation_chains()
 
     def _submissions_for_chain(self, evaluation_chain, evaluation_submissions):
         evaluation_ids = {evaluation.id for evaluation in evaluation_chain}
@@ -117,11 +70,7 @@ class RuleEngineService:
     def is_student_passed(self, attendance_qrs, evaluation_submissions, student, semester):
         attendance_qrs = list(attendance_qrs)
         evaluation_submissions = list(evaluation_submissions)
-        attendance_rule = AttendanceRule(semester)
         chain_rule = EvaluationChainRule(semester)
-
-        if not attendance_rule.is_passed(attendance_qrs, student):
-            return False
 
         return chain_rule.is_passed(evaluation_submissions)
 

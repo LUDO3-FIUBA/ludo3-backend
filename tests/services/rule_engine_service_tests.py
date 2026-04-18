@@ -1,4 +1,5 @@
 from datetime import timedelta
+import math
 from types import SimpleNamespace
 
 from django.test import SimpleTestCase
@@ -53,11 +54,43 @@ class RuleEngineServiceTests(SimpleTestCase):
             parent.make_up_evaluation = child
             child.parent_evaluation = parent
 
+    def _semester_evaluations_ordered(self, evaluations):
+        return sorted(list(evaluations), key=lambda evaluation: evaluation.end_date)
+
+    def _evaluation_chains(self, evaluations):
+        chains = []
+
+        for evaluation in self._semester_evaluations_ordered(evaluations):
+            if not evaluation.is_graded or evaluation.parent_evaluation is not None:
+                continue
+
+            chain = [evaluation]
+            current_evaluation = evaluation
+
+            while True:
+                make_up_evaluation = getattr(current_evaluation, "make_up_evaluation", None)
+                if make_up_evaluation is None:
+                    break
+
+                chain.append(make_up_evaluation)
+                current_evaluation = make_up_evaluation
+
+            chains.append(chain)
+
+        return chains
+
     def _semester(self, evaluations, classes_amount=None, minimum_attendance=None):
         return SimpleNamespace(
             classes_amount=classes_amount,
             minimum_attendance=minimum_attendance,
             evaluations=evaluations,
+            evaluation_chains=lambda: self._evaluation_chains(evaluations),
+            has_attendance_requirement=lambda: (
+                classes_amount is not None and
+                minimum_attendance is not None and
+                minimum_attendance > 0
+            ),
+            max_absences=lambda: classes_amount - math.ceil(classes_amount * minimum_attendance),
         )
 
     def _evaluation_model(self, evaluation):
@@ -154,7 +187,7 @@ class RuleEngineServiceTests(SimpleTestCase):
 
         self.assertTrue(service.is_student_passed([], submissions, student, semester))
 
-    def test_is_student_passed_false_when_attendance_projection_is_over_limit(self):
+    def test_is_student_passed_true_when_attendance_limit_not_exceeded_yet(self):
         service = RuleEngineService()
         semester = self._semester(
             [self._evaluation("Exam 1", passing_grade=4)],
@@ -174,7 +207,7 @@ class RuleEngineServiceTests(SimpleTestCase):
         ]
         submissions = [self._submission(semester.evaluations[0], grade=8, grader=SimpleNamespace(id=1))]
 
-        self.assertFalse(service.is_student_passed(attendance_qrs, submissions, student, semester))
+        self.assertTrue(service.is_student_passed(attendance_qrs, submissions, student, semester))
 
     def test_is_student_passed_true_for_non_gradeable_approved_submission(self):
         service = RuleEngineService()
