@@ -11,8 +11,7 @@ from backend.serializers.semester_serializer import (SemesterPostSerializer,
                                                      SemesterSerializer)
 from backend.serializers.student_serializer import StudentSerializer
 from backend.views.base_view import BaseViewSet
-from backend.views.utils import (datetime_format,
-                                 teacher_not_in_commission_staff)
+from backend.views.utils import teacher_not_in_commission_staff
 
 
 class SemesterDetailTeacherViews(BaseViewSet):
@@ -40,14 +39,15 @@ class SemesterDetailTeacherViews(BaseViewSet):
         operation_summary="Create a semester"
     )
     def create(self, request):
-        commission = get_object_or_404(Commission, id=request.data['commission'])
-        
-        if request.data['year_moment'] not in Semester.YearMoment.values:
-            return Response("Invalid year moment", status=status.HTTP_400_BAD_REQUEST)
-        
-        start_date = datetime_format(request.data['start_date'])
-        if not start_date:
-            return Response("Invalid start date", status=status.HTTP_400_BAD_REQUEST)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
+
+        commission = get_object_or_404(Commission, id=validated_data['commission'])
+        start_date = validated_data['start_date']
+        year_moment = validated_data['year_moment']
+        classes_amount = validated_data['classes_amount']
+        minimum_attendance = validated_data['minimum_attendance']
 
         if commission.chief_teacher != request.user.teacher:
             return Response("Teacher not chief teacher in commission", status=status.HTTP_403_FORBIDDEN)
@@ -57,24 +57,15 @@ class SemesterDetailTeacherViews(BaseViewSet):
         already_exists = False
         for semester in semesters_in_commission:
             if (semester.start_date.year == start_date.year and
-                request.data['year_moment'] == semester.year_moment):
+                year_moment == semester.year_moment):
                 already_exists = True
 
         if already_exists:
             return Response("Semester already exists", status=status.HTTP_403_FORBIDDEN)
         
-        classes_amount = request.data['classes_amount']
-        minimum_attendance = request.data['minimum_attendance']
-
-        if not classes_amount:
-            classes_amount = 16
-
-        if not minimum_attendance:
-            minimum_attendance = 0.0
-            
         semester = Semester(
             commission=commission,
-            year_moment=request.data['year_moment'],
+            year_moment=year_moment,
             start_date=start_date,
             classes_amount=classes_amount,
             minimum_attendance=minimum_attendance
@@ -90,15 +81,15 @@ class SemesterDetailTeacherViews(BaseViewSet):
         operation_summary="Updates a semester"
     )
     def update_semester(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        validated_data = serializer.validated_data
 
-        commission = get_object_or_404(Commission, id=request.data['commission'])
-        
-        if request.data['year_moment'] not in Semester.YearMoment.values:
-            return Response("Invalid year moment", status=status.HTTP_400_BAD_REQUEST)
-        
-        start_date = datetime_format(request.data['start_date'])
-        if not start_date:
-            return Response("Invalid start date", status=status.HTTP_400_BAD_REQUEST)
+        commission = get_object_or_404(Commission, id=validated_data['commission'])
+        start_date = validated_data['start_date']
+        year_moment = validated_data['year_moment']
+        classes_amount = validated_data['classes_amount']
+        minimum_attendance = validated_data['minimum_attendance']
 
         if commission.chief_teacher != request.user.teacher:
             return Response("Teacher not chief teacher in commission", status=status.HTTP_403_FORBIDDEN)
@@ -108,20 +99,14 @@ class SemesterDetailTeacherViews(BaseViewSet):
         semester = None
         for a_semester in semesters_in_commission:
             if (a_semester.start_date.year == start_date.year and
-                request.data['year_moment'] == a_semester.year_moment):
+                year_moment == a_semester.year_moment):
                 semester = a_semester
 
         if not semester:
             return Response("Semester already exists", status=status.HTTP_403_FORBIDDEN)
         
-        classes_amount = request.data['classes_amount']
-        minimum_attendance = request.data['minimum_attendance']
-
-        if classes_amount:
-            semester.classes_amount = classes_amount
-
-        if minimum_attendance:
-            semester.minimum_attendance = minimum_attendance
+        semester.classes_amount = classes_amount
+        semester.minimum_attendance = minimum_attendance
 
         semester.start_date = start_date
 

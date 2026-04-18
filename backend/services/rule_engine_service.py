@@ -1,15 +1,16 @@
 from django.utils import timezone
-
+import math
 
 class AttendanceRule:
     def __init__(self, semester):
         self.semester = semester
 
     def has_requirement(self):
-        return self.semester.classes_amount is not None and self.semester.minimum_attendance is not None
+        return self.semester.classes_amount is not None and self.semester.minimum_attendance is not None and self.semester.minimum_attendance > 0
 
     def max_absences(self):
-        return self.semester.classes_amount - (self.semester.classes_amount * self.semester.minimum_attendance)
+        required_attendances = math.ceil(self.semester.classes_amount * self.semester.minimum_attendance)
+        return self.semester.classes_amount - required_attendances
 
     def remaining_lectures(self, attendance_qrs):
         return self.semester.classes_amount - len(attendance_qrs)
@@ -48,6 +49,8 @@ class EvaluationChainRule:
 
     def _semester_evaluations(self):
         evaluations = self.semester.evaluations
+        if hasattr(evaluations, "all"):
+            evaluations = evaluations.all()
         return sorted(list(evaluations), key=lambda evaluation: evaluation.end_date)
 
     def _evaluation_chains(self):
