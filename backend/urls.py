@@ -35,6 +35,7 @@ router.register(r'statistics/student', views.StatisticsStudentViewSet, 'statisti
 router.register(r'statistics/teacher', views.StatisticsTeacherViewSet, 'statistics_teacher')
 router.register(r'notifications', views.NotificationViewSet, 'notification')
 router.register(r'device/gcm', CustomGCMDeviceViewSet)
+router.register(r'academic_calendar', views.AcademicCalendarEventViewSet, 'academic_calendar')
 router.register(r'departments', views.DepartmentViewSet, 'department')
 router.register(r'admin/commissions', views.CommissionAdminViewSet, 'admin-commission')
 router.register(r'admin/users', views.UserAdminViewSet, 'admin-user')

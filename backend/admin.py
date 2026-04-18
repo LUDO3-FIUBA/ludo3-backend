@@ -56,8 +56,6 @@ class PasswordResetOTPAdmin(admin.ModelAdmin):
         return False
 
 admin.site.register(Commission)
-admin.site.register(Semester)
-
 @memoized
 def subjects():
     return SiuService().list_subjects()
@@ -401,7 +399,7 @@ class FinalAdmin(admin.ModelAdmin):
     title = "Final"
     fields = ('subject_name', 'teacher', 'date', 'qrid')
     exclude = ('updated_at',)
-    readonly_fields = ('subject_name', 'subject_siu_id', 'date', 'qrid')
+    readonly_fields = ('subject_name', 'subject_siu_id', 'qrid')
     ordering = ('subject_name', 'teacher', 'date')
 
     def get_queryset(self, request):
@@ -540,3 +538,24 @@ class UserNotificationAdmin(admin.ModelAdmin):
     list_display = ('notification', 'user', 'is_read')
     list_filter = ('is_read',)
     search_fields = ('notification__title', 'user__first_name', 'user__last_name', 'user__dni')
+class SemesterScheduleInline(admin.TabularInline):
+    model = SemesterSchedule
+    extra = 1
+    fields = ('day_of_week', 'start_time', 'end_time')
+
+
+class SemesterAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'commission', 'start_date', 'year_moment')
+    search_fields = ('commission__subject_name',)
+    inlines = [SemesterScheduleInline]
+
+
+admin.site.register(Semester, SemesterAdmin)
+
+
+@admin.register(AcademicCalendarEvent)
+class AcademicCalendarEventAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'year', 'start_date', 'end_date')
+    list_filter = ('category', 'year')
+    search_fields = ('name',)
+    ordering = ('year', 'start_date')
