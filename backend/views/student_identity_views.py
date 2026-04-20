@@ -17,11 +17,16 @@ from backend.views.base_view import BaseViewSet
 
 SIGNING_SALT = 'student-identity'
 TOKEN_MAX_AGE = 86400  # 24 horas
+TOKEN_MAX_AGE_HOURS = TOKEN_MAX_AGE // 3600
 
 
 class StudentIdentityViewSet(BaseViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentIdentitySerializer
+
+    def get_identity_link(self, student):
+        token = signing.dumps({'padron': student.padron}, salt=SIGNING_SALT)
+        return f"{settings.FRONTEND_BASE_URL}/credencial/{token}"
 
     def get_permissions(self):
         if self.action == 'identity':
@@ -31,12 +36,19 @@ class StudentIdentityViewSet(BaseViewSet):
     @action(detail=False, methods=['GET'], url_path='my_qr', url_name='my-qr')
     def my_qr(self, request):
         student = request.user.student
-        token = signing.dumps({'padron': student.padron}, salt=SIGNING_SALT)
-        identity_url = f"{settings.BASE_URL}/api/student_identity/identity/{token}/"
+        identity_url = self.get_identity_link(student)
         qr = qrcode.make(identity_url)
         output = io.BytesIO()
         qr.save(output, format='PNG')
         return HttpResponse(output.getvalue(), content_type='image/png')
+
+    @action(detail=False, methods=['GET'], url_path='my_identity_link', url_name='my-identity-link')
+    def my_identity_link(self, request):
+        student = request.user.student
+        return Response({
+            'url': self.get_identity_link(student),
+            'expires_in_hours': TOKEN_MAX_AGE_HOURS,
+        }, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['GET'], url_path=r'identity/(?P<token>[^/.]+)', url_name='identity')
     def identity(self, request, token=None):
