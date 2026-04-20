@@ -54,6 +54,7 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = True
 
 BASE_URL = os.environ.get('BASE_URL', 'http://localhost:8000')
+FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:8081')
 
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
