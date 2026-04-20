@@ -6,6 +6,7 @@ from .commission_serializer import CommissionSerializer
 from .evaluation_serializer import (EvaluationSerializer,
                                     EvaluationWithMakeupSerializer)
 from .student_serializer import StudentSerializer
+from .semester_schedule_serializer import SemesterScheduleSerializer
 
 
 class SemesterSerializer(serializers.ModelSerializer):
@@ -16,10 +17,11 @@ class SemesterSerializer(serializers.ModelSerializer):
     students = StudentSerializer(many=True)
     classes_amount = serializers.IntegerField()
     minimum_attendance = serializers.FloatField()
+    schedules = SemesterScheduleSerializer(many=True, read_only=True)
 
     class Meta:
         model = Semester
-        fields = ('id', 'year_moment', 'start_date', 'commission', 'evaluations', 'students', 'classes_amount', 'minimum_attendance')
+        fields = ('id', 'year_moment', 'start_date', 'commission', 'evaluations', 'students', 'classes_amount', 'minimum_attendance', 'schedules')
         
 
 class SemesterWithMakeupSerializer(serializers.ModelSerializer):

@@ -14,10 +14,17 @@ class Notification(models.Model):
         verbose_name="Remitente"
     )
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")
+    is_urgent = models.BooleanField(default=False, verbose_name="Urgente")
+    send_push = models.BooleanField(default=False, verbose_name="Enviar push")
+    send_email = models.BooleanField(default=False, verbose_name="Enviar email")
+    image = models.ImageField(upload_to='notifications/', null=True, blank=True, verbose_name="Imagen")
 
     class Meta:
         verbose_name = "Notificación"
         verbose_name_plural = "Notificaciones"
+
+    def __str__(self):
+        return self.title
 
 
 class UserNotification(models.Model):
