@@ -1,6 +1,7 @@
 from unittest import mock
 
 from django.core import signing
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -10,12 +11,26 @@ SIGNING_SALT = 'student-identity'
 TOKEN_MAX_AGE = 86400
 
 MY_QR_URL = '/api/student_identity/my_qr/'
+MY_IDENTITY_LINK_URL = '/api/student_identity/my_identity_link/'
+FRONTEND_BASE_URL = 'http://localhost:8081'
+BACKEND_BASE_URL = 'http://localhost:8007'
 
 
 def identity_url(token):
     return f'/api/student_identity/identity/{token}/'
 
 
+def extract_token_from_credential_url(url):
+    return url.replace(f'{FRONTEND_BASE_URL}/credencial/', '', 1)
+
+
+class QRCodeMock:
+
+    def save(self, output, format=None):
+        output.write(b'\x89PNG\r\n\x1a\n')
+
+
+@override_settings(FRONTEND_BASE_URL=FRONTEND_BASE_URL, BASE_URL=BACKEND_BASE_URL)
 class MyQRViewTests(APITestCase):
 
     def setUp(self):
@@ -36,6 +51,64 @@ class MyQRViewTests(APITestCase):
     def test_forbidden_for_teacher(self):
         self.client.force_authenticate(user=self.teacher.user)
         response = self.client.get(MY_QR_URL)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_qr_uses_frontend_credential_url(self):
+        self.client.force_authenticate(user=self.student.user)
+        with mock.patch(
+            'backend.views.student_identity_views.qrcode.make',
+            return_value=QRCodeMock(),
+        ) as qrcode_make:
+            response = self.client.get(MY_QR_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        qr_url = qrcode_make.call_args[0][0]
+        self.assertTrue(qr_url.startswith(f'{FRONTEND_BASE_URL}/credencial/'))
+        self.assertNotIn('/api/student_identity/identity/', qr_url)
+
+    def test_qr_token_can_be_used_in_identity_endpoint(self):
+        self.client.force_authenticate(user=self.student.user)
+        with mock.patch(
+            'backend.views.student_identity_views.qrcode.make',
+            return_value=QRCodeMock(),
+        ) as qrcode_make:
+            self.client.get(MY_QR_URL)
+        qr_url = qrcode_make.call_args[0][0]
+        token = extract_token_from_credential_url(qr_url)
+        response = self.client.get(identity_url(token))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['padron'], self.student.padron)
+
+
+@override_settings(FRONTEND_BASE_URL=FRONTEND_BASE_URL, BASE_URL=BACKEND_BASE_URL)
+class MyIdentityLinkViewTests(APITestCase):
+
+    def setUp(self):
+        self.student = StudentFactory(image='https://s3.example.com/photo.jpg')
+        self.teacher = TeacherFactory()
+
+    def test_returns_frontend_identity_link_for_authenticated_student(self):
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.get(MY_IDENTITY_LINK_URL)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['expires_in_hours'], 24)
+        self.assertTrue(response.data['url'].startswith(f'{FRONTEND_BASE_URL}/credencial/'))
+        self.assertNotIn('/api/student_identity/identity/', response.data['url'])
+
+    def test_identity_link_token_can_be_used_in_identity_endpoint(self):
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.get(MY_IDENTITY_LINK_URL)
+        token = extract_token_from_credential_url(response.data['url'])
+        identity_response = self.client.get(identity_url(token))
+        self.assertEqual(identity_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(identity_response.data['padron'], self.student.padron)
+
+    def test_requires_authentication(self):
+        response = self.client.get(MY_IDENTITY_LINK_URL)
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_forbidden_for_teacher(self):
+        self.client.force_authenticate(user=self.teacher.user)
+        response = self.client.get(MY_IDENTITY_LINK_URL)
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
 
