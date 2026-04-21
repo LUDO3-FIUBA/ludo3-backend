@@ -1,5 +1,6 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from django.db.models import Exists, OuterRef, Subquery
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
@@ -9,7 +10,7 @@ from rest_framework.response import Response
 from backend.models import Attendance, AttendanceQRCode, Semester
 from backend.permissions import *
 from backend.serializers.attendance_serializer import (
-    AttendanceNoSemesterSerializer, AttendancePostSerializer,
+    AttendancePostSerializer, AttendanceQRCodeStudentStatusSerializer,
     AttendanceSerializer)
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import is_before_current_datetime
@@ -28,7 +29,7 @@ class AttendanceViewSet(BaseViewSet):
         attendance_qr_code = get_object_or_404(AttendanceQRCode.objects, qrid=request.data['qrid'])
         semester = attendance_qr_code.semester
 
-        if request.user.student not in semester.students.all():
+        if not semester.students.filter(pk=request.user.student.pk).exists():
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)
 
         if is_before_current_datetime(attendance_qr_code.expires_at):
@@ -44,7 +45,7 @@ class AttendanceViewSet(BaseViewSet):
     @action(detail=False, methods=['GET'])
     @swagger_auto_schema(
         tags=["Attendances"],
-        operation_summary="Gets attendances for semester",
+        operation_summary="Gets attendance status timeline for semester",
         manual_parameters=[
             openapi.Parameter('semester_id', openapi.IN_QUERY, description="Id of semester", type=openapi.FORMAT_INT64)
         ]
@@ -52,12 +53,20 @@ class AttendanceViewSet(BaseViewSet):
     def my_attendances(self, request):
         semester = get_object_or_404(Semester.objects, id=request.query_params['semester_id'])
 
-        if request.user.student not in semester.students.all():
+        if not semester.students.filter(pk=request.user.student.pk).exists():
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)
 
-        attendances = Attendance.objects.filter(
+        student_attendances = Attendance.objects.filter(
             semester=semester,
             student=request.user.student,
-        ).order_by('-submitted_at')
+            qr_code=OuterRef('pk'),
+        )
 
-        return Response(AttendanceNoSemesterSerializer(attendances, many=True).data, status.HTTP_200_OK)
+        attendance_qr_codes = AttendanceQRCode.objects.filter(
+            semester=semester,
+        ).annotate(
+            attended=Exists(student_attendances),
+            submitted_at=Subquery(student_attendances.order_by('-submitted_at').values('submitted_at')[:1]),
+        ).order_by('-created_at')
+
+        return Response(AttendanceQRCodeStudentStatusSerializer(attendance_qr_codes, many=True).data, status.HTTP_200_OK)

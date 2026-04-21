@@ -19,9 +19,10 @@ class AttendanceStudentViewsTests(APITestCase):
 
         self.my_attendances_url = "/api/semesters/attendance/my_attendances/"
 
-    def test_my_attendances_returns_only_authenticated_student_attendances_for_semester(self):
+    def test_my_attendances_returns_status_for_all_semester_classes(self):
         qr_1 = AttendanceQRCode.objects.create(semester=self.semester, owner_teacher=self.teacher)
         qr_2 = AttendanceQRCode.objects.create(semester=self.semester, owner_teacher=self.teacher)
+        qr_3 = AttendanceQRCode.objects.create(semester=self.semester, owner_teacher=self.teacher)
         qr_other_semester = AttendanceQRCode.objects.create(
             semester=self.other_semester,
             owner_teacher=self.teacher,
@@ -53,12 +54,25 @@ class AttendanceStudentViewsTests(APITestCase):
         response = self.client.get(self.my_attendances_url, {"semester_id": self.semester.id})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(len(response.data), 3)
 
         returned_qrids = {item["qrid"] for item in response.data}
-        self.assertEqual(returned_qrids, {str(own_attendance_1.qr_code.qrid), str(own_attendance_2.qr_code.qrid)})
+        self.assertEqual(returned_qrids, {str(qr_1.qrid), str(qr_2.qrid), str(qr_3.qrid)})
+
+        statuses_by_qrid = {item["qrid"]: item for item in response.data}
+
+        self.assertTrue(statuses_by_qrid[str(qr_1.qrid)]["attended"])
+        self.assertTrue(statuses_by_qrid[str(qr_2.qrid)]["attended"])
+        self.assertFalse(statuses_by_qrid[str(qr_3.qrid)]["attended"])
+
+        self.assertIsNotNone(statuses_by_qrid[str(qr_1.qrid)]["submitted_at"])
+        self.assertIsNotNone(statuses_by_qrid[str(qr_2.qrid)]["submitted_at"])
+        self.assertIsNone(statuses_by_qrid[str(qr_3.qrid)]["submitted_at"])
 
         for item in response.data:
+            self.assertIn("created_at", item)
+            self.assertIn("expires_at", item)
+            self.assertIn("attended", item)
             self.assertIn("submitted_at", item)
             self.assertNotIn("semester", item)
             self.assertNotIn("student", item)
