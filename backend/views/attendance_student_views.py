@@ -9,8 +9,7 @@ from rest_framework.response import Response
 from backend.models import Attendance, AttendanceQRCode, Semester
 from backend.permissions import *
 from backend.serializers.attendance_serializer import (
-    AttendancePostSerializer, AttendanceQRCodeStudentsSerializerNoSemester,
-    AttendanceSerializer)
+    AttendancePostSerializer, AttendanceSerializer)
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import is_before_current_datetime
 
@@ -50,7 +49,14 @@ class AttendanceViewSet(BaseViewSet):
         ]
     )
     def my_attendances(self, request):
+        semester = get_object_or_404(Semester.objects, id=request.query_params['semester_id'])
 
-        attendanceQRCodes = AttendanceQRCode.objects.all().filter(semester__id=request.query_params['semester_id']).all()
+        if request.user.student not in semester.students.all():
+            return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)
 
-        return Response(AttendanceQRCodeStudentsSerializerNoSemester(attendanceQRCodes, many=True).data, status.HTTP_200_OK)
+        attendances = Attendance.objects.filter(
+            semester=semester,
+            student=request.user.student,
+        ).order_by('-submitted_at')
+
+        return Response(AttendanceSerializer(attendances, many=True).data, status.HTTP_200_OK)
