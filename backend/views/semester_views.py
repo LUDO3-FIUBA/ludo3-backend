@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models import AttendanceQRCode, EvaluationSubmission, Semester
+from backend.permissions import IsStudent
 from backend.serializers.semester_serializer import SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
 from backend.views.base_view import BaseViewSet
@@ -59,7 +60,7 @@ class SemesterViewSet(BaseViewSet):
 
         return Response(self.get_serializer(result).data, status.HTTP_200_OK)
     
-    @action(detail=False, methods=["GET"])
+    @action(detail=False, methods=["GET"], permission_classes=[IsAuthenticated, IsStudent])
     @swagger_auto_schema(
         tags=["Semesters"],
         operation_summary="Return if the student is passing the semester",

@@ -9,7 +9,7 @@ class AttendanceRule:
         for attendance_qr in attendance_qrs:
             is_absent = True
             for attendance in attendance_qr.attendances.all():
-                if attendance.student_id == student.id:
+                if attendance.student_id == student.pk:
                     is_absent = False
                     break
             if is_absent:
