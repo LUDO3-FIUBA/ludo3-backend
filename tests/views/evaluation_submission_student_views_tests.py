@@ -35,9 +35,6 @@ class EvaluationSubmissionStudentViewsTests(APITestCase):
         self.submit_uri = "/api/evaluations/submissions/submit_evaluation/"
         self.my_evaluations_uri = "/api/evaluations/submissions/my_evaluations/"
 
-    def _download_uri(self, submission_id: int) -> str:
-        return f"/api/evaluations/submissions/{submission_id}/download-file/"
-
     def test_submit_evaluation_success(self):
         self.client.force_authenticate(user=self.student.user)
 
@@ -117,11 +114,18 @@ class EvaluationSubmissionStudentViewsTests(APITestCase):
         )
 
         self.client.force_authenticate(user=self.student.user)
-        response = self.client.get(self.my_evaluations_uri)
+        response = self.client.get(self.my_evaluations_uri, {"semester_id": self.semester.id})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["evaluation"]["id"], own_submission.evaluation_id)
+
+    def test_my_evaluations_returns_400_when_semester_id_is_missing(self):
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.get(self.my_evaluations_uri)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("semester_id", response.data)
 
     def test_my_evaluations_unauthenticated(self):
         response = self.client.get(self.my_evaluations_uri)

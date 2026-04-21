@@ -1,3 +1,4 @@
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.core.exceptions import ValidationError
 from rest_framework import status
@@ -54,9 +55,20 @@ class EvaluationSubmissionViewSet(BaseViewSet):
     @action(detail=False, methods=['GET'])
     @swagger_auto_schema(
         tags=["Evaluation Submissions"],
-        operation_summary="Gets the logged in student's evaluation submissions"
+        operation_summary="Gets the logged in student's evaluation submissions for a semester",
+        manual_parameters=[
+            openapi.Parameter('semester_id', openapi.IN_QUERY, description="Id of semester", type=openapi.TYPE_INTEGER, required=True)
+        ]
     )
     def my_evaluations(self, request):
+        semester_id = request.query_params.get('semester_id')
 
-        result = self.queryset.filter(student=request.user.student).all()
+        if not semester_id:
+            return Response({"semester_id": ["This query parameter is required."]}, status=status.HTTP_400_BAD_REQUEST)
+
+        result = self.queryset.filter(
+            student=request.user.student,
+            evaluation__semester_id=semester_id
+        )
+        
         return Response(EvaluationSubmissionSerializer(result, many=True).data, status.HTTP_200_OK)
