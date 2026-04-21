@@ -27,6 +27,15 @@ class AttendanceNoSemesterNoQridSerializer(serializers.ModelSerializer):
         fields = ('student', 'submitted_at')
 
 
+class AttendanceNoSemesterSerializer(serializers.ModelSerializer):
+    qrid = serializers.UUIDField(source='qr_code.qrid')
+    submitted_at = serializers.DateTimeField()
+
+    class Meta:
+        model = Attendance
+        fields = ('qrid', 'submitted_at')
+
+
 class AttendancePostSerializer(serializers.ModelSerializer):
     qrid = serializers.UUIDField()
 

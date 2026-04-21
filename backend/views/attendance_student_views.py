@@ -9,7 +9,8 @@ from rest_framework.response import Response
 from backend.models import Attendance, AttendanceQRCode, Semester
 from backend.permissions import *
 from backend.serializers.attendance_serializer import (
-    AttendancePostSerializer, AttendanceSerializer)
+    AttendanceNoSemesterSerializer, AttendancePostSerializer,
+    AttendanceSerializer)
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import is_before_current_datetime
 
@@ -59,4 +60,4 @@ class AttendanceViewSet(BaseViewSet):
             student=request.user.student,
         ).order_by('-submitted_at')
 
-        return Response(AttendanceSerializer(attendances, many=True).data, status.HTTP_200_OK)
+        return Response(AttendanceNoSemesterSerializer(attendances, many=True).data, status.HTTP_200_OK)

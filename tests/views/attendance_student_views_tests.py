@@ -59,8 +59,9 @@ class AttendanceStudentViewsTests(APITestCase):
         self.assertEqual(returned_qrids, {str(own_attendance_1.qr_code.qrid), str(own_attendance_2.qr_code.qrid)})
 
         for item in response.data:
-            self.assertEqual(item["student"]["id"], self.student.user.id)
-            self.assertEqual(item["semester"]["id"], self.semester.id)
+            self.assertIn("submitted_at", item)
+            self.assertNotIn("semester", item)
+            self.assertNotIn("student", item)
 
     def test_my_attendances_forbidden_when_student_not_in_commission(self):
         outsider_student = StudentFactory()
