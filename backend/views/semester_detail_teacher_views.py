@@ -103,7 +103,7 @@ class SemesterDetailTeacherViews(BaseViewSet):
                 semester = a_semester
 
         if not semester:
-            return Response("Semester already exists", status=status.HTTP_403_FORBIDDEN)
+            return Response("Semester not found", status=status.HTTP_404_NOT_FOUND)
         
         semester.classes_amount = classes_amount
         semester.minimum_attendance = minimum_attendance
