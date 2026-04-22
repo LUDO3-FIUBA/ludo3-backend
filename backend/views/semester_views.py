@@ -1,11 +1,12 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from django.db.models import Prefetch
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from backend.models import AttendanceQRCode, EvaluationSubmission, Semester
+from backend.models import Attendance, AttendanceQRCode, EvaluationSubmission, Semester
 from backend.permissions import IsStudent
 from backend.serializers.semester_serializer import SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
@@ -77,7 +78,15 @@ class SemesterViewSet(BaseViewSet):
         if semester is None:
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
 
-        attendance_qrs = AttendanceQRCode.objects.filter(semester=semester).prefetch_related('attendances')
+        attendance_qrs = AttendanceQRCode.objects.filter(semester=semester).prefetch_related(
+            Prefetch(
+                'attendances',
+                queryset=Attendance.objects.filter(
+                    semester=semester,
+                    student=request.user.student,
+                ),
+            )
+        )
         evaluation_submissions = EvaluationSubmission.objects.filter(
             evaluation__semester=semester,
             student=request.user.student,
