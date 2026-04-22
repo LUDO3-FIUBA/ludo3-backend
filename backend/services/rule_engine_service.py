@@ -5,11 +5,15 @@ class AttendanceRule:
         self.semester = semester
     
     def get_absences(self, attendance_qrs, student):
+        student_id = getattr(student, 'pk', None)
+        if student_id is None:
+            student_id = getattr(student, 'id', None)
+
         absences = 0
         for attendance_qr in attendance_qrs:
             is_absent = True
             for attendance in attendance_qr.attendances.all():
-                if attendance.student_id == student.pk:
+                if attendance.student_id == student_id:
                     is_absent = False
                     break
             if is_absent:
