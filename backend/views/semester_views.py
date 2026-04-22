@@ -10,7 +10,7 @@ from backend.permissions import IsStudent
 from backend.serializers.semester_serializer import SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
 from backend.views.base_view import BaseViewSet
-from backend.views.utils import get_current_semester, get_current_year
+from backend.views.utils import get_current_semester, get_current_year, get_required_int_query_param
 
 
 class SemesterViewSet(BaseViewSet):
@@ -69,7 +69,11 @@ class SemesterViewSet(BaseViewSet):
         ]
     )
     def is_passing(self, request):
-        semester = self.get_queryset().filter(id=request.query_params['semester_id']).first()
+        semester_id, error_response = get_required_int_query_param(request, 'semester_id')
+        if error_response is not None:
+            return error_response
+        
+        semester = self.get_queryset().filter(id=semester_id).first()
         if semester is None:
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
 

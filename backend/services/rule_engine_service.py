@@ -72,7 +72,6 @@ class RuleEngineService:
         return AttendanceRule(None).get_absences(attendance_qrs, student)
 
     def is_student_passed(self, attendance_qrs, evaluation_submissions, student, semester):
-        attendance_qrs = list(attendance_qrs)
         evaluation_submissions = list(evaluation_submissions)
         chain_rule = EvaluationChainRule(semester)
 

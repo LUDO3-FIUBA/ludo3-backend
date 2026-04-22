@@ -13,7 +13,7 @@ from backend.serializers.attendance_serializer import (
     AttendancePostSerializer, AttendanceQRCodeStudentStatusSerializer,
     AttendanceSerializer)
 from backend.views.base_view import BaseViewSet
-from backend.views.utils import is_before_current_datetime
+from backend.views.utils import get_required_int_query_param, is_before_current_datetime
 
 
 class AttendanceViewSet(BaseViewSet):
@@ -51,7 +51,11 @@ class AttendanceViewSet(BaseViewSet):
         ]
     )
     def my_attendances(self, request):
-        semester = get_object_or_404(Semester.objects, id=request.query_params['semester_id'])
+        semester_id, error_response = get_required_int_query_param(request, 'semester_id')
+        if error_response is not None:
+            return error_response
+
+        semester = get_object_or_404(Semester.objects, id=semester_id)
 
         if not semester.students.filter(pk=request.user.student.pk).exists():
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)

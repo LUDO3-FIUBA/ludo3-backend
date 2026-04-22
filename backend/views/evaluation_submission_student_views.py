@@ -15,6 +15,7 @@ from backend.serializers.evaluation_submission_serializer import (
     EvaluationSubmissionPostSerializer, EvaluationSubmissionSerializer)
 from backend.services.audit_log_service import AuditLogService
 from backend.views.base_view import BaseViewSet
+from backend.views.utils import get_required_int_query_param
 
 
 class EvaluationSubmissionViewSet(BaseViewSet):
@@ -61,10 +62,9 @@ class EvaluationSubmissionViewSet(BaseViewSet):
         ]
     )
     def my_evaluations(self, request):
-        semester_id = request.query_params.get('semester_id')
-
-        if not semester_id:
-            return Response({"semester_id": ["This query parameter is required."]}, status=status.HTTP_400_BAD_REQUEST)
+        semester_id, error_response = get_required_int_query_param(request, 'semester_id')
+        if error_response is not None:
+            return error_response
 
         result = self.queryset.filter(
             student=request.user.student,
