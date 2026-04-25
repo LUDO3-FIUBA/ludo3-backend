@@ -60,6 +60,23 @@ def get_hours_from_current_time(past_datetime):
         get_current_datetime() - past_datetime
     ).total_seconds() / SECONDS_IN_ONE_HOUR
 
+
+def get_required_int_query_param(request, param_name):
+    value = request.query_params.get(param_name)
+    if value is None:
+        return None, Response(
+            {"detail": f"{param_name} query parameter is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        return int(value), None
+    except (TypeError, ValueError):
+        return None, Response(
+            {"detail": f"Invalid {param_name}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
 def teacher_not_in_commission_staff(teacher: Teacher, commission: Commission) -> bool:
     return (
         teacher not in commission.teachers.all() and commission.chief_teacher != teacher

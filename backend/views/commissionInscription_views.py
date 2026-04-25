@@ -6,7 +6,7 @@ from rest_framework.response import Response
 
 from backend.models import CommissionInscription
 from backend.serializers.commissionInscription_serializer import \
-    CommissionInscriptionSerializer
+    CommissionInscriptionCurrentSerializer, CommissionInscriptionSerializer
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import get_current_semester, get_current_year
 
@@ -30,8 +30,12 @@ class CommissionInscriptionViewSet(BaseViewSet):
     )
     @action(detail=False, methods=["GET"])
     def current_inscriptions(self, request):
-        allStatus = self.get_queryset().filter(student=request.user.student,
-                                            semester__start_date__year__gte=get_current_year(), 
-                                            semester__year_moment=get_current_semester())
-        result = allStatus.filter(status="A") | allStatus.filter(status="P")
-        return Response(self.get_serializer(result, many=True).data, status.HTTP_200_OK)
+        all_status = self.get_queryset().filter(
+            student=request.user.student,
+            semester__start_date__year__gte=get_current_year(),
+            semester__year_moment=get_current_semester(),
+        ).select_related(
+            'semester__commission__chief_teacher__user',
+        )
+        result = all_status.filter(status__in=["A", "P"])
+        return Response(CommissionInscriptionCurrentSerializer(result, many=True).data, status.HTTP_200_OK)
