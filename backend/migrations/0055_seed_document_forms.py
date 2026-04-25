@@ -4,37 +4,37 @@ from django.db import migrations
 DOCUMENT_FORMS = [
     {
         'form_name': 'Nota al decano',
-        'form_description': '',
+        'form_description': 'Carta particular para un pedido al decano de la facultad',
         'form_procedure_value': 'Administrativo',
         'url': 'https://cms.fi.uba.ar/uploads/Nota_al_Decano_6b8cf05977_2e9fd6c866.pdf',
     },
     {
         'form_name': 'Certificado de alumno regular',
-        'form_description': 'Carta para un pedido al decano',
+        'form_description': 'Pedido de certificado de regularidad',
         'form_procedure_value': 'Administrativo',
         'url': 'https://cms.fi.uba.ar/uploads/Certificado_de_Alumno_Regular_e33f4be349_77f1380569.pdf',
     },
     {
         'form_name': 'Certificado de trámite en curso',
-        'form_description': 'Certificado para validar trámite ante otras autoridades',
+        'form_description': 'Certificado para dar validez a un trámite en curso para presentar ante otras autoridades',
         'form_procedure_value': 'Administrativo',
         'url': 'https://cms.fi.uba.ar/uploads/Solicitud_de_Tramite_en_Curso_b3061e3932_c65a7c15c9.pdf',
     },
     {
         'form_name': 'Constancia de examen',
-        'form_description': 'Constancia de haber rendido un examen',
+        'form_description': 'Constancia de haber rendido un exámen para presentar ante otras autoridades',
         'form_procedure_value': 'Exámenes',
         'url': 'https://cms.fi.uba.ar/uploads/CONSTANCIA_POR_RENDIR_EXAMEN_2022_830adf5424.pdf',
     },
     {
         'form_name': 'Mesa Especial',
-        'form_description': '',
+        'form_description': 'Solicitud para rendir examen en mesa especial',
         'form_procedure_value': 'Exámenes',
         'url': 'https://cms.fi.uba.ar/uploads/Solicitud_de_Mesa_Especial_2d3fcf2db9_19bed8a95e.pdf',
     },
     {
         'form_name': 'Pedido de Prórroga de asignatura vencida',
-        'form_description': 'Extender vencimiento de asignatura aprobada',
+        'form_description': 'Solucitud para extender el vencimiento de una asignatura aprobada',
         'form_procedure_value': 'Exámenes',
         'url': 'https://cms.fi.uba.ar/uploads/Pedido_de_prorroga_2016_6d3c73103b_a7b853a6bd.pdf',
     },
@@ -64,7 +64,7 @@ DOCUMENT_FORMS = [
     },
     {
         'form_name': 'Reconocimiento de créditos',
-        'form_description': 'Reconocimiento por actividad académica',
+        'form_description': 'Reconocimiento de créditos por actividad académica',
         'form_procedure_value': 'Cursada',
         'url': 'https://cms.fi.uba.ar/uploads/Solicitud_de_Reconocimiento_de_Creditos_760738bc28_698d0ec3c7.pdf',
     },
