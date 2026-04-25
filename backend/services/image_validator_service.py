@@ -12,8 +12,9 @@ _MODELS_DIR = os.path.join(os.path.dirname(__file__), "models")
 _DETECTOR_PATH = os.path.join(_MODELS_DIR, "face_detection_yunet_2023mar.onnx")
 _RECOGNIZER_PATH = os.path.join(_MODELS_DIR, "face_recognition_sface_2021dec.onnx")
 
-# OpenCV-recommended threshold for SFace with cosine distance: faces match when score >= 0.363.
-_COSINE_MATCH_THRESHOLD = 0.363
+# OpenCV-recommended threshold for SFace with cosine distance is 0.363; we use a more
+# permissive value to tolerate lighting/angle variation between registration and verification.
+_COSINE_MATCH_THRESHOLD = 0.30
 
 _detector = None
 _recognizer = None
