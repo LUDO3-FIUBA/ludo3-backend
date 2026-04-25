@@ -7,6 +7,8 @@ ludo2-fiuba.json
 __pycache__/
 .idea/
 .claude
-CLAUDE.mdmedia/
 CLAUDE.md
+.codex
+media/
+CLAUDE.mdmedia/
 backend/services/models/*.onnx

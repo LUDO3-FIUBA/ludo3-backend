@@ -31,3 +31,4 @@ from .academic_calendar_event_views import AcademicCalendarEventViewSet
 from .department_views import DepartmentViewSet
 from .commission_admin_views import CommissionAdminViewSet
 from .user_admin_views import UserAdminViewSet
+from .student_identity_views import StudentIdentityViewSet
