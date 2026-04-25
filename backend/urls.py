@@ -38,9 +38,18 @@ router.register(r'device/gcm', CustomGCMDeviceViewSet)
 router.register(r'departments', views.DepartmentViewSet, 'department')
 router.register(r'admin/commissions', views.CommissionAdminViewSet, 'admin-commission')
 router.register(r'admin/users', views.UserAdminViewSet, 'admin-user')
+router.register(r'form-types', views.FormTypeViewSet, 'form-type')
+router.register(r'form-procedure-types', views.FormProcedureTypeViewSet, 'form-procedure-type')
+router.register(r'form-field-types', views.FormFieldTypeViewSet, 'form-field-type')
+router.register(r'forms', views.FormViewSet, 'form')
+router.register(r'submissions', views.SubmissionAdminViewSet, 'submission')
+router.register(r'catalogs', views.CatalogViewSet, 'catalog')
 
 teacher_finals_router = routers.NestedSimpleRouter(router, r'finals', lookup='final')
 teacher_finals_router.register(r'final_exams', views.FinalExamTeacherViews, basename='final-final_exams')
+
+forms_submissions_router = routers.NestedSimpleRouter(router, r'forms', lookup='form')
+forms_submissions_router.register(r'submissions', views.FormSubmissionViewSet, basename='form-submissions')
 
 auth_router = routers.DefaultRouter()
 auth_router.register(r'auth/users', UserCustomViewSet)
@@ -57,6 +66,7 @@ urlpatterns = [
     # app own routes
     path('api/', include(router.urls)),
     path('api/', include(teacher_finals_router.urls)),
+    path('api/', include(forms_submissions_router.urls)),
 
     # path to djoser end points
     path('auth/', include('djoser.urls.jwt')),

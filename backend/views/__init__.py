@@ -29,3 +29,12 @@ from .notification_views import NotificationViewSet
 from .department_views import DepartmentViewSet
 from .commission_admin_views import CommissionAdminViewSet
 from .user_admin_views import UserAdminViewSet
+from .form_views import (
+    FormTypeViewSet,
+    FormProcedureTypeViewSet,
+    FormFieldTypeViewSet,
+    FormViewSet,
+    FormSubmissionViewSet,
+    SubmissionAdminViewSet,
+    CatalogViewSet,
+)
