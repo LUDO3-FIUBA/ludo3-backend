@@ -18,3 +18,7 @@ from .teacher_profile import TeacherProfile, WorkExperience
 from .notification import Notification, UserNotification
 from .department import Department
 from .password_reset_otp import PasswordResetOTP
+from .form_types import FormProcedureType, FormType, FormFieldType
+from .catalog import Catalog, CatalogItem
+from .form import Form, FormDocumentSource, FormField, FormFieldOption
+from .form_submission import FormSubmission, FormAnswer
