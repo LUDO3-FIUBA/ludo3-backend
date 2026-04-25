@@ -3,7 +3,7 @@ from datetime import datetime
 from rest_framework import status
 from rest_framework.response import Response
 
-from backend.api_exceptions import InvalidFaceError
+from backend.api_exceptions import FaceRegistrationPendingError, InvalidFaceError
 from backend.models.commission import Commission
 from backend.models.teacher import Teacher
 from backend.models.teacher_role import TeacherRole
@@ -32,6 +32,9 @@ def serialize(self, relation):
 def validate_face(request, model):
     if not request.data.get("image"):
         raise InvalidFaceError()
+
+    if not getattr(model, "face_encodings", None):
+        raise FaceRegistrationPendingError()
 
     is_match = ImageValidatorService(request.data["image"]).validate_identity(model)
 

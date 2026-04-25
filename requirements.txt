@@ -13,8 +13,9 @@ django-push-notifications
 djoser
 dj-database-url
 drf-nested-routers
-face_recognition
 factory_boy
+numpy
+opencv-contrib-python-headless
 gunicorn
 markdown
 python-stdnum
