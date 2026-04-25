@@ -212,9 +212,13 @@ if os.environ.get('DATABASE_URL'):
     import dj_database_url
     DATABASES['default'] = dj_database_url.config(
         default=os.environ['DATABASE_URL'],
-        conn_max_age=500,
+        conn_max_age=0,
         ssl_require=False
     )
+    # Supabase transaction pooler (port 6543) reuses connections per transaction
+    # via PgBouncer, which is incompatible with server-side cursors and persistent
+    # connections — required for shared-pool deployments.
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
     # Use sslmode from the URL if present (e.g. ?sslmode=require for Supabase),
     # otherwise default to 'disable' for local development.
     if 'sslmode' not in os.environ.get('DATABASE_URL', ''):
