@@ -1,5 +1,7 @@
 import logging
+import os
 from django.contrib.auth import get_user_model
+import time
 from backend.api_exceptions import ValidationError
 
 from backend.client.google_auth_client import GoogleAuthClient
@@ -13,22 +15,14 @@ User = get_user_model()
 
 class GoogleAuthService:
     ALLOWED_DOMAINS = {'fi.uba.ar'}
+    ALLOWED_ISSUERS = {"accounts.google.com", "https://accounts.google.com"}
 
     def __init__(self):
         self.client = GoogleAuthClient()
 
     def authenticate(self, id_token):
         claims = self.client.verify_token(id_token)
-        
-        sub = claims.get("sub")
-        email = claims.get("email")
-        
-        if not sub or not email:
-            raise ValidationError("Invalid Google ID token: missing sub or email")
-        
-        email_domain = email.split('@')[-1]
-        if email_domain not in self.ALLOWED_DOMAINS:
-            raise ValidationError("Email domain not allowed")
+        sub, email = self._validate_google_claims(claims)
 
         identity = AuthIdentity.objects.select_related("user").filter(
             provider=AuthIdentity.Provider.GOOGLE,
@@ -40,9 +34,8 @@ class GoogleAuthService:
                 'status': 'existing_user',
                 'user': identity.user,
             }
-        
-        if AuthIdentity.objects.filter(email__iexact=email).exists():
-            raise ValidationError("Email is already registered.")
+
+        self._validate_new_identity_constraints(sub=sub, email=email)
                 
         return {
             'status': 'needs_registration',
@@ -56,15 +49,7 @@ class GoogleAuthService:
 
     def complete_registration(self, sub, email, dni, password, padron=None, first_name='', last_name='',
                              is_student=True, is_teacher=False):
-
-        if AuthIdentity.objects.filter(provider=AuthIdentity.Provider.GOOGLE, provider_user_id=sub).exists():
-            raise ValidationError("This Google account is already registered")
-        
-        if AuthIdentity.objects.filter(email__iexact=email).exists():
-            raise ValidationError("This email is already registered")
-        
-        if User.objects.filter(dni=dni).exists():
-            raise ValidationError("This DNI is already registered")
+        self._validate_new_identity_constraints(sub=sub, email=email, dni=dni)
         
         user = User(
             email=email,
@@ -93,3 +78,40 @@ class GoogleAuthService:
         )
         
         return user
+
+    def _validate_google_claims(self, claims):
+        if not claims.get("email_verified"):
+            raise ValidationError("Email not verified by Google")
+
+        iss = claims.get("iss")
+        if iss not in self.ALLOWED_ISSUERS:
+            raise ValidationError("Invalid issuer")
+
+        expected_audience = self.client.GOOGLE_CLIENT_ID
+        if claims.get("aud") != expected_audience:
+            raise ValidationError("Invalid audience")
+
+        sub = claims.get("sub")
+        email = claims.get("email")
+        if not sub or not email:
+            raise ValidationError("Invalid Google ID token: missing sub or email")
+
+        hd = claims.get("hd")
+        if hd and hd not in self.ALLOWED_DOMAINS:
+            raise ValidationError("Hosted domain not allowed")
+
+        exp = claims.get("exp")
+        if not exp or exp < time.time():
+            raise ValidationError("Token expired")
+
+        return sub, email
+
+    def _validate_new_identity_constraints(self, sub, email, dni=None):
+        if AuthIdentity.objects.filter(provider=AuthIdentity.Provider.GOOGLE, provider_user_id=sub).exists():
+            raise ValidationError("This Google account is already registered")
+
+        if AuthIdentity.objects.filter(email__iexact=email).exists():
+            raise ValidationError("This email is already registered")
+
+        if dni and User.objects.filter(dni=dni).exists():
+            raise ValidationError("This DNI is already registered")

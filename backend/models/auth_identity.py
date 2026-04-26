@@ -13,8 +13,6 @@ class AuthIdentity(models.Model):
     provider_user_id = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
 
-    # TODO: Agregar verificacion en el futuro?
-    # email_verified = models.BooleanField(default=False)
     added_at = models.DateTimeField(default=timezone.now)
     last_used_at = models.DateTimeField(null=True, blank=True)
 
