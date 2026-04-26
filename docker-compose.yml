@@ -7,11 +7,14 @@ services:
     command: python manage.py runserver 0.0.0.0:8007
     volumes:
       - ./:/usr/src/ludo/
+      - ../data:/usr/src/data
     ports:
       - 8007:8007
     env_file:
       - .env.compose
       - .env    # Define secrets here, see .env.template
+    environment:
+      - LOCAL_STORAGE_ROOT=${LOCAL_STORAGE_ROOT:-/usr/src/data}
     depends_on:
       - db
   db:

@@ -7,6 +7,7 @@ services:
     command: python manage.py runserver 0.0.0.0:8007
     volumes:
       - ./:/usr/src/ludo/
+      - ../data:/usr/src/data
     ports:
       - 8007:8007
     env_file:
@@ -14,6 +15,7 @@ services:
     environment:
       - SIU_URL=${SIU_URL:-http://fake-siu:3000}
       - SIU_API_KEY=${SIU_API_KEY:-}
+      - LOCAL_STORAGE_ROOT=${LOCAL_STORAGE_ROOT:-/usr/src/data}
   fake-siu:
     container_name: fake-siu
     build: fake-siu
