@@ -34,6 +34,28 @@ class FormService:
 
         return form
 
+    @transaction.atomic
+    def update_form(self, form: Form, validated_data: dict) -> Form:
+        form_type = FormType.objects.get(id=validated_data['form_type_id'])
+        form_procedure = FormProcedureType.objects.get(id=validated_data['form_procedure_id'])
+
+        form.form_name = validated_data['form_name']
+        form.form_description = validated_data['form_description']
+        form.form_information = validated_data.get('form_information')
+        form.form_procedure = form_procedure
+        form.form_type = form_type
+        form.save()
+
+        FormField.objects.filter(form=form).delete()
+        FormDocumentSource.objects.filter(form=form).delete()
+
+        if form_type.form_type_value == DOCUMENTO:
+            self._create_documento_form(form, validated_data)
+        else:
+            self._create_digital_form(form, validated_data)
+
+        return form
+
     def _create_documento_form(self, form: Form, data: dict):
         document_source = data.get('document_source')
         if not document_source:

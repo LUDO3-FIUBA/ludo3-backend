@@ -58,7 +58,7 @@ class FormViewSet(BaseViewSet):
     queryset = Form.objects.select_related('form_procedure', 'form_type').all()
 
     def get_permissions(self):
-        if self.action == 'create':
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
             return [IsAuthenticated(), IsAdmin()]
         return [IsAuthenticated()]
 
@@ -104,6 +104,54 @@ class FormViewSet(BaseViewSet):
             return Response(e.message_dict if hasattr(e, 'message_dict') else e.messages,
                             status=status.HTTP_400_BAD_REQUEST)
         return Response(FormDetailSerializer(form).data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+        tags=["Formularios"],
+        operation_summary="Edita un formulario existente (admin)",
+        request_body=FormCreateSerializer,
+    )
+    def update(self, request, pk=None):
+        try:
+            form = self.get_queryset().get(pk=pk)
+        except Form.DoesNotExist:
+            return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = FormCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            updated_form = FormService().update_form(form, serializer.validated_data)
+        except ValidationError as e:
+            return Response(
+                e.message_dict if hasattr(e, 'message_dict') else e.messages,
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return Response(FormDetailSerializer(updated_form).data, status=status.HTTP_200_OK)
+
+    @swagger_auto_schema(tags=["Formularios"], operation_summary="Elimina un formulario (admin)")
+    def destroy(self, request, pk=None):
+        try:
+            form = self.get_queryset().get(pk=pk)
+        except Form.DoesNotExist:
+            return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        form.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['POST'], permission_classes=[IsAuthenticated, IsAdmin])
+    @swagger_auto_schema(
+        tags=["Formularios"],
+        operation_summary="Requiere nuevamente respuesta eliminando envíos actuales (admin)",
+    )
+    def reset_submissions(self, request, pk=None):
+        try:
+            form = self.get_queryset().get(pk=pk)
+        except Form.DoesNotExist:
+            return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        deleted_count, _ = FormSubmission.objects.filter(form=form).delete()
+        return Response({'deleted_submissions': deleted_count}, status=status.HTTP_200_OK)
 
 
 class FormSubmissionViewSet(BaseViewSet):

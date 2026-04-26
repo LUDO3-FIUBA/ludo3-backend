@@ -190,6 +190,11 @@ class FormAnswerReadSerializer(serializers.ModelSerializer):
 
 class FormSubmissionListSerializer(serializers.ModelSerializer):
     submission_id = serializers.IntegerField(source='id', read_only=True)
+    user_id = serializers.CharField(source='user.dni', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
+    role = serializers.SerializerMethodField()
     student_first_name = serializers.CharField(source='user.first_name', read_only=True)
     student_last_name = serializers.CharField(source='user.last_name', read_only=True)
     student_padron = serializers.SerializerMethodField()
@@ -197,10 +202,20 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = FormSubmission
-        fields = ['submission_id', 'student_first_name', 'student_last_name',
+        fields = ['submission_id', 'user_id', 'email', 'first_name', 'last_name', 'role',
+                  'student_first_name', 'student_last_name',
                   'student_padron', 'submitted_at', 'answers']
 
     def get_student_padron(self, obj):
         if obj.user.is_student:
             return obj.user.student.padron
         return None
+
+    def get_role(self, obj):
+        if obj.user.is_staff:
+            return 'admin'
+        if obj.user.is_teacher:
+            return 'teacher'
+        if obj.user.is_student:
+            return 'student'
+        return 'unknown'
