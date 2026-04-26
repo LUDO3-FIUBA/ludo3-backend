@@ -443,6 +443,205 @@ ludo_dev=# \d backend_user
 
 ------------------------------------------------------------------------------------------
 
+#### Forms — Procedure & Field Types
+
+<details>
+ <summary><code>GET</code> <code><b>/api/form-procedure-types/</b></code> <code>(lists the 4 procedure types)</code></summary>
+
+##### Parameters
+
+> | name      |  type     | description                                                           |
+> |-----------|-----------|-----------------------------------------------------------------------|
+> | None      |  required | N/A  |
+
+</details>
+
+<details>
+ <summary><code>GET</code> <code><b>/api/form-field-types/</b></code> <code>(lists available field types for the form designer — admin only)</code></summary>
+
+##### Parameters
+
+> | name      |  type     | description                                                           |
+> |-----------|-----------|-----------------------------------------------------------------------|
+> | None      |  required | N/A  |
+
+</details>
+
+------------------------------------------------------------------------------------------
+
+#### Forms
+
+<details>
+ <summary><code>GET</code> <code><b>/api/forms/</b></code> <code>(lists forms, optionally filtered by procedure type)</code></summary>
+
+##### Parameters
+
+> | name         |  type     | description                                        |
+> |--------------|-----------|----------------------------------------------------|
+> | procedure_id | optional  | ID of the procedure type to filter by              |
+
+</details>
+
+<details>
+ <summary><code>GET</code> <code><b>/api/forms/:id/</b></code> <code>(form detail including fields, options, and embedded catalog items)</code></summary>
+
+##### Parameters
+
+> | name |  type    | description        |
+> |------|----------|--------------------|
+> | id   | required | ID of the form     |
+
+</details>
+
+<details>
+ <summary><code>POST</code> <code><b>/api/forms/</b></code> <code>(creates a new form with its fields — transactional, admin only)</code></summary>
+
+##### Parameters
+
+> | name              |  type      |  data type      | description                                                                        |
+> |-------------------|------------|-----------------|------------------------------------------------------------------------------------|
+> | form_name         | required   | string          | Title of the form (max 100 chars)                                                  |
+> | form_description  | required   | string          | Short description (max 300 chars)                                                  |
+> | form_information  | optional   | string          | Extended info shown to the student (max 2000 chars)                                |
+> | form_procedure_id | required   | integer         | ID of the procedure type                                                           |
+> | form_type_id      | required   | integer         | ID of the form type (`Digital` or `Documento`)                                     |
+> | document_source   | conditional| string (URL)    | Required when type is `Documento`. URL of the PDF in the FIUBA CMS                |
+> | fields            | conditional| array           | Required when type is `Digital`. At least one field; no `adjunto` type allowed     |
+> | fields[].form_field_label    | required | string  | Visible label for the field                                            |
+> | fields[].form_field_type_id  | required | integer | ID of the field type                                                   |
+> | fields[].form_field_require  | required | boolean | Whether the field is mandatory                                         |
+> | fields[].form_field_order    | required | integer | Display order                                                          |
+> | fields[].catalog_id          | optional | integer | Required when field type is `catalog`                                  |
+> | fields[].options             | optional | array   | Required when field type is `options` (each with `form_option_value` and `form_option_label`) |
+
+</details>
+
+<details>
+ <summary><code>PUT</code> <code><b>/api/forms/:id/</b></code> <code>(updates an existing form and rebuilds its fields/document source — admin only)</code></summary>
+
+##### Parameters
+
+> | name              |  type      |  data type      | description                                                                        |
+> |-------------------|------------|-----------------|------------------------------------------------------------------------------------|
+> | id                | required   | integer         | ID of the form to update                                                           |
+> | form_name         | required   | string          | Title of the form (max 100 chars)                                                  |
+> | form_description  | required   | string          | Short description (max 300 chars)                                                  |
+> | form_information  | optional   | string          | Extended info shown to the student (max 2000 chars)                                |
+> | form_procedure_id | required   | integer         | ID of the procedure type                                                           |
+> | form_type_id      | required   | integer         | ID of the form type (`Digital` or `Documento`)                                     |
+> | document_source   | conditional| string (URL)    | Required when type is `Documento`. URL of the PDF in the FIUBA CMS                |
+> | fields            | conditional| array           | Required when type is `Digital`. At least one field; no `adjunto` type allowed     |
+> | fields[].form_field_label    | required | string  | Visible label for the field                                            |
+> | fields[].form_field_type_id  | required | integer | ID of the field type                                                   |
+> | fields[].form_field_require  | required | boolean | Whether the field is mandatory                                         |
+> | fields[].form_field_order    | required | integer | Display order                                                          |
+> | fields[].catalog_id          | optional | integer | Required when field type is `catalog`                                  |
+> | fields[].options             | optional | array   | Required when field type is `options` (each with `form_option_value` and `form_option_label`) |
+
+</details>
+
+<details>
+ <summary><code>DELETE</code> <code><b>/api/forms/:id/</b></code> <code>(deletes a form and its related data — admin only)</code></summary>
+
+##### Parameters
+
+> | name |  type    | description                  |
+> |------|----------|------------------------------|
+> | id   | required | ID of the form to delete     |
+
+</details>
+
+<details>
+ <summary><code>POST</code> <code><b>/api/forms/:id/reset_submissions/</b></code> <code>(clears current responses so the form must be answered again — admin only)</code></summary>
+
+##### Parameters
+
+> | name |  type    | description                                   |
+> |------|----------|-----------------------------------------------|
+> | id   | required | ID of the form whose submissions will be reset |
+
+</details>
+
+------------------------------------------------------------------------------------------
+
+#### Forms — Submissions
+
+<details>
+ <summary><code>GET</code> <code><b>/api/forms/:form_id/submissions/</b></code> <code>(lists all submissions for a form including student data and answers — admin only)</code></summary>
+
+##### Parameters
+
+> | name     |  type    | description        |
+> |----------|----------|--------------------|
+> | form_id  | required | ID of the form     |
+
+</details>
+
+<details>
+ <summary><code>POST</code> <code><b>/api/forms/:form_id/submissions/</b></code> <code>(submits answers to a digital form — student only)</code></summary>
+
+##### Parameters
+
+> | name                      |  type    |  data type | description                                                       |
+> |---------------------------|----------|------------|-------------------------------------------------------------------|
+> | form_id                   | required | integer    | ID of the form (path)                                             |
+> | answers                   | required | array      | List of answers for each field                                    |
+> | answers[].field_id        | required | integer    | ID of the form field being answered                               |
+> | answers[].answer_value    | required | string     | Answer value (validated against the field type)                   |
+
+</details>
+
+<details>
+ <summary><code>POST</code> <code><b>/api/forms/:form_id/submissions/document/</b></code> <code>(submits a document-type form — student only, Firebase Storage stub)</code></summary>
+
+##### Parameters
+
+> | name    |  type    |  data type | description                                                        |
+> |---------|----------|------------|--------------------------------------------------------------------|
+> | form_id | required | integer    | ID of the form (path); must be of type `Documento`                 |
+> | file    | required | file       | The signed/completed document. **TODO: integrate Firebase Storage** |
+
+</details>
+
+<details>
+ <summary><code>DELETE</code> <code><b>/api/submissions/:id/</b></code> <code>(deletes a submission and its answers — admin only)</code></summary>
+
+##### Parameters
+
+> | name |  type    | description                  |
+> |------|----------|------------------------------|
+> | id   | required | ID of the submission to delete |
+
+</details>
+
+------------------------------------------------------------------------------------------
+
+#### Catalogs
+
+<details>
+ <summary><code>GET</code> <code><b>/api/catalogs/</b></code> <code>(lists available shared catalogs for the form designer — admin only)</code></summary>
+
+##### Parameters
+
+> | name      |  type     | description                                                           |
+> |-----------|-----------|-----------------------------------------------------------------------|
+> | None      |  required | N/A  |
+
+</details>
+
+<details>
+ <summary><code>GET</code> <code><b>/api/catalogs/:id/items/</b></code> <code>(lists active items of a catalog — used to populate selects in forms)</code></summary>
+
+##### Parameters
+
+> | name |  type    | description          |
+> |------|----------|----------------------|
+> | id   | required | ID of the catalog    |
+
+</details>
+
+------------------------------------------------------------------------------------------
+
 ## Deployed application
 The application is running at `https://ludo-backend.herokuapp.com`
 
