@@ -9,6 +9,7 @@ from .views import CustomGCMDeviceViewSet
 from .views.user_views import UserCustomViewSet, simple_login
 from .views.google_auth_views import google_sign_in, google_complete_registration
 from .views.password_views import change_password, forgot_password, reset_password_confirm
+from .views.file_views import serve_model_file, serve_submission_file
 
 router = routers.SimpleRouter()
 router.register(r'final_exams', views.FinalExamStudentViewSet, 'final_exam')
@@ -79,6 +80,9 @@ urlpatterns = [
     
     path('auth/google/', google_sign_in, name='google-sign-in'),
     path('auth/google/registration/', google_complete_registration, name='google-registration'),
+
+    path('api/files/models/<str:filename>/', serve_model_file, name='file-model'),
+    path('api/files/submissions/<str:filename>/', serve_submission_file, name='file-submission'),
 
     path('docs/', schema_view.with_ui('swagger', cache_timeout=0),name='schema-swagger-ui')
 ]

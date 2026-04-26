@@ -3,6 +3,7 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
@@ -24,7 +25,23 @@ from backend.serializers.form_serializer import (
     SubmissionCreateSerializer,
 )
 from backend.services.form_service import FormService
+from backend.services.local_storage_service import LocalStorageService
 from backend.views.base_view import BaseViewSet
+
+
+def _maybe_upload_template(request, data):
+    """If the request includes a `document_source_file`, save it locally and
+    inject the resulting URL into `data['document_source']`. Returns mutated data.
+    Falls through unchanged if only a URL was sent (CMS link, backward compat)."""
+    file_obj = request.FILES.get('document_source_file')
+    if file_obj is None:
+        return data
+    filename = LocalStorageService.upload(file_obj, LocalStorageService.MODELS)
+    mutable = data.copy() if hasattr(data, 'copy') else dict(data)
+    mutable['document_source'] = LocalStorageService.absolute_url(
+        request, LocalStorageService.MODELS, filename,
+    )
+    return mutable
 
 
 class FormTypeViewSet(BaseViewSet):
@@ -89,13 +106,16 @@ class FormViewSet(BaseViewSet):
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(FormDetailSerializer(form).data)
 
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
+
     @swagger_auto_schema(
         tags=["Formularios"],
-        operation_summary="Crea un nuevo formulario (transaccional)",
+        operation_summary="Crea un nuevo formulario (transaccional). Acepta multipart con `document_source_file`.",
         request_body=FormCreateSerializer,
     )
     def create(self, request):
-        serializer = FormCreateSerializer(data=request.data)
+        data = _maybe_upload_template(request, request.data)
+        serializer = FormCreateSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -116,7 +136,8 @@ class FormViewSet(BaseViewSet):
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = FormCreateSerializer(data=request.data)
+        data = _maybe_upload_template(request, request.data)
+        serializer = FormCreateSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -205,10 +226,11 @@ class FormSubmissionViewSet(BaseViewSet):
 
         return Response(FormSubmissionListSerializer(submission).data, status=status.HTTP_201_CREATED)
 
-    @action(detail=False, methods=['POST'], permission_classes=[IsAuthenticated, IsStudent])
+    @action(detail=False, methods=['POST'], permission_classes=[IsAuthenticated, IsStudent],
+            parser_classes=[MultiPartParser, FormParser])
     @swagger_auto_schema(
         tags=["Formularios — Respuestas"],
-        operation_summary="Envía un formulario tipo Documento (alumno) — stub",
+        operation_summary="Envía un formulario tipo Documento (alumno) — guarda el archivo en data/submissions/",
     )
     def document(self, request, form_pk=None):
         form = self._get_form(form_pk)
@@ -218,15 +240,23 @@ class FormSubmissionViewSet(BaseViewSet):
         if form.form_type.form_type_value != 'Documento':
             return Response({'detail': 'Este formulario no es de tipo Documento.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if 'file' not in request.FILES:
+        file_obj = request.FILES.get('file')
+        if file_obj is None:
             return Response({'file': ['Este campo es obligatorio.']}, status=status.HTTP_400_BAD_REQUEST)
 
-        # TODO: integrar Firebase Storage — subir request.FILES['file'] y guardar la URL resultante
-        submission = FormSubmission.objects.create(form=form, user=request.user)
         adjunto_field = form.fields.filter(form_field_type__form_field_type_value='adjunto').first()
-        if adjunto_field:
-            from backend.models.form_submission import FormAnswer
-            FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=None)
+        if adjunto_field is None:
+            return Response(
+                {'detail': 'El formulario no tiene un campo de tipo adjunto.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        filename = LocalStorageService.upload(file_obj, LocalStorageService.SUBMISSIONS)
+        url = LocalStorageService.absolute_url(request, LocalStorageService.SUBMISSIONS, filename)
+
+        submission = FormSubmission.objects.create(form=form, user=request.user)
+        from backend.models.form_submission import FormAnswer
+        FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=url)
 
         return Response(FormSubmissionListSerializer(submission).data, status=status.HTTP_201_CREATED)
 
