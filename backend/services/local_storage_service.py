@@ -15,6 +15,7 @@ the call sites; the public API is `upload`, `absolute_url`, `open_path`, `delete
 import os
 import uuid
 from pathlib import Path
+from typing import Optional
 
 from django.conf import settings
 
@@ -68,7 +69,7 @@ class LocalStorageService:
             path.unlink()
 
     @classmethod
-    def filename_from_url(cls, url: str) -> str | None:
+    def filename_from_url(cls, url: str) -> Optional[str]:
         """Reverse of `absolute_url` — extracts the filename if the URL points
         to one of our local file endpoints; returns None otherwise (e.g. CMS URLs)."""
         if not url:
