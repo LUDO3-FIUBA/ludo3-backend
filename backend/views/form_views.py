@@ -160,21 +160,6 @@ class FormViewSet(BaseViewSet):
         form.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    @action(detail=True, methods=['POST'], permission_classes=[IsAuthenticated, IsAdmin])
-    @swagger_auto_schema(
-        tags=["Formularios"],
-        operation_summary="Requiere nuevamente respuesta eliminando envíos actuales (admin)",
-    )
-    def reset_submissions(self, request, pk=None):
-        try:
-            form = self.get_queryset().get(pk=pk)
-        except Form.DoesNotExist:
-            return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-
-        deleted_count, _ = FormSubmission.objects.filter(form=form).delete()
-        return Response({'deleted_submissions': deleted_count}, status=status.HTTP_200_OK)
-
-
 class FormSubmissionViewSet(BaseViewSet):
     """Nested under /forms/{form_pk}/submissions/"""
 

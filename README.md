@@ -551,17 +551,6 @@ ludo_dev=# \d backend_user
 
 </details>
 
-<details>
- <summary><code>POST</code> <code><b>/api/forms/:id/reset_submissions/</b></code> <code>(clears current responses so the form must be answered again — admin only)</code></summary>
-
-##### Parameters
-
-> | name |  type    | description                                   |
-> |------|----------|-----------------------------------------------|
-> | id   | required | ID of the form whose submissions will be reset |
-
-</details>
-
 ------------------------------------------------------------------------------------------
 
 #### Forms — Submissions
