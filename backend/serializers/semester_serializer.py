@@ -1,12 +1,24 @@
 from rest_framework import serializers
 
-from backend.models import Semester
+from backend.models import Semester, EvaluationSubmission
 
 from .commission_serializer import CommissionSerializer
 from .evaluation_serializer import (EvaluationSerializer,
                                     EvaluationWithMakeupSerializer)
 from .student_serializer import StudentSerializer
 from .semester_schedule_serializer import SemesterScheduleSerializer
+
+
+class SemesterSubmissionSerializer(serializers.ModelSerializer):
+    evaluation_id = serializers.SerializerMethodField()
+    grade = serializers.IntegerField(allow_null=True)
+
+    class Meta:
+        model = EvaluationSubmission
+        fields = ('evaluation_id', 'grade')
+
+    def get_evaluation_id(self, obj):
+        return obj.evaluation_id
 
 
 class SemesterSerializer(serializers.ModelSerializer):
@@ -26,18 +38,19 @@ class SemesterSerializer(serializers.ModelSerializer):
 
 class SemesterCommissionStudentSerializer(StudentSerializer):
     attendances_count = serializers.SerializerMethodField()
-    submissions_count = serializers.SerializerMethodField()
+    submissions = serializers.SerializerMethodField()
 
     class Meta(StudentSerializer.Meta):
-        fields = StudentSerializer.Meta.fields + ('attendances_count', 'submissions_count')
+        fields = StudentSerializer.Meta.fields + ('attendances_count', 'submissions')
 
     def get_attendances_count(self, obj):
         attendances_by_student = self.context.get('attendances_by_student', {})
         return attendances_by_student.get(obj.pk, 0)
 
-    def get_submissions_count(self, obj):
+    def get_submissions(self, obj):
         submissions_by_student = self.context.get('submissions_by_student', {})
-        return submissions_by_student.get(obj.pk, 0)
+        submissions_list = submissions_by_student.get(obj.pk, [])
+        return SemesterSubmissionSerializer(submissions_list, many=True).data
 
 
 class SemesterCommissionSerializer(serializers.ModelSerializer):

@@ -63,15 +63,18 @@ class SemesterViewSet(BaseViewSet):
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
 
         attendance_qrs_count = semester.attendance_qrs.count()
+        
         attendances_by_student = dict(
             semester.attendances.values('student_id').annotate(total=Count('id')).values_list('student_id', 'total')
         )
-        submissions_by_student = dict(
-            EvaluationSubmission.objects.filter(evaluation__semester=semester)
-            .values('student_id')
-            .annotate(total=Count('id'))
-            .values_list('student_id', 'total')
-        )
+        
+        submissions = EvaluationSubmission.objects.filter(evaluation__semester=semester).select_related('evaluation')
+        submissions_by_student = {}
+        for submission in submissions:
+            student_id = submission.student_id
+            if student_id not in submissions_by_student:
+                submissions_by_student[student_id] = []
+            submissions_by_student[student_id].append(submission)
 
         serializer = SemesterCommissionSerializer(
             semester,
