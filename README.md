@@ -467,6 +467,17 @@ ludo_dev=# \d backend_user
 
 </details>
 
+<details>
+ <summary><code>GET</code> <code><b>/api/form-submission-statuses/</b></code> <code>(lists the available submission statuses: <code>sent</code>, <code>pending_approval</code>, <code>approved</code>, <code>denied</code>)</code></summary>
+
+##### Parameters
+
+> | name      |  type     | description                                                           |
+> |-----------|-----------|-----------------------------------------------------------------------|
+> | None      |  required | N/A  |
+
+</details>
+
 ------------------------------------------------------------------------------------------
 
 #### Forms
@@ -593,6 +604,21 @@ ludo_dev=# \d backend_user
 </details>
 
 <details>
+ <summary><code>GET</code> <code><b>/api/forms/:form_id/submissions/my_submissions/</b></code> <code>(lists the requesting user's submissions for a form, including current status — any authenticated user)</code></summary>
+
+##### Parameters
+
+> | name     |  type    | description                                                  |
+> |----------|----------|--------------------------------------------------------------|
+> | form_id  | required | ID of the form (path)                                        |
+
+##### Response
+
+> Returns an array of submissions ordered by `submitted_at` descending. Each item includes the embedded `status` object: `{ id, value }`.
+
+</details>
+
+<details>
  <summary><code>DELETE</code> <code><b>/api/submissions/:id/</b></code> <code>(deletes a submission and its answers — admin only)</code></summary>
 
 ##### Parameters
@@ -600,6 +626,22 @@ ludo_dev=# \d backend_user
 > | name |  type    | description                  |
 > |------|----------|------------------------------|
 > | id   | required | ID of the submission to delete |
+
+</details>
+
+<details>
+ <summary><code>PATCH</code> <code><b>/api/submissions/:id/status/</b></code> <code>(changes the status of a submission — admin only)</code></summary>
+
+##### Parameters
+
+> | name   |  type    |  data type | description                                                                              |
+> |--------|----------|------------|------------------------------------------------------------------------------------------|
+> | id     | required | integer    | ID of the submission (path)                                                              |
+> | status | required | string     | One of: `sent`, `pending_approval`, `approved`, `denied`                                  |
+
+##### Response
+
+> Returns the updated submission with the embedded `status` object: `{ id, value }`.
 
 </details>
 

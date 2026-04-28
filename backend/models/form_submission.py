@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 
 from .form import Form, FormField
+from .form_types import FormSubmissionStatus
 from .user import User
 
 
@@ -9,6 +10,12 @@ class FormSubmission(models.Model):
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='submissions', verbose_name="Formulario")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='form_submissions', verbose_name="Usuario")
     submitted_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Enviado en")
+    status = models.ForeignKey(
+        FormSubmissionStatus,
+        on_delete=models.PROTECT,
+        related_name='submissions',
+        verbose_name="Estado",
+    )
 
     class Meta:
         verbose_name = "Respuesta de formulario"

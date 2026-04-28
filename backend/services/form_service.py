@@ -6,7 +6,12 @@ from django.db import transaction
 from backend.models.catalog import CatalogItem
 from backend.models.form import Form, FormDocumentSource, FormField, FormFieldOption
 from backend.models.form_submission import FormAnswer, FormSubmission
-from backend.models.form_types import FormFieldType, FormProcedureType, FormType
+from backend.models.form_types import (
+    FormFieldType,
+    FormProcedureType,
+    FormSubmissionStatus,
+    FormType,
+)
 
 DIGITAL = 'Digital'
 DOCUMENTO = 'Documento'
@@ -132,7 +137,10 @@ class FormService:
         if missing:
             raise ValidationError({'answers': [f'Los campos obligatorios sin respuesta: {list(missing)}.']})
 
-        submission = FormSubmission.objects.create(form=form, user=user)
+        sent_status = FormSubmissionStatus.objects.get(
+            form_submission_status_value=FormSubmissionStatus.SENT,
+        )
+        submission = FormSubmission.objects.create(form=form, user=user, status=sent_status)
 
         for answer_data in answers_data:
             field_id = answer_data['field_id']

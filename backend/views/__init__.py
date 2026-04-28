@@ -33,6 +33,7 @@ from .form_views import (
     FormTypeViewSet,
     FormProcedureTypeViewSet,
     FormFieldTypeViewSet,
+    FormSubmissionStatusViewSet,
     FormViewSet,
     FormSubmissionViewSet,
     SubmissionAdminViewSet,

@@ -3,7 +3,12 @@ from rest_framework import serializers
 from backend.models.catalog import Catalog, CatalogItem
 from backend.models.form import Form, FormDocumentSource, FormField, FormFieldOption
 from backend.models.form_submission import FormAnswer, FormSubmission
-from backend.models.form_types import FormFieldType, FormProcedureType, FormType
+from backend.models.form_types import (
+    FormFieldType,
+    FormProcedureType,
+    FormSubmissionStatus,
+    FormType,
+)
 
 
 # ── Catalog read ─────────────────────────────────────────────────────────────
@@ -61,6 +66,26 @@ class FormFieldTypeSerializer(serializers.ModelSerializer):
     class Meta:
         model = FormFieldType
         fields = ['id', 'value']
+
+
+class FormSubmissionStatusSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+    value = serializers.CharField(source='form_submission_status_value', read_only=True)
+
+    class Meta:
+        model = FormSubmissionStatus
+        fields = ['id', 'value']
+
+
+class SubmissionStatusUpdateSerializer(serializers.Serializer):
+    status = serializers.CharField(max_length=50)
+
+    def validate_status(self, value):
+        if value not in FormSubmissionStatus.ALL_VALUES:
+            raise serializers.ValidationError(
+                f"Estado inválido. Valores permitidos: {list(FormSubmissionStatus.ALL_VALUES)}."
+            )
+        return value
 
 
 # ── Form read ─────────────────────────────────────────────────────────────────
@@ -198,13 +223,14 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
     student_first_name = serializers.CharField(source='user.first_name', read_only=True)
     student_last_name = serializers.CharField(source='user.last_name', read_only=True)
     student_padron = serializers.SerializerMethodField()
+    status = FormSubmissionStatusSerializer(read_only=True)
     answers = FormAnswerReadSerializer(many=True, read_only=True)
 
     class Meta:
         model = FormSubmission
         fields = ['submission_id', 'user_id', 'email', 'first_name', 'last_name', 'role',
                   'student_first_name', 'student_last_name',
-                  'student_padron', 'submitted_at', 'answers']
+                  'student_padron', 'submitted_at', 'status', 'answers']
 
     def get_student_padron(self, obj):
         if obj.user.is_student:

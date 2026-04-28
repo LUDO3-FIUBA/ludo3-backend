@@ -10,7 +10,12 @@ from rest_framework.response import Response
 from backend.models.catalog import Catalog, CatalogItem
 from backend.models.form import Form
 from backend.models.form_submission import FormSubmission
-from backend.models.form_types import FormFieldType, FormProcedureType, FormType
+from backend.models.form_types import (
+    FormFieldType,
+    FormProcedureType,
+    FormSubmissionStatus,
+    FormType,
+)
 from backend.permissions import IsAdmin, IsStudent
 from backend.serializers.form_serializer import (
     CatalogItemSerializer,
@@ -21,8 +26,10 @@ from backend.serializers.form_serializer import (
     FormListSerializer,
     FormProcedureTypeSerializer,
     FormSubmissionListSerializer,
+    FormSubmissionStatusSerializer,
     FormTypeSerializer,
     SubmissionCreateSerializer,
+    SubmissionStatusUpdateSerializer,
 )
 from backend.services.form_service import FormService
 from backend.services.local_storage_service import LocalStorageService
@@ -182,7 +189,13 @@ class FormSubmissionViewSet(BaseViewSet):
         form = self._get_form(form_pk)
         if not form:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-        submissions = FormSubmission.objects.filter(form=form).select_related('user__student').prefetch_related('answers__field')
+        submissions = (
+            FormSubmission.objects
+            .filter(form=form)
+            .select_related('user__student', 'status')
+            .prefetch_related('answers__field')
+            .order_by('-submitted_at')
+        )
         return Response(FormSubmissionListSerializer(submissions, many=True).data)
 
     @swagger_auto_schema(
@@ -239,11 +252,32 @@ class FormSubmissionViewSet(BaseViewSet):
         filename = LocalStorageService.upload(file_obj, LocalStorageService.SUBMISSIONS)
         url = LocalStorageService.absolute_url(request, LocalStorageService.SUBMISSIONS, filename)
 
-        submission = FormSubmission.objects.create(form=form, user=request.user)
+        sent_status = FormSubmissionStatus.objects.get(
+            form_submission_status_value=FormSubmissionStatus.SENT,
+        )
+        submission = FormSubmission.objects.create(form=form, user=request.user, status=sent_status)
         from backend.models.form_submission import FormAnswer
         FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=url)
 
         return Response(FormSubmissionListSerializer(submission).data, status=status.HTTP_201_CREATED)
+
+    @action(detail=False, methods=['GET'], permission_classes=[IsAuthenticated])
+    @swagger_auto_schema(
+        tags=["Formularios — Respuestas"],
+        operation_summary="Lista las respuestas del usuario autenticado para este formulario",
+    )
+    def my_submissions(self, request, form_pk=None):
+        form = self._get_form(form_pk)
+        if not form:
+            return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        submissions = (
+            FormSubmission.objects
+            .filter(form=form, user=request.user)
+            .select_related('user__student', 'status')
+            .prefetch_related('answers__field')
+            .order_by('-submitted_at')
+        )
+        return Response(FormSubmissionListSerializer(submissions, many=True).data)
 
 
 class SubmissionAdminViewSet(BaseViewSet):
@@ -258,6 +292,41 @@ class SubmissionAdminViewSet(BaseViewSet):
             return Response({'detail': 'Respuesta no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
         submission.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['PATCH'], url_path='status')
+    @swagger_auto_schema(
+        tags=["Formularios — Respuestas"],
+        operation_summary="Cambia el estado de una respuesta (admin)",
+        request_body=SubmissionStatusUpdateSerializer,
+    )
+    def update_status(self, request, pk=None):
+        try:
+            submission = self.get_queryset().select_related('status').get(pk=pk)
+        except FormSubmission.DoesNotExist:
+            return Response({'detail': 'Respuesta no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = SubmissionStatusUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        new_status = FormSubmissionStatus.objects.get(
+            form_submission_status_value=serializer.validated_data['status'],
+        )
+        submission.status = new_status
+        submission.save(update_fields=['status'])
+        return Response(FormSubmissionListSerializer(submission).data, status=status.HTTP_200_OK)
+
+
+class FormSubmissionStatusViewSet(BaseViewSet):
+    permission_classes = [IsAuthenticated]
+    queryset = FormSubmissionStatus.objects.all()
+
+    @swagger_auto_schema(
+        tags=["Formularios — Respuestas"],
+        operation_summary="Lista los estados disponibles para una respuesta",
+    )
+    def list(self, request):
+        return Response(FormSubmissionStatusSerializer(self.get_queryset(), many=True).data)
 
 
 class CatalogViewSet(BaseViewSet):
