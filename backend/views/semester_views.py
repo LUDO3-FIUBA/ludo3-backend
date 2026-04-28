@@ -1,14 +1,14 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models import Attendance, AttendanceQRCode, EvaluationSubmission, Semester
-from backend.permissions import IsStudent
-from backend.serializers.semester_serializer import SemesterSerializer
+from backend.permissions import IsStudent, IsTeacher
+from backend.serializers.semester_serializer import SemesterCommissionSerializer, SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import get_current_semester, get_current_year, get_required_int_query_param
@@ -44,7 +44,7 @@ class SemesterViewSet(BaseViewSet):
                                             start_date__year__gte=get_current_year(), year_moment=get_current_semester())
         return Response(self.get_serializer(result, many=True).data, status.HTTP_200_OK)
     
-    @action(detail=False, methods=["GET"])
+    @action(detail=False, methods=["GET"], permission_classes=[IsAuthenticated, IsTeacher])
     @swagger_auto_schema(
         tags=["Semesters"],
         operation_summary="Get semesters for a commission",
@@ -53,13 +53,36 @@ class SemesterViewSet(BaseViewSet):
         ]
     )
     def commission_present_semester(self, request):
-        result = self.get_queryset().filter(commission=request.query_params['commission_id'], 
-                                            start_date__year__gte=get_current_year(), year_moment=get_current_semester()).first()
-        
-        if not result:
+        semester = self.get_queryset().filter(
+            commission=request.query_params['commission_id'],
+            start_date__year__gte=get_current_year(),
+            year_moment=get_current_semester(),
+        ).first()
+
+        if not semester:
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
 
-        return Response(self.get_serializer(result).data, status.HTTP_200_OK)
+        attendance_qrs_count = semester.attendance_qrs.count()
+        attendances_by_student = dict(
+            semester.attendances.values('student_id').annotate(total=Count('id')).values_list('student_id', 'total')
+        )
+        submissions_by_student = dict(
+            EvaluationSubmission.objects.filter(evaluation__semester=semester)
+            .values('student_id')
+            .annotate(total=Count('id'))
+            .values_list('student_id', 'total')
+        )
+
+        serializer = SemesterCommissionSerializer(
+            semester,
+            context={
+                'attendance_qrs_count': attendance_qrs_count,
+                'attendances_by_student': attendances_by_student,
+                'submissions_by_student': submissions_by_student,
+            },
+        )
+
+        return Response(serializer.data, status.HTTP_200_OK)
     
     @action(detail=False, methods=["GET"], permission_classes=[IsAuthenticated, IsStudent])
     @swagger_auto_schema(

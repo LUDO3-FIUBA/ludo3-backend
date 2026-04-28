@@ -22,7 +22,53 @@ class SemesterSerializer(serializers.ModelSerializer):
     class Meta:
         model = Semester
         fields = ('id', 'year_moment', 'start_date', 'commission', 'evaluations', 'students', 'classes_amount', 'minimum_attendance', 'schedules')
-        
+
+
+class SemesterCommissionStudentSerializer(StudentSerializer):
+    attendances_count = serializers.SerializerMethodField()
+    submissions_count = serializers.SerializerMethodField()
+
+    class Meta(StudentSerializer.Meta):
+        fields = StudentSerializer.Meta.fields + ('attendances_count', 'submissions_count')
+
+    def get_attendances_count(self, obj):
+        attendances_by_student = self.context.get('attendances_by_student', {})
+        return attendances_by_student.get(obj.pk, 0)
+
+    def get_submissions_count(self, obj):
+        submissions_by_student = self.context.get('submissions_by_student', {})
+        return submissions_by_student.get(obj.pk, 0)
+
+
+class SemesterCommissionSerializer(serializers.ModelSerializer):
+    year_moment = serializers.CharField()
+    start_date = serializers.DateTimeField()
+    commission = CommissionSerializer()
+    evaluations = EvaluationSerializer(many=True)
+    students = SemesterCommissionStudentSerializer(many=True)
+    classes_amount = serializers.IntegerField()
+    minimum_attendance = serializers.FloatField()
+    schedules = SemesterScheduleSerializer(many=True, read_only=True)
+    attendance_qrs_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Semester
+        fields = (
+            'id',
+            'year_moment',
+            'start_date',
+            'commission',
+            'evaluations',
+            'students',
+            'classes_amount',
+            'minimum_attendance',
+            'schedules',
+            'attendance_qrs_count',
+        )
+
+    def get_attendance_qrs_count(self, obj):
+        return self.context.get('attendance_qrs_count', 0)
+
 
 class SemesterWithMakeupSerializer(serializers.ModelSerializer):
     year_moment = serializers.CharField()
