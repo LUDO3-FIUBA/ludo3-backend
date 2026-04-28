@@ -195,6 +195,48 @@
     }
   },
   {
+    "model": "backend.user",
+    "pk": 16,
+    "fields": {
+      "is_student": true,
+      "is_teacher": false,
+      "first_name": "Martin",
+      "last_name": "Gonzalez",
+      "dni": 42817479,
+      "padron": 105738,
+      "face_encodings": [],
+      "email": "martin.alumno@ludo.com",
+      "password": "ludo1234"
+    }
+  },
+  {
+    "model": "backend.user",
+    "pk": 17,
+    "fields": {
+      "is_student": false,
+      "is_teacher": true,
+      "first_name": "Martin",
+      "last_name": "Gonzalez",
+      "dni": 42817480,
+      "face_encodings": [],
+      "email": "martin.docente@ludo.com",
+      "password": "ludo1234"
+    }
+  },
+  {
+    "model": "backend.user",
+    "pk": 18,
+    "fields": {
+      "is_staff": true,
+      "is_superuser": true,
+      "first_name": "Martin",
+      "last_name": "Gonzalez",
+      "dni": 42817481,
+      "email": "martin.admin@ludo.com",
+      "password": "ludo1234"
+    }
+  },
+  {
     "model": "backend.authidentity",
     "pk": 1,
     "fields": {
