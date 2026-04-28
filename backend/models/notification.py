@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
+from .semester import Semester
 from .user import User
 
 
@@ -18,6 +19,14 @@ class Notification(models.Model):
     send_push = models.BooleanField(default=False, verbose_name="Enviar push")
     send_email = models.BooleanField(default=False, verbose_name="Enviar email")
     image = models.ImageField(upload_to='notifications/', null=True, blank=True, verbose_name="Imagen")
+    semester = models.ForeignKey(
+        Semester,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='notifications',
+        verbose_name="Cuatrimestre"
+    )
 
     class Meta:
         verbose_name = "Notificación"
