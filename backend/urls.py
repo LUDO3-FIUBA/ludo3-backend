@@ -83,7 +83,7 @@ urlpatterns = [
     path('auth/google/registration/', google_complete_registration, name='google-registration'),
 
     path('api/files/models/<str:filename>/', serve_model_file, name='file-model'),
-    path('api/files/submissions/<str:filename>/', serve_submission_file, name='file-submission'),
+    path('api/files/submissions/<path:filename>/', serve_submission_file, name='file-submission'),
 
     path('docs/', schema_view.with_ui('swagger', cache_timeout=0),name='schema-swagger-ui')
 ]

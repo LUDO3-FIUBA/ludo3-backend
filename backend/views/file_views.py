@@ -1,7 +1,10 @@
 """Endpoints to serve files stored locally via LocalStorageService.
 
-- /api/files/models/<filename>      → form templates (any authenticated user)
+- /api/files/models/<filename>      → form templates (public, no auth required)
 - /api/files/submissions/<filename> → student submissions (admin only)
+
+Missing Cloud Storage Support — this entire module can be removed once S3 is used;
+files will be served directly from the bucket via public URL or presigned URL.
 """
 
 import mimetypes
@@ -9,7 +12,7 @@ import mimetypes
 from django.http import FileResponse
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from backend.permissions import IsAdmin
@@ -25,8 +28,9 @@ def _serve(folder: str, filename: str):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def serve_model_file(request, filename):
+    """Public endpoint — form templates can be opened via Linking.openURL without auth header."""
     return _serve(LocalStorageService.MODELS, filename)
 
 

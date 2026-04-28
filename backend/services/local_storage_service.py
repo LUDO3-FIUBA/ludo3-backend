@@ -43,15 +43,29 @@ class LocalStorageService:
         return path
 
     @classmethod
-    def upload(cls, file_obj, folder: str) -> str:
+    def upload(cls, file_obj, folder: str, subfolder: str = '', name_prefix: str = '') -> str:
+        """Store `file_obj` and return its key (relative path under `folder/`).
+
+        When `subfolder` is given, the file is placed at
+        ``folder/subfolder/{name_prefix}{uuid}{ext}``.
+        The returned key is ``subfolder/{name_prefix}{uuid}{ext}`` — it may
+        therefore contain a slash, which is intentional and handled by the
+        rest of the API (open_path, delete, absolute_url, filename_from_url).
+        """
         ext = os.path.splitext(getattr(file_obj, 'name', ''))[1].lower()
         safe_ext = ext if ext in _ALLOWED_EXTENSIONS else ''
-        filename = f"{uuid.uuid4().hex}{safe_ext}"
-        dest = cls.folder_path(folder) / filename
-        with open(dest, 'wb') as out:
+        base = f"{name_prefix}{uuid.uuid4().hex}{safe_ext}"
+        if subfolder:
+            dest_dir = cls.folder_path(folder) / subfolder
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            key = f"{subfolder}/{base}"
+        else:
+            dest_dir = cls.folder_path(folder)
+            key = base
+        with open(dest_dir / base, 'wb') as out:
             for chunk in file_obj.chunks():
                 out.write(chunk)
-        return filename
+        return key
 
     @classmethod
     def absolute_url(cls, request, folder: str, filename: str) -> str:
@@ -70,13 +84,14 @@ class LocalStorageService:
 
     @classmethod
     def filename_from_url(cls, url: str) -> Optional[str]:
-        """Reverse of `absolute_url` — extracts the filename if the URL points
-        to one of our local file endpoints; returns None otherwise (e.g. CMS URLs)."""
+        """Reverse of `absolute_url` — extracts the key (relative path that may
+        include a subfolder) if the URL points to one of our local file endpoints;
+        returns None otherwise (e.g. CMS URLs)."""
         if not url:
             return None
         for folder in (cls.MODELS, cls.SUBMISSIONS):
             marker = f'/api/files/{folder}/'
             if marker in url:
                 tail = url.split(marker, 1)[1]
-                return tail.rstrip('/').split('/', 1)[0]
+                return tail.rstrip('/')
         return None

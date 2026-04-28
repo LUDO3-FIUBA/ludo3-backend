@@ -40,6 +40,7 @@ def _maybe_upload_template(request, data):
     """If the request includes a `document_source_file`, save it locally and
     inject the resulting URL into `data['document_source']`. Returns mutated data.
     Falls through unchanged if only a URL was sent (CMS link, backward compat)."""
+    # Missing Cloud Storage Support
     file_obj = request.FILES.get('document_source_file')
     if file_obj is None:
         return data
@@ -249,7 +250,16 @@ class FormSubmissionViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        filename = LocalStorageService.upload(file_obj, LocalStorageService.SUBMISSIONS)
+        # Missing Cloud Storage Support
+        import datetime
+        padron = request.user.student.padron if request.user.is_student else 'unknown'
+        timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+        filename = LocalStorageService.upload(
+            file_obj,
+            LocalStorageService.SUBMISSIONS,
+            subfolder=str(form.id),
+            name_prefix=f"{padron}_{timestamp}_",
+        )
         url = LocalStorageService.absolute_url(request, LocalStorageService.SUBMISSIONS, filename)
 
         sent_status = FormSubmissionStatus.objects.get(
