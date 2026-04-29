@@ -55,7 +55,10 @@ class SemesterViewSet(BaseViewSet):
         ]
     )
     def commission_present_semester(self, request):
-        commission_id = get_required_int_query_param(request, 'commission_id')
+        commission_id, error_response = get_required_int_query_param(request, 'commission_id')
+        if error_response is not None:
+            return error_response
+
         semester = self.get_queryset().filter(
             commission=commission_id,
             start_date__year__gte=get_current_year(),
