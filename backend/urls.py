@@ -36,6 +36,7 @@ router.register(r'statistics/student', views.StatisticsStudentViewSet, 'statisti
 router.register(r'statistics/teacher', views.StatisticsTeacherViewSet, 'statistics_teacher')
 router.register(r'notifications', views.NotificationViewSet, 'notification')
 router.register(r'device/gcm', CustomGCMDeviceViewSet)
+router.register(r'academic_calendar', views.AcademicCalendarEventViewSet, 'academic_calendar')
 router.register(r'departments', views.DepartmentViewSet, 'department')
 router.register(r'admin/commissions', views.CommissionAdminViewSet, 'admin-commission')
 router.register(r'admin/users', views.UserAdminViewSet, 'admin-user')
@@ -46,6 +47,8 @@ router.register(r'form-submission-statuses', views.FormSubmissionStatusViewSet, 
 router.register(r'forms', views.FormViewSet, 'form')
 router.register(r'submissions', views.SubmissionAdminViewSet, 'submission')
 router.register(r'catalogs', views.CatalogViewSet, 'catalog')
+router.register(r'student_identity', views.StudentIdentityViewSet, 'student-identity')
+router.register(r'admin/notifications', views.NotificationAdminViewSet, 'admin-notification')
 
 teacher_finals_router = routers.NestedSimpleRouter(router, r'finals', lookup='final')
 teacher_finals_router.register(r'final_exams', views.FinalExamTeacherViews, basename='final-final_exams')

@@ -3,7 +3,7 @@ from datetime import datetime
 from rest_framework import status
 from rest_framework.response import Response
 
-from backend.api_exceptions import InvalidFaceError
+from backend.api_exceptions import FaceRegistrationPendingError, InvalidFaceError
 from backend.models.commission import Commission
 from backend.models.teacher import Teacher
 from backend.models.teacher_role import TeacherRole
@@ -33,6 +33,9 @@ def validate_face(request, model):
     if not request.data.get("image"):
         raise InvalidFaceError()
 
+    if not getattr(model, "face_encodings", None):
+        raise FaceRegistrationPendingError()
+
     is_match = ImageValidatorService(request.data["image"]).validate_identity(model)
 
     if not is_match:
@@ -56,6 +59,23 @@ def get_hours_from_current_time(past_datetime):
     return (
         get_current_datetime() - past_datetime
     ).total_seconds() / SECONDS_IN_ONE_HOUR
+
+
+def get_required_int_query_param(request, param_name):
+    value = request.query_params.get(param_name)
+    if value is None:
+        return None, Response(
+            {"detail": f"{param_name} query parameter is required."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    try:
+        return int(value), None
+    except (TypeError, ValueError):
+        return None, Response(
+            {"detail": f"Invalid {param_name}."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
 def teacher_not_in_commission_staff(teacher: Teacher, commission: Commission) -> bool:
     return (

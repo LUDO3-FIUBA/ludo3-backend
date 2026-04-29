@@ -1,4 +1,6 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+import math
 
 from .commission import Commission
 from .student import Student
@@ -38,3 +40,51 @@ class Semester(models.Model):
 
     def __str__(self):
         return f"{self.commission} - {self.start_date.year} {self.year_moment}"
+
+    def semester_evaluations_ordered(self):
+        evaluations = self.evaluations
+        if hasattr(evaluations, "all"):
+            evaluations = evaluations.all()
+        return sorted(list(evaluations), key=lambda evaluation: evaluation.end_date)
+
+    def evaluation_chains(self):
+        chains = []
+
+        for evaluation in self.semester_evaluations_ordered():
+            if not evaluation.is_graded or evaluation.parent_evaluation is not None:
+                continue
+
+            chain = [evaluation]
+            current_evaluation = evaluation
+
+            while True:
+                make_up_evaluation = getattr(current_evaluation, "make_up_evaluation", None)
+                if make_up_evaluation is None:
+                    break
+
+                chain.append(make_up_evaluation)
+                current_evaluation = make_up_evaluation
+
+            chains.append(chain)
+
+        return chains
+
+    def has_attendance_requirement(self):
+        return self.classes_amount is not None and self.minimum_attendance is not None and self.minimum_attendance > 0
+
+    def max_absences(self):
+        required_attendances = math.ceil(self.classes_amount * self.minimum_attendance)
+        return self.classes_amount - required_attendances
+
+    def clean(self):
+        errors = {}
+        
+        if self.classes_amount is not None and self.classes_amount <= 0:
+            errors['classes_amount'] = 'classes_amount must be greater than 0'
+        
+        if self.minimum_attendance is not None:
+            if self.minimum_attendance < 0 or self.minimum_attendance > 1:
+                errors['minimum_attendance'] = 'minimum_attendance must be between 0 and 1'
+        
+        if errors:
+            raise ValidationError(errors)

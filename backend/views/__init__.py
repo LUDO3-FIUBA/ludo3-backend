@@ -26,6 +26,8 @@ from .teacher_profile_views import TeacherProfileViewSet
 from .teacher_role_views import TeacherRoleViewSet
 from .teacher_views import TeacherViews
 from .notification_views import NotificationViewSet
+from .notification_admin_views import NotificationAdminViewSet
+from .academic_calendar_event_views import AcademicCalendarEventViewSet
 from .department_views import DepartmentViewSet
 from .commission_admin_views import CommissionAdminViewSet
 from .user_admin_views import UserAdminViewSet
@@ -39,3 +41,4 @@ from .form_views import (
     SubmissionAdminViewSet,
     CatalogViewSet,
 )
+from .student_identity_views import StudentIdentityViewSet

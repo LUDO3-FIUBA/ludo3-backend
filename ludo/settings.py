@@ -33,6 +33,8 @@ SECRET_KEY="v4@)^40(m^%j-z)260(e7pw#9i2jyxmnx5bw7jh4%zr)&85lw_"
 DEBUG = int(os.environ.get("DEBUG", default=1))
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 CSRF_COOKIE_SECURE=False
 
@@ -50,6 +52,9 @@ CORS_ALLOW_CREDENTIALS = True
 # Allow all origins in development (temporary solution)
 # TODO: Remove in production
 CORS_ALLOW_ALL_ORIGINS = True
+
+BASE_URL = os.environ.get('BASE_URL', 'http://localhost:8000')
+FRONTEND_BASE_URL = os.environ.get('FRONTEND_BASE_URL', 'http://localhost:8081')
 
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 RESEND_FROM_EMAIL = os.environ.get('RESEND_FROM_EMAIL', 'onboarding@resend.dev')
@@ -210,9 +215,13 @@ if os.environ.get('DATABASE_URL'):
     import dj_database_url
     DATABASES['default'] = dj_database_url.config(
         default=os.environ['DATABASE_URL'],
-        conn_max_age=500,
+        conn_max_age=0,
         ssl_require=False
     )
+    # Supabase transaction pooler (port 6543) reuses connections per transaction
+    # via PgBouncer, which is incompatible with server-side cursors and persistent
+    # connections — required for shared-pool deployments.
+    DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
     # Use sslmode from the URL if present (e.g. ?sslmode=require for Supabase),
     # otherwise default to 'disable' for local development.
     if 'sslmode' not in os.environ.get('DATABASE_URL', ''):

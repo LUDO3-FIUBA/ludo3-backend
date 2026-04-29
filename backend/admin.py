@@ -1,6 +1,8 @@
+from django import forms
 from django.conf.urls import url
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
+from django.db import transaction
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import reverse
@@ -54,8 +56,6 @@ class PasswordResetOTPAdmin(admin.ModelAdmin):
         return False
 
 admin.site.register(Commission)
-admin.site.register(Semester)
-
 @memoized
 def subjects():
     return SiuService().list_subjects()
@@ -399,7 +399,7 @@ class FinalAdmin(admin.ModelAdmin):
     title = "Final"
     fields = ('subject_name', 'teacher', 'date', 'qrid')
     exclude = ('updated_at',)
-    readonly_fields = ('subject_name', 'subject_siu_id', 'date', 'qrid')
+    readonly_fields = ('subject_name', 'subject_siu_id', 'qrid')
     ordering = ('subject_name', 'teacher', 'date')
 
     def get_queryset(self, request):
@@ -455,3 +455,107 @@ class FinalAdmin(admin.ModelAdmin):
         file_response['Content-Disposition'] = f"attachment; filename={final.teacher.user.last_name}-{final.date.strftime('%Y-%m-%d_%H_%M')}.png"
         return file_response
     download_action.short_description="Descargar QR"
+
+
+RECIPIENT_GROUP_CHOICES = [
+    ('all', 'Todos los usuarios'),
+    ('students', 'Alumnos'),
+    ('teachers', 'Docentes'),
+    ('staff', 'Administrativos'),
+]
+
+
+class NotificationAdminForm(forms.ModelForm):
+    recipient_groups = forms.MultipleChoiceField(
+        choices=RECIPIENT_GROUP_CHOICES,
+        required=False,
+        label="Grupos destinatarios",
+        widget=forms.CheckboxSelectMultiple,
+    )
+    recipients = forms.ModelMultipleChoiceField(
+        queryset=User.objects.all(),
+        required=False,
+        label="Destinatarios individuales",
+        help_text="Usuarios específicos además de los grupos seleccionados.",
+    )
+
+    class Meta:
+        model = Notification
+        fields = ('title', 'message', 'is_urgent', 'send_push', 'send_email', 'image', 'recipient_groups', 'recipients')
+
+    def clean(self):
+        cleaned_data = super().clean()
+        if self.instance.pk is None:
+            groups = cleaned_data.get('recipient_groups')
+            recipients = cleaned_data.get('recipients')
+            if not groups and (not recipients or recipients.count() == 0):
+                raise forms.ValidationError("Debés seleccionar al menos un grupo o destinatario.")
+        return cleaned_data
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    form = NotificationAdminForm
+    list_display = ('title', 'sender', 'is_urgent', 'send_push', 'send_email', 'created_at', 'recipient_count')
+    search_fields = ('title', 'message', 'sender__first_name', 'sender__last_name', 'sender__dni')
+    readonly_fields = ('sender', 'created_at')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).prefetch_related('user_notifications')
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        form.base_fields['recipients'].queryset = User.objects.order_by('last_name', 'first_name')
+        return form
+
+    def save_model(self, request, obj, form, change):
+        recipient_groups = form.cleaned_data.get('recipient_groups', [])
+        recipients = form.cleaned_data.get('recipients')
+
+        with transaction.atomic():
+            is_new = obj.pk is None
+            if is_new:
+                obj.sender = request.user
+
+            super().save_model(request, obj, form, change)
+
+            if is_new:
+                from backend.views.notification_views import _resolve_recipients
+                individual_ids = list(recipients.values_list('id', flat=True)) if recipients else []
+                target_users = _resolve_recipients(recipient_groups, individual_ids)
+                UserNotification.objects.bulk_create([
+                    UserNotification(notification=obj, user=user)
+                    for user in target_users
+                ])
+
+    def recipient_count(self, obj):
+        return obj.user_notifications.count()
+    recipient_count.short_description = 'Destinatarios'
+
+
+@admin.register(UserNotification)
+class UserNotificationAdmin(admin.ModelAdmin):
+    list_display = ('notification', 'user', 'is_read')
+    list_filter = ('is_read',)
+    search_fields = ('notification__title', 'user__first_name', 'user__last_name', 'user__dni')
+class SemesterScheduleInline(admin.TabularInline):
+    model = SemesterSchedule
+    extra = 1
+    fields = ('day_of_week', 'start_time', 'end_time')
+
+
+class SemesterAdmin(admin.ModelAdmin):
+    list_display = ('__str__', 'commission', 'start_date', 'year_moment')
+    search_fields = ('commission__subject_name',)
+    inlines = [SemesterScheduleInline]
+
+
+admin.site.register(Semester, SemesterAdmin)
+
+
+@admin.register(AcademicCalendarEvent)
+class AcademicCalendarEventAdmin(admin.ModelAdmin):
+    list_display = ('name', 'category', 'year', 'start_date', 'end_date')
+    list_filter = ('category', 'year')
+    search_fields = ('name',)
+    ordering = ('year', 'start_date')

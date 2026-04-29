@@ -3,9 +3,9 @@ from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
-from rest_framework.exceptions import ValidationError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from backend.api_exceptions import ValidationError
 from backend.serializers.google_auth_serializer import (
     GoogleSignInSerializer, 
     GoogleRegistrationSerializer
