@@ -1,6 +1,8 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.db.models import Count, Prefetch
+from itertools import groupby
+from operator import itemgetter
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -11,7 +13,7 @@ from backend.permissions import IsStudent, IsTeacher
 from backend.serializers.semester_serializer import SemesterCommissionSerializer, SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
 from backend.views.base_view import BaseViewSet
-from backend.views.utils import get_current_semester, get_current_year, get_required_int_query_param
+from backend.views.utils import get_current_semester, get_current_year, get_required_int_query_param, teacher_not_in_commission_staff
 
 
 class SemesterViewSet(BaseViewSet):
@@ -53,14 +55,19 @@ class SemesterViewSet(BaseViewSet):
         ]
     )
     def commission_present_semester(self, request):
+        commission_id = get_required_int_query_param(request, 'commission_id')
         semester = self.get_queryset().filter(
-            commission=request.query_params['commission_id'],
+            commission=commission_id,
             start_date__year__gte=get_current_year(),
             year_moment=get_current_semester(),
         ).first()
 
         if not semester:
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
+        
+        teacher = request.user.teacher
+        if teacher_not_in_commission_staff(teacher, semester.commission):
+            return Response("Teacher not a member of this semester commission", status=status.HTTP_403_FORBIDDEN)
 
         attendance_qrs_count = semester.attendance_qrs.count()
         
@@ -68,13 +75,15 @@ class SemesterViewSet(BaseViewSet):
             semester.attendances.values('student_id').annotate(total=Count('id')).values_list('student_id', 'total')
         )
         
-        submissions = EvaluationSubmission.objects.filter(evaluation__semester=semester).select_related('evaluation')
+        submissions = EvaluationSubmission.objects.filter(
+            evaluation__semester=semester
+        ).values(
+            'student_id', 'evaluation_id', 'grade', 'submission_status'
+        ).order_by('student_id')
+
         submissions_by_student = {}
-        for submission in submissions:
-            student_id = submission.student_id
-            if student_id not in submissions_by_student:
-                submissions_by_student[student_id] = []
-            submissions_by_student[student_id].append(submission)
+        for student_id, group in groupby(submissions, key=itemgetter('student_id')):
+            submissions_by_student[student_id] = list(group)
 
         serializer = SemesterCommissionSerializer(
             semester,

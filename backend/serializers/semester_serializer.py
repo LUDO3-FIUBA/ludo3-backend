@@ -9,17 +9,10 @@ from .student_serializer import StudentSerializer
 from .semester_schedule_serializer import SemesterScheduleSerializer
 
 
-class SemesterSubmissionSerializer(serializers.ModelSerializer):
-    evaluation_id = serializers.SerializerMethodField()
+class SemesterSubmissionSerializer(serializers.Serializer):
+    evaluation_id = serializers.IntegerField()
     grade = serializers.IntegerField(allow_null=True)
     submission_status = serializers.CharField(allow_null=True)
-
-    class Meta:
-        model = EvaluationSubmission
-        fields = ('evaluation_id', 'grade', 'submission_status')
-
-    def get_evaluation_id(self, obj):
-        return obj.evaluation_id
 
 
 class SemesterSerializer(serializers.ModelSerializer):
