@@ -14,14 +14,18 @@ up-remote:
 	docker compose -f docker-compose.remote.yml up -d --build --remove-orphans
 .PHONY: up-remote
 
-docker-migrate:
+migrate:
 	docker exec -it web python3 manage.py migrate
 	docker exec -it web python3 manage.py initdata
-.PHONY: docker-migrate
+.PHONY: migrate
 
 down:
 	docker compose -f docker-compose.yml down
 .PHONY: down
+
+prune:
+	docker compose -f docker-compose.yml down --rmi all --volumes --remove-orphans
+.PHONY: prune
 
 test:
 	docker exec web python3 manage.py test
