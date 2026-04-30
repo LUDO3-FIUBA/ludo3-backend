@@ -22,7 +22,7 @@ def seed_form_types(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0053_merge_20260413_2247'),
+        ('backend', '0056_merge_20260420_0000'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
