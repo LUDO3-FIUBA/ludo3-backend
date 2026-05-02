@@ -311,7 +311,12 @@ class SubmissionAdminViewSet(BaseViewSet):
     )
     def update_status(self, request, pk=None):
         try:
-            submission = self.get_queryset().select_related('status').get(pk=pk)
+            submission = (
+                self.get_queryset()
+                .select_related('status', 'user__student')
+                .prefetch_related('answers__field')
+                .get(pk=pk)
+            )
         except FormSubmission.DoesNotExist:
             return Response({'detail': 'Respuesta no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
