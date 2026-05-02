@@ -82,13 +82,8 @@ class FormService:
         if not fields_data:
             raise ValidationError({'fields': ['Un formulario Digital debe tener al menos un campo.']})
 
-        adjunto_type = FormFieldType.objects.filter(form_field_type_value=FormFieldType.ADJUNTO).first()
-
         for field_data in fields_data:
             field_type = FormFieldType.objects.get(id=field_data['form_field_type_id'])
-
-            if field_type.id == adjunto_type.id:
-                raise ValidationError({'fields': ['Los formularios Digitales no pueden tener campos de tipo adjunto.']})
 
             catalog = None
             if field_type.form_field_type_value == FormFieldType.CATALOG:

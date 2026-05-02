@@ -209,15 +209,57 @@ class FormSubmissionViewSet(BaseViewSet):
         if not form:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        serializer = SubmissionCreateSerializer(data=request.data)
+        # Multipart requests send `answers` as a JSON string; parse it back.
+        import json
+        raw_answers = request.data.get('answers')
+        if isinstance(raw_answers, str):
+            try:
+                parsed = json.loads(raw_answers)
+            except json.JSONDecodeError:
+                return Response({'answers': ['Formato de respuestas inválido.']}, status=status.HTTP_400_BAD_REQUEST)
+            data_for_serializer = {'answers': parsed}
+        else:
+            data_for_serializer = request.data
+
+        serializer = SubmissionCreateSerializer(data=data_for_serializer)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        answers_data = list(serializer.validated_data['answers'])
+
+        # Handle adjunto file upload for digital forms with an adjunto field.
+        file_obj = request.FILES.get('file')
+        if file_obj:
+            adjunto_field = form.fields.filter(
+                form_field_type__form_field_type_value='adjunto',
+            ).first()
+            if adjunto_field is None:
+                return Response(
+                    {'detail': 'Este formulario no tiene un campo de tipo adjunto.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            # Missing Cloud Storage Support
+            import datetime
+            padron = request.user.student.padron if hasattr(request.user, 'student') else 'unknown'
+            timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+            filename = LocalStorageService.upload(
+                file_obj,
+                LocalStorageService.SUBMISSIONS,
+                subfolder=str(form.id),
+                name_prefix=f"{padron}_{timestamp}_",
+            )
+            url = LocalStorageService.absolute_url(request, LocalStorageService.SUBMISSIONS, filename)
+            existing = next((a for a in answers_data if a['field_id'] == adjunto_field.id), None)
+            if existing:
+                existing['answer_value'] = url
+            else:
+                answers_data.append({'field_id': adjunto_field.id, 'answer_value': url})
 
         try:
             submission = FormService().create_digital_submission(
                 form=form,
                 user=request.user,
-                answers_data=serializer.validated_data['answers'],
+                answers_data=answers_data,
             )
         except ValidationError as e:
             return Response(e.message_dict if hasattr(e, 'message_dict') else e.messages,
