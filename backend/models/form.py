@@ -15,6 +15,7 @@ class Form(models.Model):
     form_type = models.ForeignKey(
         FormType, on_delete=models.CASCADE, related_name='forms', verbose_name="Tipo de formulario"
     )
+    requires_teacher_validation = models.BooleanField(default=False, verbose_name="Requiere validación docente")
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")
 
     class Meta:

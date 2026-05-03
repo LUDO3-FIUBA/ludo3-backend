@@ -39,6 +39,7 @@ from .form_views import (
     FormViewSet,
     FormSubmissionViewSet,
     SubmissionAdminViewSet,
+    TeacherFormSubmissionViewSet,
     CatalogViewSet,
 )
 from .student_identity_views import StudentIdentityViewSet

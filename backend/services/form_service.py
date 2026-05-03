@@ -30,6 +30,7 @@ class FormService:
             form_information=validated_data.get('form_information'),
             form_procedure=form_procedure,
             form_type=form_type,
+            requires_teacher_validation=validated_data.get('requires_teacher_validation', False),
         )
 
         if form_type.form_type_value == DOCUMENTO:
@@ -49,6 +50,7 @@ class FormService:
         form.form_information = validated_data.get('form_information')
         form.form_procedure = form_procedure
         form.form_type = form_type
+        form.requires_teacher_validation = validated_data.get('requires_teacher_validation', False)
         form.save()
 
         FormField.objects.filter(form=form).delete()
@@ -119,7 +121,7 @@ class FormService:
                     )
 
     @transaction.atomic
-    def create_digital_submission(self, form: Form, user, answers_data: list) -> FormSubmission:
+    def create_digital_submission(self, form: Form, user, answers_data: list, teacher=None) -> FormSubmission:
         form_type = form.form_type.form_type_value
         if form_type != DIGITAL:
             raise ValidationError({'form': ['Este formulario no es de tipo Digital.']})
@@ -135,7 +137,13 @@ class FormService:
         sent_status = FormSubmissionStatus.objects.get(
             form_submission_status_value=FormSubmissionStatus.SENT,
         )
-        submission = FormSubmission.objects.create(form=form, user=user, status=sent_status)
+        submission = FormSubmission.objects.create(
+            form=form,
+            user=user,
+            status=sent_status,
+            teacher=teacher,
+            teacher_status=FormSubmission.TEACHER_STATUS_PENDING if teacher else None,
+        )
 
         for answer_data in answers_data:
             field_id = answer_data['field_id']

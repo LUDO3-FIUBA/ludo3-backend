@@ -16,7 +16,8 @@ from backend.models.form_types import (
     FormSubmissionStatus,
     FormType,
 )
-from backend.permissions import IsAdmin, IsStudent
+from backend.models.teacher import Teacher
+from backend.permissions import IsAdmin, IsStudent, IsTeacher
 from backend.serializers.form_serializer import (
     CatalogItemSerializer,
     CatalogSerializer,
@@ -30,6 +31,7 @@ from backend.serializers.form_serializer import (
     FormTypeSerializer,
     SubmissionCreateSerializer,
     SubmissionStatusUpdateSerializer,
+    TeacherValidationUpdateSerializer,
 )
 from backend.services.form_service import FormService
 from backend.services.local_storage_service import LocalStorageService
@@ -50,6 +52,35 @@ def _maybe_upload_template(request, data):
         request, LocalStorageService.MODELS, filename,
     )
     return mutable
+
+
+def _resolve_teacher(request, form):
+    """Extract and validate teacher_id from request if form requires teacher validation.
+    Returns (teacher, error_response) — one will always be None."""
+    if not form.requires_teacher_validation:
+        return None, None
+    teacher_id_raw = request.data.get('teacher_id')
+    if not teacher_id_raw:
+        return None, Response(
+            {'teacher_id': ['Este formulario requiere la selección de un docente validador.']},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    try:
+        return Teacher.objects.get(pk=int(teacher_id_raw)), None
+    except (Teacher.DoesNotExist, ValueError, TypeError):
+        return None, Response(
+            {'teacher_id': ['Docente no encontrado.']},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+
+def _fetch_submission_full(pk):
+    return (
+        FormSubmission.objects
+        .select_related('form', 'user__student', 'status', 'teacher__user')
+        .prefetch_related('answers__field')
+        .get(pk=pk)
+    )
 
 
 class FormTypeViewSet(BaseViewSet):
@@ -193,7 +224,7 @@ class FormSubmissionViewSet(BaseViewSet):
         submissions = (
             FormSubmission.objects
             .filter(form=form)
-            .select_related('user__student', 'status')
+            .select_related('form', 'user__student', 'status', 'teacher__user')
             .prefetch_related('answers__field')
             .order_by('-submitted_at')
         )
@@ -208,6 +239,10 @@ class FormSubmissionViewSet(BaseViewSet):
         form = self._get_form(form_pk)
         if not form:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        teacher, err = _resolve_teacher(request, form)
+        if err:
+            return err
 
         # Multipart requests send `answers` as a JSON string; parse it back.
         import json
@@ -260,12 +295,14 @@ class FormSubmissionViewSet(BaseViewSet):
                 form=form,
                 user=request.user,
                 answers_data=answers_data,
+                teacher=teacher,
             )
         except ValidationError as e:
             return Response(e.message_dict if hasattr(e, 'message_dict') else e.messages,
                             status=status.HTTP_400_BAD_REQUEST)
 
-        return Response(FormSubmissionListSerializer(submission).data, status=status.HTTP_201_CREATED)
+        return Response(FormSubmissionListSerializer(_fetch_submission_full(submission.pk)).data,
+                        status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['POST'], permission_classes=[IsAuthenticated, IsStudent],
             parser_classes=[MultiPartParser, FormParser])
@@ -280,6 +317,10 @@ class FormSubmissionViewSet(BaseViewSet):
 
         if form.form_type.form_type_value != 'Documento':
             return Response({'detail': 'Este formulario no es de tipo Documento.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        teacher, err = _resolve_teacher(request, form)
+        if err:
+            return err
 
         file_obj = request.FILES.get('file')
         if file_obj is None:
@@ -307,11 +348,18 @@ class FormSubmissionViewSet(BaseViewSet):
         sent_status = FormSubmissionStatus.objects.get(
             form_submission_status_value=FormSubmissionStatus.SENT,
         )
-        submission = FormSubmission.objects.create(form=form, user=request.user, status=sent_status)
+        submission = FormSubmission.objects.create(
+            form=form,
+            user=request.user,
+            status=sent_status,
+            teacher=teacher,
+            teacher_status=FormSubmission.TEACHER_STATUS_PENDING if teacher else None,
+        )
         from backend.models.form_submission import FormAnswer
         FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=url)
 
-        return Response(FormSubmissionListSerializer(submission).data, status=status.HTTP_201_CREATED)
+        return Response(FormSubmissionListSerializer(_fetch_submission_full(submission.pk)).data,
+                        status=status.HTTP_201_CREATED)
 
     @action(detail=False, methods=['GET'], permission_classes=[IsAuthenticated])
     @swagger_auto_schema(
@@ -325,7 +373,7 @@ class FormSubmissionViewSet(BaseViewSet):
         submissions = (
             FormSubmission.objects
             .filter(form=form, user=request.user)
-            .select_related('user__student', 'status')
+            .select_related('form', 'user__student', 'status', 'teacher__user')
             .prefetch_related('answers__field')
             .order_by('-submitted_at')
         )
@@ -355,7 +403,7 @@ class SubmissionAdminViewSet(BaseViewSet):
         try:
             submission = (
                 self.get_queryset()
-                .select_related('status', 'user__student')
+                .select_related('form', 'status', 'user__student', 'teacher__user')
                 .prefetch_related('answers__field')
                 .get(pk=pk)
             )
@@ -366,12 +414,66 @@ class SubmissionAdminViewSet(BaseViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        new_status_value = serializer.validated_data['status']
+
+        if new_status_value == FormSubmissionStatus.APPROVED:
+            if (submission.form.requires_teacher_validation and
+                    submission.teacher_status != FormSubmission.TEACHER_STATUS_APPROVED):
+                return Response(
+                    {'detail': 'Esta respuesta requiere aprobación docente antes de poder ser aprobada.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         new_status = FormSubmissionStatus.objects.get(
-            form_submission_status_value=serializer.validated_data['status'],
+            form_submission_status_value=new_status_value,
         )
         submission.status = new_status
         submission.save(update_fields=['status'])
         return Response(FormSubmissionListSerializer(submission).data, status=status.HTTP_200_OK)
+
+
+class TeacherFormSubmissionViewSet(BaseViewSet):
+    """Teacher-facing viewset: see and validate form submissions assigned to this teacher."""
+    permission_classes = [IsAuthenticated, IsTeacher]
+
+    def _get_queryset(self, request):
+        return (
+            FormSubmission.objects
+            .filter(teacher=request.user.teacher)
+            .select_related('form', 'user__student', 'status', 'teacher__user')
+            .prefetch_related('answers__field')
+            .order_by('-submitted_at')
+        )
+
+    @swagger_auto_schema(
+        tags=["Formularios — Docente"],
+        operation_summary="Lista las respuestas de formularios asignadas al docente autenticado",
+    )
+    def list(self, request):
+        return Response(FormSubmissionListSerializer(self._get_queryset(request), many=True).data)
+
+    @action(detail=True, methods=['PATCH'], url_path='teacher-status')
+    @swagger_auto_schema(
+        tags=["Formularios — Docente"],
+        operation_summary="El docente aprueba o rechaza una respuesta asignada a él",
+        request_body=TeacherValidationUpdateSerializer,
+    )
+    def update_teacher_status(self, request, pk=None):
+        try:
+            submission = self._get_queryset(request).get(pk=pk)
+        except FormSubmission.DoesNotExist:
+            return Response({'detail': 'Respuesta no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = TeacherValidationUpdateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        submission.teacher_status = serializer.validated_data['teacher_status']
+        submission.teacher_comment = serializer.validated_data.get('teacher_comment', '')
+        submission.save(update_fields=['teacher_status', 'teacher_comment'])
+
+        return Response(FormSubmissionListSerializer(self._get_queryset(request).get(pk=pk)).data,
+                        status=status.HTTP_200_OK)
 
 
 class FormSubmissionStatusViewSet(BaseViewSet):

@@ -46,6 +46,7 @@ router.register(r'form-field-types', views.FormFieldTypeViewSet, 'form-field-typ
 router.register(r'form-submission-statuses', views.FormSubmissionStatusViewSet, 'form-submission-status')
 router.register(r'forms', views.FormViewSet, 'form')
 router.register(r'submissions', views.SubmissionAdminViewSet, 'submission')
+router.register(r'teacher/form-submissions', views.TeacherFormSubmissionViewSet, 'teacher-form-submission')
 router.register(r'catalogs', views.CatalogViewSet, 'catalog')
 router.register(r'student_identity', views.StudentIdentityViewSet, 'student-identity')
 router.register(r'admin/notifications', views.NotificationAdminViewSet, 'admin-notification')

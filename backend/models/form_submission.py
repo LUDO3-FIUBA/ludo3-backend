@@ -7,6 +7,15 @@ from .user import User
 
 
 class FormSubmission(models.Model):
+    TEACHER_STATUS_PENDING = 'pending'
+    TEACHER_STATUS_APPROVED = 'approved'
+    TEACHER_STATUS_DENIED = 'denied'
+    TEACHER_STATUS_CHOICES = [
+        (TEACHER_STATUS_PENDING, 'Pendiente'),
+        (TEACHER_STATUS_APPROVED, 'Aprobado'),
+        (TEACHER_STATUS_DENIED, 'Rechazado'),
+    ]
+
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='submissions', verbose_name="Formulario")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='form_submissions', verbose_name="Usuario")
     submitted_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Enviado en")
@@ -16,6 +25,22 @@ class FormSubmission(models.Model):
         related_name='submissions',
         verbose_name="Estado",
     )
+    teacher = models.ForeignKey(
+        'Teacher',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='form_validations',
+        verbose_name="Docente validador",
+    )
+    teacher_status = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        choices=TEACHER_STATUS_CHOICES,
+        verbose_name="Estado de validación docente",
+    )
+    teacher_comment = models.TextField(null=True, blank=True, verbose_name="Comentario del docente")
 
     class Meta:
         verbose_name = "Respuesta de formulario"

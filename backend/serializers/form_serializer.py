@@ -133,7 +133,8 @@ class FormListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Form
-        fields = ['form_id', 'form_name', 'form_description', 'form_procedure', 'form_type', 'created_at']
+        fields = ['form_id', 'form_name', 'form_description', 'form_procedure', 'form_type',
+                  'requires_teacher_validation', 'created_at']
 
 
 class FormDetailSerializer(serializers.ModelSerializer):
@@ -146,7 +147,7 @@ class FormDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Form
         fields = ['form_id', 'form_name', 'form_description', 'form_information',
-                  'form_procedure', 'form_type', 'fields', 'document_source']
+                  'form_procedure', 'form_type', 'requires_teacher_validation', 'fields', 'document_source']
 
     def get_document_source(self, obj):
         try:
@@ -177,6 +178,7 @@ class FormCreateSerializer(serializers.Serializer):
     form_information = serializers.CharField(allow_null=True, allow_blank=True, required=False)
     form_procedure_id = serializers.IntegerField()
     form_type_id = serializers.IntegerField()
+    requires_teacher_validation = serializers.BooleanField(default=False, required=False)
     document_source = serializers.URLField(allow_null=True, required=False)
     fields = FormFieldCreateSerializer(many=True, required=False, default=list)
 
@@ -225,12 +227,25 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
     student_padron = serializers.SerializerMethodField()
     status = FormSubmissionStatusSerializer(read_only=True)
     answers = FormAnswerReadSerializer(many=True, read_only=True)
+    form_id = serializers.IntegerField(source='form.id', read_only=True)
+    form_name = serializers.CharField(source='form.form_name', read_only=True)
+    form_requires_teacher_validation = serializers.BooleanField(
+        source='form.requires_teacher_validation', read_only=True
+    )
+    teacher_id = serializers.SerializerMethodField()
+    teacher_first_name = serializers.SerializerMethodField()
+    teacher_last_name = serializers.SerializerMethodField()
 
     class Meta:
         model = FormSubmission
-        fields = ['submission_id', 'user_id', 'email', 'first_name', 'last_name', 'role',
-                  'student_first_name', 'student_last_name',
-                  'student_padron', 'submitted_at', 'status', 'answers']
+        fields = [
+            'submission_id', 'user_id', 'email', 'first_name', 'last_name', 'role',
+            'student_first_name', 'student_last_name', 'student_padron',
+            'submitted_at', 'status', 'answers',
+            'form_id', 'form_name', 'form_requires_teacher_validation',
+            'teacher_id', 'teacher_first_name', 'teacher_last_name',
+            'teacher_status', 'teacher_comment',
+        ]
 
     def get_student_padron(self, obj):
         if obj.user.is_student:
@@ -245,3 +260,24 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
         if obj.user.is_student:
             return 'student'
         return 'unknown'
+
+    def get_teacher_id(self, obj):
+        return obj.teacher.user.id if obj.teacher else None
+
+    def get_teacher_first_name(self, obj):
+        return obj.teacher.user.first_name if obj.teacher else None
+
+    def get_teacher_last_name(self, obj):
+        return obj.teacher.user.last_name if obj.teacher else None
+
+
+class TeacherValidationUpdateSerializer(serializers.Serializer):
+    teacher_status = serializers.CharField(max_length=20)
+    teacher_comment = serializers.CharField(allow_blank=True, required=False, default='')
+
+    def validate_teacher_status(self, value):
+        if value not in ('approved', 'denied'):
+            raise serializers.ValidationError(
+                "Estado docente inválido. Valores permitidos: 'approved', 'denied'."
+            )
+        return value
