@@ -1,3 +1,8 @@
+import datetime
+import json
+import os
+import uuid
+
 from django.core.exceptions import ValidationError
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -33,24 +38,29 @@ from backend.serializers.form_serializer import (
     SubmissionStatusUpdateSerializer,
     TeacherValidationUpdateSerializer,
 )
+from backend.services.aws_s3_service import AwsS3Service
 from backend.services.form_service import FormService
-from backend.services.local_storage_service import LocalStorageService
 from backend.views.base_view import BaseViewSet
+
+_ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx'}
+
+
+def _safe_ext(filename: str) -> str:
+    ext = os.path.splitext(filename)[1].lower()
+    return ext if ext in _ALLOWED_EXTENSIONS else ''
 
 
 def _maybe_upload_template(request, data):
-    """If the request includes a `document_source_file`, save it locally and
+    """If the request includes a `document_source_file`, upload it to S3 and
     inject the resulting URL into `data['document_source']`. Returns mutated data.
     Falls through unchanged if only a URL was sent (CMS link, backward compat)."""
-    # Missing Cloud Storage Support
     file_obj = request.FILES.get('document_source_file')
     if file_obj is None:
         return data
-    filename = LocalStorageService.upload(file_obj, LocalStorageService.MODELS)
+    key = f"models/{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
+    url = AwsS3Service().upload_object(file_obj, key)
     mutable = data.copy() if hasattr(data, 'copy') else dict(data)
-    mutable['document_source'] = LocalStorageService.absolute_url(
-        request, LocalStorageService.MODELS, filename,
-    )
+    mutable['document_source'] = url
     return mutable
 
 
@@ -245,7 +255,6 @@ class FormSubmissionViewSet(BaseViewSet):
             return err
 
         # Multipart requests send `answers` as a JSON string; parse it back.
-        import json
         raw_answers = request.data.get('answers')
         if isinstance(raw_answers, str):
             try:
@@ -273,17 +282,10 @@ class FormSubmissionViewSet(BaseViewSet):
                     {'detail': 'Este formulario no tiene un campo de tipo adjunto.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            # Missing Cloud Storage Support
-            import datetime
             padron = request.user.student.padron if hasattr(request.user, 'student') else 'unknown'
             timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-            filename = LocalStorageService.upload(
-                file_obj,
-                LocalStorageService.SUBMISSIONS,
-                subfolder=str(form.id),
-                name_prefix=f"{padron}_{timestamp}_",
-            )
-            url = LocalStorageService.absolute_url(request, LocalStorageService.SUBMISSIONS, filename)
+            key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
+            url = AwsS3Service().upload_object(file_obj, key)
             existing = next((a for a in answers_data if a['field_id'] == adjunto_field.id), None)
             if existing:
                 existing['answer_value'] = url
@@ -333,17 +335,10 @@ class FormSubmissionViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Missing Cloud Storage Support
-        import datetime
         padron = request.user.student.padron if request.user.is_student else 'unknown'
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        filename = LocalStorageService.upload(
-            file_obj,
-            LocalStorageService.SUBMISSIONS,
-            subfolder=str(form.id),
-            name_prefix=f"{padron}_{timestamp}_",
-        )
-        url = LocalStorageService.absolute_url(request, LocalStorageService.SUBMISSIONS, filename)
+        key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
+        url = AwsS3Service().upload_object(file_obj, key)
 
         sent_status = FormSubmissionStatus.objects.get(
             form_submission_status_value=FormSubmissionStatus.SENT,
@@ -355,7 +350,7 @@ class FormSubmissionViewSet(BaseViewSet):
             teacher=teacher,
             teacher_status=FormSubmission.TEACHER_STATUS_PENDING if teacher else None,
         )
-        from backend.models.form_submission import FormAnswer
+        from backend.models.form_submission import FormAnswer  # local import avoids circular ref
         FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=url)
 
         return Response(FormSubmissionListSerializer(_fetch_submission_full(submission.pk)).data,
@@ -387,9 +382,25 @@ class SubmissionAdminViewSet(BaseViewSet):
     @swagger_auto_schema(tags=["Formularios — Respuestas"], operation_summary="Elimina una respuesta (admin)")
     def destroy(self, request, pk=None):
         try:
-            submission = self.get_queryset().get(pk=pk)
+            submission = (
+                self.get_queryset()
+                .prefetch_related('answers__field__form_field_type')
+                .get(pk=pk)
+            )
         except FormSubmission.DoesNotExist:
             return Response({'detail': 'Respuesta no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+        s3 = AwsS3Service()
+        for answer in submission.answers.all():
+            if (answer.field.form_field_type.form_field_type_value == 'adjunto'
+                    and answer.answer_value):
+                key = s3.key_from_url(answer.answer_value)
+                if key:
+                    try:
+                        s3.delete_object(key)
+                    except Exception:
+                        pass
+
         submission.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
