@@ -27,6 +27,9 @@ prune:
 	docker compose -f docker-compose.yml down --rmi all --volumes --remove-orphans
 .PHONY: prune
 
+restart: down up-local
+.PHONY: restart
+
 test:
 	docker exec web python3 manage.py test
 .PHONY: test
