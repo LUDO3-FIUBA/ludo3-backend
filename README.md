@@ -148,6 +148,76 @@ ludo_dev=# \d backend_user
  updated_at   | timestamp with time zone |           | not null |
 ```
 
+## AWS S3 Configuration
+
+File uploads (form PDF templates and submission attachments) are stored in an AWS S3 bucket. The following variables in `.env` control this:
+
+| Variable | Description |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | IAM user access key |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret key |
+| `AWS_BUCKET_NAME` | S3 bucket name (e.g. `s3-ludo3-demo`) |
+| `AWS_DOMAIN_URL` | Public read URL of the bucket (e.g. `https://s3-ludo3-demo.s3.us-east-2.amazonaws.com`) |
+| `USE_LOCAL_STORAGE` | Set to `true` to skip S3 and store files on disk instead (see below) ONLY FOR DEVELOP |
+
+### Required IAM permissions
+
+The IAM user must have the following policy attached (IAM → Users → `<user>` → Add permissions → JSON):
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::<bucket-name>",
+        "arn:aws:s3:::<bucket-name>/*"
+      ]
+    }
+  ]
+}
+```
+
+Replace `<bucket-name>` with the value of `AWS_BUCKET_NAME`.
+
+### Verifying S3 access
+
+Run this from inside the container to confirm credentials and permissions are working:
+
+```bash
+docker exec web python3 -c "
+import boto3, os
+c = boto3.client('s3',
+    aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'],
+    aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
+c.put_object(Bucket=os.environ['AWS_BUCKET_NAME'], Key='__test__.txt', Body=b'ok', ContentLength=2)
+print('PutObject: OK')
+c.delete_object(Bucket=os.environ['AWS_BUCKET_NAME'], Key='__test__.txt')
+print('DeleteObject: OK')
+"
+```
+
+### Local development without S3
+
+Set `USE_LOCAL_STORAGE=true` in `.env` to store files on the local filesystem instead of S3. Files are saved under `ludo3-backend/media/` and served by Django at `http://localhost:8007/media/…`. No AWS credentials are needed in this mode.
+
+After changing `.env`, recreate the container to pick up the new value:
+
+```bash
+make restart
+```
+
+> **Note:** `docker compose restart` does **not** reload `env_file` variables — the container must be recreated.
+
+------------------------------------------------------------------------------------------
+
 ## API Specification
 
 ------------------------------------------------------------------------------------------
