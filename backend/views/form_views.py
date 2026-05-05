@@ -38,7 +38,7 @@ from backend.serializers.form_serializer import (
     SubmissionStatusUpdateSerializer,
     TeacherValidationUpdateSerializer,
 )
-from backend.services.aws_s3_service import AwsS3Service
+from backend.services.aws_s3_service import get_file_upload_service
 from backend.services.form_service import FormService
 from backend.views.base_view import BaseViewSet
 
@@ -58,7 +58,7 @@ def _maybe_upload_template(request, data):
     if file_obj is None:
         return data
     key = f"models/{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
-    url = AwsS3Service().upload_object(file_obj, key)
+    url = get_file_upload_service().upload_object(file_obj, key)
     mutable = data.copy() if hasattr(data, 'copy') else dict(data)
     mutable['document_source'] = url
     return mutable
@@ -200,6 +200,24 @@ class FormViewSet(BaseViewSet):
 
         return Response(FormDetailSerializer(updated_form).data, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['GET'], permission_classes=[IsAuthenticated], url_path='presign-document')
+    @swagger_auto_schema(
+        tags=["Formularios"],
+        operation_summary="Genera una URL prefirmada para descargar un documento de formulario",
+        manual_parameters=[
+            openapi.Parameter('url', openapi.IN_QUERY, type=openapi.TYPE_STRING,
+                              description="URL del documento a prefirmar")
+        ],
+    )
+    def presign_document(self, request):
+        url = request.query_params.get('url')
+        if not url:
+            return Response({'detail': 'El parámetro url es obligatorio.'}, status=status.HTTP_400_BAD_REQUEST)
+        presigned = get_file_upload_service().presign_url(url)
+        if not presigned:
+            return Response({'detail': 'No se pudo generar la URL prefirmada.'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'url': presigned})
+
     @swagger_auto_schema(tags=["Formularios"], operation_summary="Elimina un formulario (admin)")
     def destroy(self, request, pk=None):
         try:
@@ -285,7 +303,7 @@ class FormSubmissionViewSet(BaseViewSet):
             padron = request.user.student.padron if hasattr(request.user, 'student') else 'unknown'
             timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
             key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
-            url = AwsS3Service().upload_object(file_obj, key)
+            url = get_file_upload_service().upload_object(file_obj, key)
             existing = next((a for a in answers_data if a['field_id'] == adjunto_field.id), None)
             if existing:
                 existing['answer_value'] = url
@@ -338,7 +356,7 @@ class FormSubmissionViewSet(BaseViewSet):
         padron = request.user.student.padron if request.user.is_student else 'unknown'
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
-        url = AwsS3Service().upload_object(file_obj, key)
+        url = get_file_upload_service().upload_object(file_obj, key)
 
         sent_status = FormSubmissionStatus.objects.get(
             form_submission_status_value=FormSubmissionStatus.SENT,
@@ -390,14 +408,14 @@ class SubmissionAdminViewSet(BaseViewSet):
         except FormSubmission.DoesNotExist:
             return Response({'detail': 'Respuesta no encontrada.'}, status=status.HTTP_404_NOT_FOUND)
 
-        s3 = AwsS3Service()
+        storage = get_file_upload_service()
         for answer in submission.answers.all():
             if (answer.field.form_field_type.form_field_type_value == 'adjunto'
                     and answer.answer_value):
-                key = s3.key_from_url(answer.answer_value)
+                key = storage.key_from_url(answer.answer_value)
                 if key:
                     try:
-                        s3.delete_object(key)
+                        storage.delete_object(key)
                     except Exception:
                         pass
 

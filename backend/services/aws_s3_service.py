@@ -1,8 +1,10 @@
 import io
 import os
+import pathlib
 from typing import Optional
 
 import boto3
+from botocore.config import Config
 
 from backend.utils import decode_image
 
@@ -14,11 +16,18 @@ class AwsS3Service:
             aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
             endpoint_url=os.getenv("AWS_ENDPOINT_URL"),
+            region_name=os.getenv("AWS_REGION", "us-east-1"),
+            config=Config(signature_version='s3v4'),
         )
         self.bucket = os.environ["AWS_BUCKET_NAME"]
         domain = os.getenv("AWS_DOMAIN_URL") or os.getenv("AWS_PUBLIC_READ_DOMAIN")
         if domain:
-            self.public_read_domain = domain.rstrip('/').removeprefix('https://').removeprefix('http://')
+            stripped = domain.rstrip('/')
+            for prefix in ('https://', 'http://'):
+                if stripped.startswith(prefix):
+                    stripped = stripped[len(prefix):]
+                    break
+            self.public_read_domain = stripped
         else:
             self.public_read_domain = f"{self.bucket}.s3.amazonaws.com"
 
@@ -56,3 +65,50 @@ class AwsS3Service:
         if url.startswith(prefix):
             return url[len(prefix):]
         return None
+
+    def presign_url(self, url: str, expiration: int = 3600) -> Optional[str]:
+        """Returns a presigned URL for the given public bucket URL, or None if the key can't be extracted."""
+        key = self.key_from_url(url)
+        if not key:
+            return None
+        return self.generate_presigned_url(key, expiration)
+
+
+class LocalStorageService:
+    """File storage backed by the local filesystem. Used when USE_LOCAL_STORAGE=true."""
+
+    def _media_root(self) -> pathlib.Path:
+        from django.conf import settings
+        return pathlib.Path(settings.MEDIA_ROOT)
+
+    def _base_url(self) -> str:
+        from django.conf import settings
+        return settings.BASE_URL.rstrip('/') + settings.MEDIA_URL
+
+    def upload_object(self, file_obj, file_name: str) -> str:
+        dest = self._media_root() / file_name
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(file_obj.read())
+        return self._base_url() + file_name
+
+    def delete_object(self, file_name: str) -> None:
+        p = self._media_root() / file_name
+        if p.exists():
+            p.unlink()
+
+    def key_from_url(self, url: str) -> Optional[str]:
+        prefix = self._base_url()
+        if url and url.startswith(prefix):
+            return url[len(prefix):]
+        return None
+
+    def presign_url(self, url: str, **_kwargs) -> Optional[str]:
+        """Local files are already accessible; return the URL unchanged."""
+        return url if url else None
+
+
+def get_file_upload_service():
+    """Return LocalStorageService when USE_LOCAL_STORAGE=true, otherwise AwsS3Service."""
+    if os.environ.get('USE_LOCAL_STORAGE', '').lower() == 'true':
+        return LocalStorageService()
+    return AwsS3Service()
