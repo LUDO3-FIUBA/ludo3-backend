@@ -67,10 +67,15 @@ class AwsS3Service:
         return None
 
     def presign_url(self, url: str, expiration: int = 3600) -> Optional[str]:
-        """Returns a presigned URL for the given public bucket URL, or None if the key can't be extracted."""
+        """Returns a presigned URL for the given public bucket URL.
+
+        For URLs outside the configured S3 bucket (e.g. external public links
+        stored as a form's document_source), the URL is returned unchanged."""
+        if not url:
+            return None
         key = self.key_from_url(url)
         if not key:
-            return None
+            return url
         return self.generate_presigned_url(key, expiration)
 
 
