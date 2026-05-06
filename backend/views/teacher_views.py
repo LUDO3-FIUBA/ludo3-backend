@@ -20,10 +20,10 @@ class TeacherViews(BaseViewSet):
 
     @swagger_auto_schema(
         tags=["Teachers"],
-        queryset = Teacher.objects.all()
+        operation_summary="Listar todos los docentes"
     )
     def list(self, request):
-        return Response(self.get_serializer(self.get_queryset(), many=True).data, status=status.HTTP_201_CREATED)
+        return Response(self.get_serializer(self.get_queryset(), many=True).data, status=status.HTTP_200_OK)
 
     @swagger_auto_schema(
         tags=["Teachers"],

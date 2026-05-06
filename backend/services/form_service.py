@@ -168,6 +168,8 @@ class FormService:
         field_type = field.form_field_type.form_field_type_value
 
         if value is None or value == '':
+            if field.form_field_require:
+                raise ValidationError({'answers': [f'El campo "{field.form_field_label}" es obligatorio.']})
             return
 
         if field_type == FormFieldType.NUMERO:
@@ -177,7 +179,7 @@ class FormService:
                 raise ValidationError({'answers': [f'El campo "{field.form_field_label}" debe ser numérico.']})
 
         elif field_type == FormFieldType.PADRON:
-            if not re.fullmatch(r'\d{5,7}', str(value)):
+            if not isinstance(value, str) or not re.fullmatch(r'\d{5,7}', value):
                 raise ValidationError({'answers': [f'El campo "{field.form_field_label}" debe ser un padrón válido (5-7 dígitos).']})
 
         elif field_type == FormFieldType.MAIL:

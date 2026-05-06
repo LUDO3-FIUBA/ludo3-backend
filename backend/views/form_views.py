@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import os
 import uuid
 
@@ -14,7 +15,7 @@ from rest_framework.response import Response
 
 from backend.models.catalog import Catalog, CatalogItem
 from backend.models.form import Form
-from backend.models.form_submission import FormSubmission
+from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import (
     FormFieldType,
     FormProcedureType,
@@ -39,8 +40,11 @@ from backend.serializers.form_serializer import (
     TeacherValidationUpdateSerializer,
 )
 from backend.services.aws_s3_service import get_file_upload_service
+from botocore.exceptions import ClientError
 from backend.services.form_service import FormService
 from backend.views.base_view import BaseViewSet
+
+logger = logging.getLogger(__name__)
 
 _ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx'}
 
@@ -230,7 +234,7 @@ class FormSubmissionViewSet(BaseViewSet):
     """
     Handles operations for form submissions, nested under /forms/{form_pk}/submissions/.
     Includes specific permission logic where listing all submissions is restricted to
-    admins, while creating or viewing own submissions requires student access.
+    admins, while creating or viewing own submissions requires any authenticated user.
     """
 
     def get_permissions(self):
@@ -371,7 +375,6 @@ class FormSubmissionViewSet(BaseViewSet):
             teacher=teacher,
             teacher_status=FormSubmission.TEACHER_STATUS_PENDING if teacher else None,
         )
-        from backend.models.form_submission import FormAnswer  # local import avoids circular ref
         FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=url)
 
         return Response(FormSubmissionListSerializer(_fetch_submission_full(submission.pk)).data,
@@ -419,8 +422,8 @@ class SubmissionAdminViewSet(BaseViewSet):
                 if key:
                     try:
                         storage.delete_object(key)
-                    except Exception:
-                        pass
+                    except ClientError as e:
+                        logger.warning('Failed to delete file %s during submission deletion: %s', key, e)
 
         submission.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

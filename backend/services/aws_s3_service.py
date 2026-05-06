@@ -1,3 +1,4 @@
+import functools
 import os
 import io
 import pathlib
@@ -5,6 +6,7 @@ from typing import Optional
 
 import boto3
 from botocore.config import Config
+from django.conf import settings
 
 from backend.utils import decode_image
 
@@ -82,27 +84,23 @@ class AwsS3Service:
 class LocalStorageService:
     """File storage backed by the local filesystem. Used when USE_LOCAL_STORAGE=true."""
 
-    def _media_root(self) -> pathlib.Path:
-        from django.conf import settings
-        return pathlib.Path(settings.MEDIA_ROOT)
-
-    def _base_url(self) -> str:
-        from django.conf import settings
-        return settings.BASE_URL.rstrip('/') + settings.MEDIA_URL
+    def __init__(self):
+        self._media_root = pathlib.Path(settings.MEDIA_ROOT)
+        self._base_url = settings.BASE_URL.rstrip('/') + settings.MEDIA_URL
 
     def upload_object(self, file_obj, file_name: str) -> str:
-        dest = self._media_root() / file_name
+        dest = self._media_root / file_name
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(file_obj.read())
-        return self._base_url() + file_name
+        return self._base_url + file_name
 
     def delete_object(self, file_name: str) -> None:
-        p = self._media_root() / file_name
+        p = self._media_root / file_name
         if p.exists():
             p.unlink()
 
     def key_from_url(self, url: str) -> Optional[str]:
-        prefix = self._base_url()
+        prefix = self._base_url
         if url and url.startswith(prefix):
             return url[len(prefix):]
         return None
@@ -112,6 +110,7 @@ class LocalStorageService:
         return url if url else None
 
 
+@functools.lru_cache(maxsize=None)
 def get_file_upload_service():
     """Return LocalStorageService when USE_LOCAL_STORAGE=true, otherwise AwsS3Service."""
     if os.environ.get('USE_LOCAL_STORAGE', '').lower() == 'true':
