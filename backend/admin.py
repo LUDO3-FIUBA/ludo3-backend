@@ -559,3 +559,16 @@ class AcademicCalendarEventAdmin(admin.ModelAdmin):
     list_filter = ('category', 'year')
     search_fields = ('name',)
     ordering = ('year', 'start_date')
+
+
+@admin.register(News)
+class NewsAdmin(admin.ModelAdmin):
+    list_display = ('title', 'tag', 'author', 'created_at')
+    list_filter = ('tag',)
+    search_fields = ('title', 'description')
+    readonly_fields = ('author', 'created_at', 'updated_at', 'picture_url')
+
+    def save_model(self, request, obj, form, change):
+        if not change and not obj.author_id:
+            obj.author = request.user
+        super().save_model(request, obj, form, change)

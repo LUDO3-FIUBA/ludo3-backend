@@ -19,4 +19,5 @@ from .notification import Notification, UserNotification
 from .semester_schedule import SemesterSchedule
 from .academic_calendar_event import AcademicCalendarEvent
 from .department import Department
+from .news import News
 from .password_reset_otp import PasswordResetOTP
