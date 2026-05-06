@@ -343,20 +343,20 @@ def seed():
         email="martin.alumno@ludo.com",
         password="ludo1234",
         first_name="Martin",
-        last_name="Gonzalez",
-        dni=42817479,
-        padron=105738,
+        last_name="González Prieto",
+        dni=42817480,
+        padron=105739,
         face_encodings=[],
         is_student=True,
-        is_teacher=False,
+        is_teacher=True,
     )
 
     user17 = User.objects.create_user(
         email="martin.docente@ludo.com",
         password="ludo1234",
         first_name="Martin",
-        last_name="Gonzalez",
-        dni=42817480,
+        last_name="González Prieto",
+        dni=42817481,
         face_encodings=[],
         is_student=False,
         is_teacher=True,
@@ -366,8 +366,8 @@ def seed():
         email="martin.admin@ludo.com",
         password="ludo1234",
         first_name="Martin",
-        last_name="Gonzalez",
-        dni=42817481,
+        last_name="González Prieto",
+        dni=42817482,
     )
 
     admin = User.objects.create_user(dni=11111111, email="admin@ludo.com", is_staff=True, is_superuser=True, password="pelusa22")
