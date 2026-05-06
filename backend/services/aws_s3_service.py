@@ -1,5 +1,5 @@
-import io
 import os
+import io
 import pathlib
 from typing import Optional
 

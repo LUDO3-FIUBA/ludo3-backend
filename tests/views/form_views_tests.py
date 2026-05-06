@@ -6,6 +6,9 @@ from backend.models.form import Form, FormDocumentSource, FormField, FormFieldOp
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import FormFieldType, FormProcedureType, FormType
 from tests.factories import (
+    FormFieldTypeFactory,
+    FormProcedureTypeFactory,
+    FormTypeFactory,
     AdminUserFactory,
     CatalogFactory,
     CatalogItemFactory,
@@ -18,25 +21,10 @@ from tests.factories import (
 )
 
 
-def _make_procedure_type(value='Administrativo'):
-    obj, _ = FormProcedureType.objects.get_or_create(form_procedure_value=value)
-    return obj
-
-
-def _make_form_type(value='Digital'):
-    obj, _ = FormType.objects.get_or_create(form_type_value=value)
-    return obj
-
-
-def _make_field_type(value='texto'):
-    obj, _ = FormFieldType.objects.get_or_create(form_field_type_value=value)
-    return obj
-
-
 class FormProcedureTypeViewTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
-        self.procedure_type = _make_procedure_type('Administrativo')
+        self.procedure_type = FormProcedureTypeFactory(form_procedure_value='Administrativo')
         self.uri = '/api/form-procedure-types/'
 
     def test_list_returns_procedure_types(self):
@@ -55,8 +43,8 @@ class FormFieldTypeViewTests(APITestCase):
     def setUp(self):
         self.admin = AdminUserFactory()
         self.student = StudentFactory()
-        _make_field_type('texto')
-        _make_field_type('numero')
+        FormFieldTypeFactory(form_field_type_value='texto')
+        FormFieldTypeFactory(form_field_type_value='numero')
         self.uri = '/api/form-field-types/'
 
     def test_list_as_admin(self):
@@ -80,9 +68,9 @@ class FormFieldTypeViewTests(APITestCase):
 class FormListViewTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
-        self.procedure1 = _make_procedure_type('Administrativo')
-        self.procedure2 = _make_procedure_type('Exámenes')
-        self.form_type = _make_form_type('Digital')
+        self.procedure1 = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.procedure2 = FormProcedureTypeFactory(form_procedure_value='Exámenes')
+        self.form_type = FormTypeFactory(form_type_value='Digital')
         self.form1 = Form.objects.create(
             form_name='Form A', form_description='Desc A',
             form_procedure=self.procedure1, form_type=self.form_type,
@@ -114,11 +102,11 @@ class FormListViewTests(APITestCase):
 class FormDetailViewTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
-        self.procedure = _make_procedure_type('Administrativo')
-        self.form_type = _make_form_type('Digital')
-        self.field_type_texto = _make_field_type('texto')
-        self.field_type_options = _make_field_type('options')
-        self.field_type_catalog = _make_field_type('catalog')
+        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.form_type = FormTypeFactory(form_type_value='Digital')
+        self.field_type_texto = FormFieldTypeFactory(form_field_type_value='texto')
+        self.field_type_options = FormFieldTypeFactory(form_field_type_value='options')
+        self.field_type_catalog = FormFieldTypeFactory(form_field_type_value='catalog')
 
         self.form = Form.objects.create(
             form_name='Test Form', form_description='Desc',
@@ -184,12 +172,12 @@ class FormCreateViewTests(APITestCase):
     def setUp(self):
         self.admin = AdminUserFactory()
         self.student = StudentFactory()
-        self.procedure = _make_procedure_type('Administrativo')
-        self.form_type_digital = _make_form_type('Digital')
-        self.form_type_doc = _make_form_type('Documento')
-        self.field_type_texto = _make_field_type('texto')
-        self.field_type_options = _make_field_type('options')
-        self.field_type_adjunto = _make_field_type('adjunto')
+        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.form_type_digital = FormTypeFactory(form_type_value='Digital')
+        self.form_type_doc = FormTypeFactory(form_type_value='Documento')
+        self.field_type_texto = FormFieldTypeFactory(form_field_type_value='texto')
+        self.field_type_options = FormFieldTypeFactory(form_field_type_value='options')
+        self.field_type_adjunto = FormFieldTypeFactory(form_field_type_value='adjunto')
         self.uri = '/api/forms/'
 
     def test_create_digital_form(self):
@@ -309,12 +297,12 @@ class FormDigitalSubmissionTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
         self.admin = AdminUserFactory()
-        self.procedure = _make_procedure_type('Administrativo')
-        self.form_type_digital = _make_form_type('Digital')
-        self.field_type_texto = _make_field_type('texto')
-        self.field_type_numero = _make_field_type('numero')
-        self.field_type_mail = _make_field_type('mail')
-        self.field_type_options = _make_field_type('options')
+        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.form_type_digital = FormTypeFactory(form_type_value='Digital')
+        self.field_type_texto = FormFieldTypeFactory(form_field_type_value='texto')
+        self.field_type_numero = FormFieldTypeFactory(form_field_type_value='numero')
+        self.field_type_mail = FormFieldTypeFactory(form_field_type_value='mail')
+        self.field_type_options = FormFieldTypeFactory(form_field_type_value='options')
 
         self.form = Form.objects.create(
             form_name='Solicitud digital', form_description='Desc',
@@ -393,9 +381,9 @@ class FormDigitalSubmissionTests(APITestCase):
 class FormDocumentSubmissionTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
-        self.procedure = _make_procedure_type('Administrativo')
-        self.form_type_doc = _make_form_type('Documento')
-        self.field_type_adjunto = _make_field_type('adjunto')
+        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.form_type_doc = FormTypeFactory(form_type_value='Documento')
+        self.field_type_adjunto = FormFieldTypeFactory(form_field_type_value='adjunto')
 
         self.form = Form.objects.create(
             form_name='Nota al decano', form_description='Desc',
@@ -431,9 +419,9 @@ class SubmissionListAdminTests(APITestCase):
     def setUp(self):
         self.admin = AdminUserFactory()
         self.student = StudentFactory()
-        self.procedure = _make_procedure_type('Administrativo')
-        self.form_type = _make_form_type('Digital')
-        self.field_type = _make_field_type('texto')
+        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.form_type = FormTypeFactory(form_type_value='Digital')
+        self.field_type = FormFieldTypeFactory(form_field_type_value='texto')
 
         self.form = Form.objects.create(
             form_name='Form', form_description='Desc',
@@ -473,8 +461,8 @@ class SubmissionDeleteTests(APITestCase):
     def setUp(self):
         self.admin = AdminUserFactory()
         self.student = StudentFactory()
-        self.procedure = _make_procedure_type('Administrativo')
-        self.form_type = _make_form_type('Digital')
+        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.form_type = FormTypeFactory(form_type_value='Digital')
         self.form = Form.objects.create(
             form_name='Form', form_description='Desc',
             form_procedure=self.procedure, form_type=self.form_type,

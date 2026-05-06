@@ -12,6 +12,8 @@ services:
       - .env.compose
       - .env    # Define secrets here, see .env.template
     environment:
+      # Falls back to the container-internal mount path if LOCAL_STORAGE_ROOT is not set in .env.
+      # ../data on the host is mounted to /usr/src/data (see volumes above).
       - LOCAL_STORAGE_ROOT=${LOCAL_STORAGE_ROOT:-/usr/src/data}
     depends_on:
       - db

@@ -122,6 +122,7 @@ class FormFieldTypeViewSet(BaseViewSet):
 
 class FormViewSet(BaseViewSet):
     queryset = Form.objects.select_related('form_procedure', 'form_type').all()
+    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_permissions(self):
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
@@ -154,8 +155,6 @@ class FormViewSet(BaseViewSet):
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(FormDetailSerializer(form).data)
-
-    parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     @swagger_auto_schema(
         tags=["Formularios"],
@@ -228,7 +227,11 @@ class FormViewSet(BaseViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 class FormSubmissionViewSet(BaseViewSet):
-    """Nested under /forms/{form_pk}/submissions/"""
+    """
+    Handles operations for form submissions, nested under /forms/{form_pk}/submissions/.
+    Includes specific permission logic where listing all submissions is restricted to
+    admins, while creating or viewing own submissions requires student access.
+    """
 
     def get_permissions(self):
         if self.action == 'list':

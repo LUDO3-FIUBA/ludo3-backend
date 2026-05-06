@@ -71,6 +71,8 @@ class FormService:
         FormDocumentSource.objects.create(form=form, form_document_source=document_source)
 
         adjunto_type = FormFieldType.objects.filter(form_field_type_value=FormFieldType.ADJUNTO).first()
+        if adjunto_type is None:
+            raise ValidationError({'adjunto': [f"El tipo de campo '{FormFieldType.ADJUNTO}' no existe en la base de datos."]})
         FormField.objects.create(
             form=form,
             form_field_label='Adjunto',
