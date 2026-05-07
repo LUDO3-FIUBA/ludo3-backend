@@ -32,9 +32,21 @@ SECRET_KEY="v4@)^40(m^%j-z)260(e7pw#9i2jyxmnx5bw7jh4%zr)&85lw_"
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = int(os.environ.get("DEBUG", default=1))
 
+STORAGE_PROVIDER = os.environ.get('STORAGE_PROVIDER', 'local').lower()
+if STORAGE_PROVIDER not in ('local', 's3', 'gcs'):
+    raise ValueError("STORAGE_PROVIDER must be one of: local, s3, gcs")
+
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_URL = os.environ.get('LOCAL_MEDIA_URL', '/media/')
+MEDIA_ROOT = os.environ.get('LOCAL_MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
+
+AWS_BUCKET_NAME = os.environ.get('AWS_BUCKET_NAME', '')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID', '')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY', '')
+AWS_ENDPOINT_URL = os.environ.get('AWS_ENDPOINT_URL', '')
+AWS_PUBLIC_READ_DOMAIN = os.environ.get('AWS_PUBLIC_READ_DOMAIN', '')
+GCS_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', '')
+GOOGLE_APPLICATION_CREDENTIALS = os.environ.get('GOOGLE_APPLICATION_CREDENTIALS', '')
 
 CSRF_COOKIE_SECURE=False
 

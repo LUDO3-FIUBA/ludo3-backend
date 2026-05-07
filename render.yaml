@@ -10,6 +10,8 @@ services:
         sync: false
       - key: DEBUG
         value: "0"
+      - key: STORAGE_PROVIDER
+        value: "s3"
       - key: GOOGLE_APPLICATION_CREDENTIALS
         sync: false
       - key: AUTH_FIUBA_URL
@@ -18,13 +20,17 @@ services:
         sync: false
       - key: AUTH_CLIENT_SECRET
         sync: false
-      - key: AWS_DOMAIN_URL
+      - key: AWS_ENDPOINT_URL
+        sync: false
+      - key: AWS_PUBLIC_READ_DOMAIN
         sync: false
       - key: AWS_ACCESS_KEY_ID
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
         sync: false
       - key: AWS_BUCKET_NAME
+        sync: false
+      - key: GCS_BUCKET_NAME
         sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
