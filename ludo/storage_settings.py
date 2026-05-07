@@ -27,17 +27,23 @@ def get_storage_settings():
             f'{aws_bucket_name}.s3.amazonaws.com',
         )
 
+        # Only add https:// if domain doesn't already have a protocol
+        if not aws_public_read_domain.startswith(('http://', 'https://')):
+            media_url = f'https://{aws_public_read_domain}/'
+        else:
+            media_url = f'{aws_public_read_domain}/'
+
         storage_settings.update(
             AWS_STORAGE_BUCKET_NAME=aws_bucket_name,
             AWS_ACCESS_KEY_ID=os.environ.get('AWS_ACCESS_KEY_ID', ''),
             AWS_SECRET_ACCESS_KEY=os.environ.get('AWS_SECRET_ACCESS_KEY', ''),
             AWS_S3_ENDPOINT_URL=os.environ.get('AWS_ENDPOINT_URL', '') or None,
-            AWS_S3_CUSTOM_DOMAIN=aws_public_read_domain,
+            AWS_S3_CUSTOM_DOMAIN=aws_public_read_domain.replace('https://', '').replace('http://', ''),
             AWS_DEFAULT_ACL=None,
             AWS_QUERYSTRING_AUTH=False,
             AWS_S3_FILE_OVERWRITE=False,
             DEFAULT_FILE_STORAGE='storages.backends.s3boto3.S3Boto3Storage',
-            MEDIA_URL=f'https://{aws_public_read_domain}/',
+            MEDIA_URL=media_url,
         )
         return storage_settings
 
