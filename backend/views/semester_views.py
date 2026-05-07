@@ -1,17 +1,19 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from django.db.models import Prefetch
+from django.db.models import Count, Prefetch
+from itertools import groupby
+from operator import itemgetter
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models import Attendance, AttendanceQRCode, EvaluationSubmission, Semester
-from backend.permissions import IsStudent
-from backend.serializers.semester_serializer import SemesterSerializer
+from backend.permissions import IsStudent, IsTeacher
+from backend.serializers.semester_serializer import SemesterCommissionSerializer, SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
 from backend.views.base_view import BaseViewSet
-from backend.views.utils import get_current_semester, get_current_year, get_required_int_query_param
+from backend.views.utils import get_current_semester, get_current_year, get_required_int_query_param, teacher_not_in_commission_staff
 
 
 class SemesterViewSet(BaseViewSet):
@@ -44,7 +46,7 @@ class SemesterViewSet(BaseViewSet):
                                             start_date__year__gte=get_current_year(), year_moment=get_current_semester())
         return Response(self.get_serializer(result, many=True).data, status.HTTP_200_OK)
     
-    @action(detail=False, methods=["GET"])
+    @action(detail=False, methods=["GET"], permission_classes=[IsAuthenticated, IsTeacher])
     @swagger_auto_schema(
         tags=["Semesters"],
         operation_summary="Get semesters for a commission",
@@ -72,8 +74,37 @@ class SemesterViewSet(BaseViewSet):
         
         if not result:
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
+        
+        teacher = request.user.teacher
+        if teacher_not_in_commission_staff(teacher, semester.commission):
+            return Response("Teacher not a member of this semester commission", status=status.HTTP_403_FORBIDDEN)
 
-        return Response(self.get_serializer(result).data, status.HTTP_200_OK)
+        attendance_qrs_count = semester.attendance_qrs.count()
+        
+        attendances_by_student = dict(
+            semester.attendances.values('student_id').annotate(total=Count('id')).values_list('student_id', 'total')
+        )
+        
+        submissions = EvaluationSubmission.objects.filter(
+            evaluation__semester=semester
+        ).values(
+            'student_id', 'evaluation_id', 'grade', 'submission_status'
+        ).order_by('student_id')
+
+        submissions_by_student = {}
+        for student_id, group in groupby(submissions, key=itemgetter('student_id')):
+            submissions_by_student[student_id] = list(group)
+
+        serializer = SemesterCommissionSerializer(
+            semester,
+            context={
+                'attendance_qrs_count': attendance_qrs_count,
+                'attendances_by_student': attendances_by_student,
+                'submissions_by_student': submissions_by_student,
+            },
+        )
+
+        return Response(serializer.data, status.HTTP_200_OK)
     
     @action(detail=False, methods=["GET"], permission_classes=[IsAuthenticated, IsStudent])
     @swagger_auto_schema(
