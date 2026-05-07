@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from backend.serializers.user_serializer import (
     UserCustomCreateSerializer, UserCustomGetSerializer, SimpleLoginSerializer)
-from backend.services import AwsS3Service
+from backend.services import storage_service
 from backend.services.image_validator_service import ImageValidatorService
 
 from ..api_exceptions import InvalidFaceError, InvalidImageError
@@ -61,7 +61,7 @@ class UserCustomViewSet(UserViewSet):
 
         if user.is_student:
             try:
-                model.image = AwsS3Service().upload_b64_image(image, f"{uuid.uuid4()}.jpg")
+                model.image = storage_service.upload_b64_image(image, f"{uuid.uuid4()}.jpg")
             except Exception:
                 logger.exception("S3 upload failed at register_face; face encodings saved without image URL.")
 
