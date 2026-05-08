@@ -76,7 +76,7 @@ class UserCustomGetSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'file', 'legajo', 'face_registered')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'file', 'legajo', 'github_url', 'face_registered')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
@@ -89,6 +89,12 @@ class UserCustomGetSerializer(UserSerializer):
         if obj.is_teacher:
             return bool(getattr(obj, 'teacher', None) and obj.teacher.face_encodings)
         return False
+
+
+class UserGithubUrlSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('github_url',)
 
 
 class SimpleLoginSerializer(serializers.Serializer):

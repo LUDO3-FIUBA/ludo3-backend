@@ -9,7 +9,8 @@ class StudentSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(source='user.last_name')
     dni = serializers.CharField(source='user.dni')
     email = serializers.CharField(source='user.email')
+    github_url = serializers.URLField(source='user.github_url')
 
     class Meta:
         model = Student
-        fields = ('id', 'first_name', 'last_name', 'dni', 'email', 'padron')
+        fields = ('id', 'first_name', 'last_name', 'dni', 'email', 'github_url', 'padron')
