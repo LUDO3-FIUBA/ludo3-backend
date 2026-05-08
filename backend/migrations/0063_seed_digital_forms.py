@@ -226,7 +226,7 @@ def reverse_seed_digital_email_form(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0060_seed_document_forms'),
+        ('backend', '0062_seed_document_forms'),
     ]
 
     operations = [

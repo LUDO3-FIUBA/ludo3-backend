@@ -24,7 +24,7 @@ def remove_statuses(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0057_create_forms'),
+        ('backend', '0058_create_forms'),
     ]
 
     operations = [

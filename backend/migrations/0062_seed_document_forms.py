@@ -120,7 +120,7 @@ def reverse_seed_document_forms(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0059_seed_catalogs'),
+        ('backend', '0061_seed_catalogs'),
     ]
 
     operations = [

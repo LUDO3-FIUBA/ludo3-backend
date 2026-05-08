@@ -5,7 +5,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0061_seed_digital_forms'),
+        ('backend', '0059_form_submission_status'),
     ]
 
     operations = [
