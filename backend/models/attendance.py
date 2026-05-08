@@ -11,6 +11,9 @@ class Attendance(models.Model):
     student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='attendances', verbose_name="Estudiante")
     qr_code = models.ForeignKey(AttendanceQRCode, on_delete=models.CASCADE, related_name='attendances', verbose_name="Codigo QR escaneado")
     submitted_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Fecha de escaneo")
+    latitude = models.FloatField(null=True, blank=True, verbose_name="Latitud")
+    longitude = models.FloatField(null=True, blank=True, verbose_name="Longitud")
+    location_valid = models.BooleanField(null=True, blank=True, verbose_name="Ubicacion valida")
 
     class Meta:
         verbose_name = "Asistencia"
