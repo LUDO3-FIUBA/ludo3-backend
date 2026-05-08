@@ -55,17 +55,24 @@ class SemesterViewSet(BaseViewSet):
         ]
     )
     def commission_present_semester(self, request):
-        commission_id, error_response = get_required_int_query_param(request, 'commission_id')
-        if error_response is not None:
-            return error_response
+        commission_id = request.query_params['commission_id']
+        current_year = get_current_year()
+        current_semester = get_current_semester()
 
-        semester = self.get_queryset().filter(
+        result = self.get_queryset().filter(
             commission=commission_id,
-            start_date__year__gte=get_current_year(),
-            year_moment=get_current_semester(),
+            start_date__year__gte=current_year,
+            year_moment=current_semester,
         ).first()
 
-        if not semester:
+        if result is None and current_semester == "SS":
+            result = self.get_queryset().filter(
+                commission=commission_id,
+                start_date__year__gte=current_year,
+                year_moment="FS",
+            ).first()
+        
+        if not result:
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
         
         teacher = request.user.teacher
