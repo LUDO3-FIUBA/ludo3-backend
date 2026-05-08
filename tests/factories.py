@@ -223,3 +223,22 @@ class FormSubmissionFactory(factory.django.DjangoModelFactory):
 
     form = factory.SubFactory(FormFactory)
     user = factory.SubFactory(UserFactory, is_student=True)
+class AttendanceQRCodeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = "backend.AttendanceQRCode"
+
+    semester = factory.SubFactory(SemesterFactory)
+    owner_teacher = factory.SubFactory(TeacherFactory)
+    created_at = factory.Faker("date_time", tzinfo=timezone.utc)
+    expires_at = factory.LazyAttribute(lambda obj: obj.created_at + timedelta(hours=3))
+    qrid = factory.Faker("uuid4")
+
+
+class AttendanceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = "backend.Attendance"
+
+    semester = factory.SubFactory(SemesterFactory)
+    student = factory.SubFactory(StudentFactory)
+    qr_code = factory.SubFactory(AttendanceQRCodeFactory)
+    submitted_at = factory.Faker("date_time", tzinfo=timezone.utc)

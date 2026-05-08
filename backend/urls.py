@@ -49,6 +49,7 @@ router.register(r'teacher/form-submissions', views.TeacherFormSubmissionViewSet,
 router.register(r'catalogs', views.CatalogViewSet, 'catalog')
 router.register(r'student_identity', views.StudentIdentityViewSet, 'student-identity')
 router.register(r'admin/notifications', views.NotificationAdminViewSet, 'admin-notification')
+router.register(r'teacher/notifications', views.NotificationTeacherViewSet, 'teacher-notification')
 
 teacher_finals_router = routers.NestedSimpleRouter(router, r'finals', lookup='final')
 teacher_finals_router.register(r'final_exams', views.FinalExamTeacherViews, basename='final-final_exams')
