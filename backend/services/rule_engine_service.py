@@ -14,8 +14,9 @@ class AttendanceRule:
             is_absent = True
             for attendance in attendance_qr.attendances.all():
                 if attendance.student_id == student_id:
-                    is_absent = False
-                    break
+                    if getattr(attendance, 'location_valid', None) is not False:
+                        is_absent = False
+                        break
             if is_absent:
                 absences = absences + 1
         return absences
