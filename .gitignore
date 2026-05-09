@@ -8,3 +8,7 @@ __pycache__/
 .idea/
 .claude
 CLAUDE.md
+.codex
+media/
+CLAUDE.mdmedia/
+backend/services/models/*.onnx

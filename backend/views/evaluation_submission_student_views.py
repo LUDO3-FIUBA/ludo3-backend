@@ -1,3 +1,4 @@
+from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.core.exceptions import ValidationError
 from rest_framework import status
@@ -14,6 +15,7 @@ from backend.serializers.evaluation_submission_serializer import (
     EvaluationSubmissionPostSerializer, EvaluationSubmissionSerializer)
 from backend.services.audit_log_service import AuditLogService
 from backend.views.base_view import BaseViewSet
+from backend.views.utils import get_required_int_query_param
 
 
 class EvaluationSubmissionViewSet(BaseViewSet):
@@ -58,9 +60,19 @@ class EvaluationSubmissionViewSet(BaseViewSet):
     @action(detail=False, methods=['GET'])
     @swagger_auto_schema(
         tags=["Evaluation Submissions"],
-        operation_summary="Gets the logged in student's evaluation submissions"
+        operation_summary="Gets the logged in student's evaluation submissions for a semester",
+        manual_parameters=[
+            openapi.Parameter('semester_id', openapi.IN_QUERY, description="Id of semester", type=openapi.TYPE_INTEGER, required=True)
+        ]
     )
     def my_evaluations(self, request):
+        semester_id, error_response = get_required_int_query_param(request, 'semester_id')
+        if error_response is not None:
+            return error_response
 
-        result = self.queryset.filter(student=request.user.student).all()
+        result = self.queryset.filter(
+            student=request.user.student,
+            evaluation__semester_id=semester_id
+        )
+        
         return Response(EvaluationSubmissionSerializer(result, many=True).data, status.HTTP_200_OK)

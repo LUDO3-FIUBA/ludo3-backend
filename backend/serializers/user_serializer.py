@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from djoser.serializers import UserCreateSerializer, User, UserSerializer
@@ -7,6 +8,8 @@ from backend.api_exceptions import InvalidImageError
 from backend.models import User
 from backend.services import AwsS3Service
 from backend.services.image_validator_service import ImageValidatorService
+
+logger = logging.getLogger(__name__)
 
 
 class UserCustomCreateSerializer(UserCreateSerializer):
@@ -38,27 +41,28 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         return attrs
 
     def create(self, validated_data):
-        
-        # TEMPORARY WORKAROUND: Skip face detection for testing
-        # TODO: Re-enable face detection once proper images are available
-        #b64_string = self.context['request'].data['image']
-        # try:
-        #     face_encodings, image = ImageValidatorService(b64_string).validate_image()
-        # except InvalidImageError as e:
-        #     raise serializers.ValidationError(e.detail)
-        
-        # For now, use empty face_encodings and fixed image format
+        b64_string = self.context['request'].data.get('image') if 'request' in self.context else None
+
         face_encodings = []
-        
+        image_url = None
+
+        if b64_string:
+            try:
+                face_encodings, _ = ImageValidatorService(b64_string).validate_image()
+            except InvalidImageError:
+                # Registro facial fallido: dejamos al usuario registrarse y completar la foto después.
+                logger.warning("Face detection failed at registration; user will need to complete face registration later.")
+                face_encodings = []
+
+            try:
+                image_url = self._upload_image(b64_string, f"{uuid.uuid4()}.jpg")
+            except Exception:
+                logger.exception("S3 upload failed at registration; continuing without image URL.")
+                image_url = None
+
         validated_data['face_encodings'] = face_encodings
-        
-        # TEMPORARY WORKAROUND: Skip S3 upload when credentials are not configured
-        # Store a placeholder URL instead
-        # try:
-        #     validated_data['image'] = self._upload_image(b64_string, f"{uuid.uuid4()}.jpg")
-        # except Exception as e:
-        #     # If S3 upload fails, use a placeholder
-        #     validated_data['image'] = f"placeholder://{uuid.uuid4()}.jpg"
+        if image_url is not None:
+            validated_data['image'] = image_url
 
         return super().create(validated_data)
 
@@ -68,15 +72,23 @@ class UserCustomCreateSerializer(UserCreateSerializer):
 
 class UserCustomGetSerializer(UserSerializer):
     legajo = serializers.SerializerMethodField()
+    face_registered = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'file', 'legajo')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'file', 'legajo', 'face_registered')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
             return obj.teacher.legajo
         return None
+
+    def get_face_registered(self, obj):
+        if obj.is_student:
+            return bool(getattr(obj, 'student', None) and obj.student.face_encodings)
+        if obj.is_teacher:
+            return bool(getattr(obj, 'teacher', None) and obj.teacher.face_encodings)
+        return False
 
 
 class SimpleLoginSerializer(serializers.Serializer):

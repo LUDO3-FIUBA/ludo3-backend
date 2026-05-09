@@ -78,7 +78,7 @@ class User(AbstractUser):
     objects = CustomUserManager()
 
     USERNAME_FIELD = 'dni'
-    REQUIRED_FIELDS = ['email', 'is_student', 'is_teacher']
+    REQUIRED_FIELDS = ['email']
 
     def __str__(self):
         return f"{self.dni}, {self.first_name} {self.last_name}"
