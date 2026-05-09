@@ -149,7 +149,7 @@ class AttendanceLocationViewsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertFalse(response.data["location_valid"])
 
-    def test_submit_location_duplicate_is_rejected(self):
+    def test_submit_location_valid_duplicate_is_rejected(self):
         self.client.force_authenticate(user=self.student.user)
         self.client.post(self.LOCATION_URL, {
             "session_id": str(self.active_session.qrid),
@@ -163,6 +163,62 @@ class AttendanceLocationViewsTests(APITestCase):
         })
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data.get("code"), "attendance_already_valid")
+
+    def test_submit_location_invalid_can_retry(self):
+        self.client.force_authenticate(user=self.student.user)
+        first = self.client.post(self.LOCATION_URL, {
+            "session_id": str(self.active_session.qrid),
+            "latitude": self.FAR_LAT,
+            "longitude": self.FAR_LON,
+        })
+        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(first.data["location_valid"])
+
+        second = self.client.post(self.LOCATION_URL, {
+            "session_id": str(self.active_session.qrid),
+            "latitude": self.LAS_HERAS_LAT,
+            "longitude": self.LAS_HERAS_LON,
+        })
+        self.assertEqual(second.status_code, status.HTTP_200_OK)
+        self.assertTrue(second.data["location_valid"])
+        self.assertEqual(Attendance.objects.filter(student=self.student, qr_code=self.active_session).count(), 1)
+
+    def test_submit_location_retry_still_invalid(self):
+        self.client.force_authenticate(user=self.student.user)
+        self.client.post(self.LOCATION_URL, {
+            "session_id": str(self.active_session.qrid),
+            "latitude": self.FAR_LAT,
+            "longitude": self.FAR_LON,
+        })
+        response = self.client.post(self.LOCATION_URL, {
+            "session_id": str(self.active_session.qrid),
+            "latitude": self.FAR_LAT,
+            "longitude": self.FAR_LON,
+        })
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertFalse(response.data["location_valid"])
+
+    def test_submit_location_window_expired(self):
+        from django.utils import timezone as tz
+        expired_session = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='location',
+            campus='las_heras',
+            expires_at=tz.now() + timedelta(hours=3),
+        )
+        AttendanceQRCode.objects.filter(pk=expired_session.pk).update(
+            created_at=tz.now() - timedelta(minutes=11)
+        )
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.post(self.LOCATION_URL, {
+            "session_id": str(expired_session.qrid),
+            "latitude": self.LAS_HERAS_LAT,
+            "longitude": self.LAS_HERAS_LON,
+        })
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.data.get("code"), "location_attendance_window_expired")
 
     def test_submit_location_on_qr_session_is_rejected(self):
         from django.utils import timezone as tz
@@ -188,7 +244,10 @@ class AttendanceLocationViewsTests(APITestCase):
             owner_teacher=self.teacher,
             mode='location',
             campus='las_heras',
-            expires_at=tz.now() - timedelta(hours=1),
+            expires_at=tz.now() + timedelta(hours=3),
+        )
+        AttendanceQRCode.objects.filter(pk=expired_session.pk).update(
+            created_at=tz.now() - timedelta(minutes=11)
         )
         self.client.force_authenticate(user=self.student.user)
         response = self.client.post(self.LOCATION_URL, {
@@ -218,3 +277,21 @@ class AttendanceLocationViewsTests(APITestCase):
         })
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_my_attendances_includes_location_valid_field(self):
+        my_attendances_url = "/api/semesters/attendance/my_attendances/"
+        Attendance.objects.create(
+            semester=self.semester,
+            student=self.student,
+            qr_code=self.active_session,
+            latitude=self.FAR_LAT,
+            longitude=self.FAR_LON,
+            location_valid=False,
+        )
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.get(my_attendances_url, {"semester_id": self.semester.id})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        session_data = next(item for item in response.data if item["qrid"] == str(self.active_session.qrid))
+        self.assertIn("location_valid", session_data)
+        self.assertFalse(session_data["location_valid"])

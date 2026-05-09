@@ -302,3 +302,18 @@ class RuleEngineServiceTests(SimpleTestCase):
         ]
 
         self.assertEqual(service.get_absences(attendance_qrs, student), 3)
+
+    def test_get_absences_counts_location_invalid_as_absent(self):
+        service = RuleEngineService()
+        student = SimpleNamespace(id=99)
+        invalid_attendance = SimpleNamespace(student_id=99, location_valid=False)
+        valid_attendance = SimpleNamespace(student_id=99, location_valid=True)
+        null_attendance = SimpleNamespace(student_id=99, location_valid=None)
+
+        attendance_qrs = [
+            SimpleNamespace(attendances=_RelatedItems([invalid_attendance])),
+            SimpleNamespace(attendances=_RelatedItems([valid_attendance])),
+            SimpleNamespace(attendances=_RelatedItems([null_attendance])),
+        ]
+
+        self.assertEqual(service.get_absences(attendance_qrs, student), 1)
