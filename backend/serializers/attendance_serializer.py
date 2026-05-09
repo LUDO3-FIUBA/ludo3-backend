@@ -44,12 +44,13 @@ class AttendanceQRCodeStudentStatusSerializer(serializers.ModelSerializer):
     qrid = serializers.UUIDField()
     attended = serializers.BooleanField()
     submitted_at = serializers.DateTimeField(allow_null=True)
+    location_valid = serializers.BooleanField(allow_null=True)
     mode = serializers.CharField()
     campus = serializers.CharField(allow_null=True)
 
     class Meta:
         model = AttendanceQRCode
-        fields = ('created_at', 'expires_at', 'qrid', 'attended', 'submitted_at', 'mode', 'campus')
+        fields = ('created_at', 'expires_at', 'qrid', 'attended', 'submitted_at', 'location_valid', 'mode', 'campus')
 
 
 class AttendancePostSerializer(serializers.ModelSerializer):
