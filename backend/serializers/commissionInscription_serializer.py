@@ -4,6 +4,7 @@ from backend.models import CommissionInscription
 
 from .commission_serializer import CommissionSerializer
 from .semester_serializer import SemesterSerializer
+from .semester_schedule_serializer import SemesterScheduleSerializer
 
 
 class CommissionInscriptionSerializer(serializers.ModelSerializer):
@@ -30,6 +31,7 @@ class SemesterCurrentInscriptionSerializer(serializers.Serializer):
     commission = CommissionSerializer()
     classes_amount = serializers.IntegerField()
     minimum_attendance = serializers.FloatField()
+    schedules = SemesterScheduleSerializer(many=True, read_only=True)
     max_absences = serializers.SerializerMethodField()
 
     def get_max_absences(self, obj):

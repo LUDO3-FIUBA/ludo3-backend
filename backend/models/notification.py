@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils import timezone
 
+from .academic_calendar_event import AcademicCalendarEvent
 from .semester import Semester
 from .user import User
 
@@ -10,7 +11,9 @@ class Notification(models.Model):
     message = models.TextField(verbose_name="Mensaje")
     sender = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name='sent_notifications',
         verbose_name="Remitente"
     )
@@ -55,3 +58,25 @@ class UserNotification(models.Model):
         verbose_name = "Notificación de usuario"
         verbose_name_plural = "Notificaciones de usuario"
         unique_together = ('notification', 'user')
+
+
+class CalendarEventReminder(models.Model):
+    event = models.ForeignKey(
+        AcademicCalendarEvent,
+        on_delete=models.CASCADE,
+        related_name='reminders',
+        verbose_name="Evento",
+    )
+    days_before = models.IntegerField(verbose_name="Días de anticipación")
+    notification = models.ForeignKey(
+        Notification,
+        on_delete=models.CASCADE,
+        related_name='calendar_reminder',
+        verbose_name="Notificación generada",
+    )
+    sent_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Enviado el")
+
+    class Meta:
+        verbose_name = "Recordatorio de evento"
+        verbose_name_plural = "Recordatorios de eventos"
+        unique_together = ('event', 'days_before')
