@@ -1,12 +1,16 @@
+from datetime import timedelta
+
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.db.models import Exists, OuterRef, Subquery
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from backend.api_exceptions import AttendanceAlreadyValidError, LocationAttendanceWindowExpiredError
 from backend.models import Attendance, AttendanceQRCode, Semester
 from backend.permissions import *
 from backend.serializers.attendance_serializer import (
@@ -15,6 +19,8 @@ from backend.serializers.attendance_serializer import (
 from backend.services.location_service import is_within_campus
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import get_required_int_query_param, is_before_current_datetime
+
+LOCATION_WINDOW_MINUTES = 10
 
 
 class AttendanceViewSet(BaseViewSet):
@@ -72,6 +78,7 @@ class AttendanceViewSet(BaseViewSet):
         ).annotate(
             attended=Exists(student_attendances),
             submitted_at=Subquery(student_attendances.order_by('-submitted_at').values('submitted_at')[:1]),
+            location_valid=Subquery(student_attendances.order_by('-submitted_at').values('location_valid')[:1]),
         ).order_by('-created_at')
 
         return Response(AttendanceQRCodeStudentStatusSerializer(attendance_qr_codes, many=True).data, status.HTTP_200_OK)
@@ -100,11 +107,28 @@ class AttendanceViewSet(BaseViewSet):
         if not semester.students.filter(pk=request.user.student.pk).exists():
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)
 
-        if is_before_current_datetime(attendance_qr_code.expires_at):
-            return Response("Session has expired", status=status.HTTP_403_FORBIDDEN)
+        window_elapsed = timezone.now() - attendance_qr_code.created_at
+        if window_elapsed > timedelta(minutes=LOCATION_WINDOW_MINUTES):
+            raise LocationAttendanceWindowExpiredError()
 
-        if self.get_queryset().filter(student=request.user.student, qr_code=attendance_qr_code, semester=semester).first():
-            return Response("Attendance already submitted for this session", status=status.HTTP_403_FORBIDDEN)
+        existing = self.get_queryset().filter(
+            student=request.user.student,
+            qr_code=attendance_qr_code,
+            semester=semester,
+        ).first()
+
+        if existing:
+            if existing.location_valid:
+                raise AttendanceAlreadyValidError()
+            valid = is_within_campus(attendance_qr_code.campus, latitude, longitude)
+            Attendance.objects.filter(pk=existing.pk).update(
+                latitude=latitude,
+                longitude=longitude,
+                submitted_at=timezone.now(),
+                location_valid=valid,
+            )
+            existing.refresh_from_db()
+            return Response(AttendanceSerializer(existing).data, status=status.HTTP_200_OK)
 
         valid = is_within_campus(attendance_qr_code.campus, latitude, longitude)
         attendance = Attendance(
