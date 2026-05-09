@@ -1,4 +1,5 @@
 import io
+from typing import Optional
 
 from .base import StorageService
 
@@ -19,4 +20,13 @@ class GcsStorageService(StorageService):
         raise NotImplementedError()
 
     def download_object(self, file_name: str) -> io.IOBase:
+        raise NotImplementedError()
+
+    def delete_object(self, file_name: str) -> None:
+        raise NotImplementedError()
+
+    def key_from_url(self, url: str) -> Optional[str]:
+        raise NotImplementedError()
+
+    def presign_url(self, url: str, expiration: int = 3600) -> Optional[str]:
         raise NotImplementedError()
