@@ -20,18 +20,22 @@ class AwsS3Service:
     def upload_b64_image(self, b64_string, file_name):
         return self.upload_object(io.BytesIO(decode_image(b64_string)), file_name)
 
-    def upload_object(self, generic_object, file_name):
+    def upload_object(self, generic_object, file_name, acl=None):
         # Read the entire content to determine the content length
         # Oracle Cloud's S3-compatible API requires Content-Length header
         file_content = generic_object.read()
-        
+
+        put_kwargs = {
+            "Bucket": self.bucket,
+            "Key": file_name,
+            "Body": file_content,
+            "ContentLength": len(file_content),
+        }
+        if acl:
+            put_kwargs["ACL"] = acl
+
         # Use put_object instead of upload_fileobj to explicitly set Content-Length
-        self.client.put_object(
-            Bucket=self.bucket,
-            Key=file_name,
-            Body=file_content,
-            ContentLength=len(file_content)
-        )
+        self.client.put_object(**put_kwargs)
         return f"https://{self.public_read_domain}/{file_name}"
 
     def download_object(self, file_name):

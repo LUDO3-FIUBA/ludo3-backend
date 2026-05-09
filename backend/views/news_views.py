@@ -90,7 +90,7 @@ class NewsViewSet(BaseViewSet):
         ext = (picture.name.rsplit('.', 1)[-1] if '.' in picture.name else 'jpg').lower()
         file_name = f"news/{uuid.uuid4()}.{ext}"
         try:
-            return AwsS3Service().upload_object(picture, file_name)
+            return AwsS3Service().upload_object(picture, file_name, acl='public-read')
         except Exception:
             logger.exception("S3 upload failed for news picture")
             return ''
