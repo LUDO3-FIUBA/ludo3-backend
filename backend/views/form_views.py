@@ -51,7 +51,9 @@ _ALLOWED_EXTENSIONS = {'.pdf', '.png', '.jpg', '.jpeg', '.doc', '.docx'}
 
 def _safe_ext(filename: str) -> str:
     ext = os.path.splitext(filename)[1].lower()
-    return ext if ext in _ALLOWED_EXTENSIONS else ''
+    if ext not in _ALLOWED_EXTENSIONS:
+        raise ValueError(f'Extensión no permitida: {ext or "(sin extensión)"}.')
+    return ext
 
 
 def _maybe_upload_template(request, data):
@@ -166,7 +168,10 @@ class FormViewSet(BaseViewSet):
         request_body=FormCreateSerializer,
     )
     def create(self, request):
-        data = _maybe_upload_template(request, request.data)
+        try:
+            data = _maybe_upload_template(request, request.data)
+        except ValueError as e:
+            return Response({'document_source_file': [str(e)]}, status=status.HTTP_400_BAD_REQUEST)
         serializer = FormCreateSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -188,7 +193,10 @@ class FormViewSet(BaseViewSet):
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
-        data = _maybe_upload_template(request, request.data)
+        try:
+            data = _maybe_upload_template(request, request.data)
+        except ValueError as e:
+            return Response({'document_source_file': [str(e)]}, status=status.HTTP_400_BAD_REQUEST)
         serializer = FormCreateSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -307,9 +315,13 @@ class FormSubmissionViewSet(BaseViewSet):
                     {'detail': 'Este formulario no tiene un campo de tipo adjunto.'},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
+            try:
+                ext = _safe_ext(file_obj.name)
+            except ValueError as e:
+                return Response({'file': [str(e)]}, status=status.HTTP_400_BAD_REQUEST)
             padron = request.user.student.padron if hasattr(request.user, 'student') else 'unknown'
             timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-            key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
+            key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{ext}"
             url = storage_service.upload_object(file_obj, key)
             existing = next((a for a in answers_data if a['field_id'] == adjunto_field.id), None)
             if existing:
@@ -360,9 +372,13 @@ class FormSubmissionViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        try:
+            ext = _safe_ext(file_obj.name)
+        except ValueError as e:
+            return Response({'file': [str(e)]}, status=status.HTTP_400_BAD_REQUEST)
         padron = request.user.student.padron if request.user.is_student else 'unknown'
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
+        key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{ext}"
         url = storage_service.upload_object(file_obj, key)
 
         sent_status = FormSubmissionStatus.objects.get(
