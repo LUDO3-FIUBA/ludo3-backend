@@ -1,5 +1,6 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Count, Prefetch
 from itertools import groupby
 from operator import itemgetter
@@ -55,7 +56,10 @@ class SemesterViewSet(BaseViewSet):
         ]
     )
     def commission_present_semester(self, request):
-        commission_id = request.query_params['commission_id']
+        commission_id, error_response = get_required_int_query_param(request, 'commission_id')
+        if error_response is not None:
+            return error_response
+
         current_year = get_current_year()
         current_semester = get_current_semester()
 
@@ -74,8 +78,17 @@ class SemesterViewSet(BaseViewSet):
         
         if not result:
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
-        
-        teacher = request.user.teacher
+
+        semester = result
+
+        try:
+            teacher = request.user.teacher
+        except ObjectDoesNotExist:
+            return Response(
+                {"detail": "Authenticated user has no teacher profile."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         if teacher_not_in_commission_staff(teacher, semester.commission):
             return Response("Teacher not a member of this semester commission", status=status.HTTP_403_FORBIDDEN)
 
