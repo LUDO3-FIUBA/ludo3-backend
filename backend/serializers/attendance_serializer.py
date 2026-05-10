@@ -1,5 +1,3 @@
-from datetime import timedelta
-
 from rest_framework import serializers
 
 from backend.models import Attendance, AttendanceQRCode
@@ -57,10 +55,12 @@ class AttendanceQRCodeStudentStatusSerializer(serializers.ModelSerializer):
 
 class AttendancePostSerializer(serializers.ModelSerializer):
     qrid = serializers.UUIDField()
+    latitude = serializers.FloatField(required=False, allow_null=True)
+    longitude = serializers.FloatField(required=False, allow_null=True)
 
     class Meta:
         model = Attendance
-        fields = ('qrid',)
+        fields = ('qrid', 'latitude', 'longitude')
 
 
 class AttendanceQRCodeSerializer(serializers.ModelSerializer):
@@ -78,8 +78,6 @@ class AttendanceQRCodeSerializer(serializers.ModelSerializer):
         fields = ('semester', 'owner_teacher', 'created_at', 'expires_at', 'valid_until', 'qrid', 'mode', 'campus')
 
     def get_valid_until(self, obj):
-        if obj.mode == 'location':
-            return obj.created_at + timedelta(minutes=10)
         return obj.expires_at
 
 class AttendanceQRCodeSerializerNoSemester(serializers.ModelSerializer):
@@ -107,14 +105,12 @@ class AttendanceQRCodeStudentsSerializerNoSemester(serializers.ModelSerializer):
         fields = ('created_at', 'expires_at', 'valid_until', 'qrid', 'attendances', 'mode', 'campus')
 
     def get_valid_until(self, obj):
-        if obj.mode == 'location':
-            return obj.created_at + timedelta(minutes=10)
         return obj.expires_at
 
 
 class AttendanceQRCodePostSerializer(serializers.ModelSerializer):
     semester = serializers.IntegerField()
-    mode = serializers.ChoiceField(choices=['qr', 'location'], default='qr')
+    mode = serializers.ChoiceField(choices=['qr', 'qr_location'], default='qr')
     campus = serializers.ChoiceField(choices=['las_heras', 'paseo_colon'], required=False, allow_null=True)
 
     class Meta:
@@ -122,15 +118,9 @@ class AttendanceQRCodePostSerializer(serializers.ModelSerializer):
         fields = ('semester', 'mode', 'campus')
 
     def validate(self, data):
-        if data.get('mode') == 'location' and not data.get('campus'):
-            raise serializers.ValidationError("campus is required when mode is 'location'")
+        if data.get('mode') == 'qr_location' and not data.get('campus'):
+            raise serializers.ValidationError("campus is required when mode is 'qr_location'")
         return data
-
-
-class AttendanceLocationPostSerializer(serializers.Serializer):
-    session_id = serializers.UUIDField()
-    latitude = serializers.FloatField()
-    longitude = serializers.FloatField()
 
 
 class AttendanceAddStudentPostSerializer(serializers.ModelSerializer):

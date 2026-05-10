@@ -11,8 +11,8 @@ def three_hours_from_now():
 
 
 MODE_QR = 'qr'
-MODE_LOCATION = 'location'
-MODE_CHOICES = [(MODE_QR, 'QR'), (MODE_LOCATION, 'Ubicación')]
+MODE_QR_LOCATION = 'qr_location'
+MODE_CHOICES = [(MODE_QR, 'QR'), (MODE_QR_LOCATION, 'QR + Ubicación')]
 
 CAMPUS_LAS_HERAS = 'las_heras'
 CAMPUS_PASEO_COLON = 'paseo_colon'
@@ -25,7 +25,7 @@ class AttendanceQRCode(models.Model):
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Fecha de creacion")
     expires_at = models.DateTimeField(default=three_hours_from_now, verbose_name="Fecha de expiracion")
     qrid = models.UUIDField(default=uuid.uuid4, editable=False)
-    mode = models.CharField(max_length=10, choices=MODE_CHOICES, default=MODE_QR, verbose_name="Modo de asistencia")
+    mode = models.CharField(max_length=11, choices=MODE_CHOICES, default=MODE_QR, verbose_name="Modo de asistencia")
     campus = models.CharField(max_length=20, choices=CAMPUS_CHOICES, null=True, blank=True, verbose_name="Sede")
 
     class Meta:

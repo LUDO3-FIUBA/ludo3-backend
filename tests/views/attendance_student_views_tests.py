@@ -99,199 +99,169 @@ class AttendanceStudentViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
+    # --- QR mode attendance submission ---
 
-class AttendanceLocationViewsTests(APITestCase):
-    # Coordinates inside Las Heras (exact campus center)
-    LAS_HERAS_LAT = -34.58881221211288
-    LAS_HERAS_LON = -58.39658985864721
-    # Coordinates far from any campus (~3 km away)
-    FAR_LAT = -34.6100
-    FAR_LON = -58.4200
-
-    LOCATION_URL = "/api/semesters/attendance/location/"
-
-    def setUp(self):
-        self.student = StudentFactory()
-        self.teacher = TeacherFactory()
-        self.semester = SemesterFactory()
-        self.semester.students.add(self.student)
-
+    def test_qr_mode_creates_attendance_without_location(self):
         from django.utils import timezone as tz
-        self.active_session = AttendanceQRCode.objects.create(
-            semester=self.semester,
-            owner_teacher=self.teacher,
-            mode='location',
-            campus='las_heras',
-            expires_at=tz.now() + timedelta(hours=3),
-        )
-
-    def test_submit_location_within_campus_records_valid_attendance(self):
-        self.client.force_authenticate(user=self.student.user)
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertTrue(response.data["location_valid"])
-        attendance = Attendance.objects.get(student=self.student, qr_code=self.active_session)
-        self.assertTrue(attendance.location_valid)
-
-    def test_submit_location_outside_campus_records_invalid_attendance(self):
-        self.client.force_authenticate(user=self.student.user)
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.FAR_LAT,
-            "longitude": self.FAR_LON,
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertFalse(response.data["location_valid"])
-
-    def test_submit_location_valid_duplicate_is_rejected(self):
-        self.client.force_authenticate(user=self.student.user)
-        self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
-        })
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(response.data.get("code"), "attendance_already_valid")
-
-    def test_submit_location_invalid_can_retry(self):
-        self.client.force_authenticate(user=self.student.user)
-        first = self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.FAR_LAT,
-            "longitude": self.FAR_LON,
-        })
-        self.assertEqual(first.status_code, status.HTTP_201_CREATED)
-        self.assertFalse(first.data["location_valid"])
-
-        second = self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
-        })
-        self.assertEqual(second.status_code, status.HTTP_200_OK)
-        self.assertTrue(second.data["location_valid"])
-        self.assertEqual(Attendance.objects.filter(student=self.student, qr_code=self.active_session).count(), 1)
-
-    def test_submit_location_retry_still_invalid(self):
-        self.client.force_authenticate(user=self.student.user)
-        self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.FAR_LAT,
-            "longitude": self.FAR_LON,
-        })
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.FAR_LAT,
-            "longitude": self.FAR_LON,
-        })
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertFalse(response.data["location_valid"])
-
-    def test_submit_location_window_expired(self):
-        from django.utils import timezone as tz
-        expired_session = AttendanceQRCode.objects.create(
-            semester=self.semester,
-            owner_teacher=self.teacher,
-            mode='location',
-            campus='las_heras',
-            expires_at=tz.now() + timedelta(hours=3),
-        )
-        AttendanceQRCode.objects.filter(pk=expired_session.pk).update(
-            created_at=tz.now() - timedelta(minutes=11)
-        )
-        self.client.force_authenticate(user=self.student.user)
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(expired_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
-        })
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(response.data.get("code"), "location_attendance_window_expired")
-
-    def test_submit_location_on_qr_session_is_rejected(self):
-        from django.utils import timezone as tz
-        qr_session = AttendanceQRCode.objects.create(
+        qr = AttendanceQRCode.objects.create(
             semester=self.semester,
             owner_teacher=self.teacher,
             mode='qr',
             expires_at=tz.now() + timedelta(hours=3),
         )
         self.client.force_authenticate(user=self.student.user)
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(qr_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
-        })
+        response = self.client.post("/api/semesters/attendance/", {"qrid": str(qr.qrid)})
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIsNone(response.data["location_valid"])
+        attendance = Attendance.objects.get(student=self.student, qr_code=qr)
+        self.assertIsNone(attendance.location_valid)
 
-    def test_submit_location_expired_session_is_rejected(self):
+    def test_qr_mode_duplicate_scan_is_rejected(self):
         from django.utils import timezone as tz
-        expired_session = AttendanceQRCode.objects.create(
+        qr = AttendanceQRCode.objects.create(
             semester=self.semester,
             owner_teacher=self.teacher,
-            mode='location',
+            mode='qr',
+            expires_at=tz.now() + timedelta(hours=3),
+        )
+        self.client.force_authenticate(user=self.student.user)
+        self.client.post("/api/semesters/attendance/", {"qrid": str(qr.qrid)})
+        response = self.client.post("/api/semesters/attendance/", {"qrid": str(qr.qrid)})
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_qr_mode_expired_qr_is_rejected(self):
+        from django.utils import timezone as tz
+        qr = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='qr',
+            expires_at=tz.now() - timedelta(minutes=1),
+        )
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.post("/api/semesters/attendance/", {"qrid": str(qr.qrid)})
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    # --- QR + location mode attendance submission ---
+
+    def test_qr_location_within_campus_records_valid_attendance(self):
+        from django.utils import timezone as tz
+        qr = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='qr_location',
             campus='las_heras',
             expires_at=tz.now() + timedelta(hours=3),
         )
-        AttendanceQRCode.objects.filter(pk=expired_session.pk).update(
-            created_at=tz.now() - timedelta(minutes=11)
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.post("/api/semesters/attendance/", {
+            "qrid": str(qr.qrid),
+            "latitude": -34.58881221211288,
+            "longitude": -58.39658985864721,
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(response.data["location_valid"])
+        attendance = Attendance.objects.get(student=self.student, qr_code=qr)
+        self.assertTrue(attendance.location_valid)
+
+    def test_qr_location_outside_campus_records_invalid_attendance(self):
+        from django.utils import timezone as tz
+        qr = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='qr_location',
+            campus='las_heras',
+            expires_at=tz.now() + timedelta(hours=3),
         )
         self.client.force_authenticate(user=self.student.user)
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(expired_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
+        response = self.client.post("/api/semesters/attendance/", {
+            "qrid": str(qr.qrid),
+            "latitude": -34.6100,
+            "longitude": -58.4200,
+        })
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertFalse(response.data["location_valid"])
+
+    def test_qr_location_missing_coords_returns_400(self):
+        from django.utils import timezone as tz
+        qr = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='qr_location',
+            campus='las_heras',
+            expires_at=tz.now() + timedelta(hours=3),
+        )
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.post("/api/semesters/attendance/", {"qrid": str(qr.qrid)})
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_qr_location_duplicate_rejected(self):
+        from django.utils import timezone as tz
+        qr = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='qr_location',
+            campus='las_heras',
+            expires_at=tz.now() + timedelta(hours=3),
+        )
+        self.client.force_authenticate(user=self.student.user)
+        self.client.post("/api/semesters/attendance/", {
+            "qrid": str(qr.qrid),
+            "latitude": -34.58881221211288,
+            "longitude": -58.39658985864721,
+        })
+        response = self.client.post("/api/semesters/attendance/", {
+            "qrid": str(qr.qrid),
+            "latitude": -34.58881221211288,
+            "longitude": -58.39658985864721,
         })
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_submit_location_student_not_in_commission_is_rejected(self):
-        outsider = StudentFactory()
-        self.client.force_authenticate(user=outsider.user)
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
+    def test_qr_location_expired_qr_is_rejected(self):
+        from django.utils import timezone as tz
+        qr = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='qr_location',
+            campus='las_heras',
+            expires_at=tz.now() - timedelta(minutes=1),
+        )
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.post("/api/semesters/attendance/", {
+            "qrid": str(qr.qrid),
+            "latitude": -34.58881221211288,
+            "longitude": -58.39658985864721,
         })
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
-    def test_submit_location_unauthenticated(self):
-        response = self.client.post(self.LOCATION_URL, {
-            "session_id": str(self.active_session.qrid),
-            "latitude": self.LAS_HERAS_LAT,
-            "longitude": self.LAS_HERAS_LON,
-        })
-
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
-
-    def test_my_attendances_includes_location_valid_field(self):
-        my_attendances_url = "/api/semesters/attendance/my_attendances/"
+    def test_my_attendances_includes_location_valid_for_qr_location_session(self):
+        from django.utils import timezone as tz
+        qr = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='qr_location',
+            campus='las_heras',
+            expires_at=tz.now() + timedelta(hours=3),
+        )
         Attendance.objects.create(
             semester=self.semester,
             student=self.student,
-            qr_code=self.active_session,
-            latitude=self.FAR_LAT,
-            longitude=self.FAR_LON,
+            qr_code=qr,
+            latitude=-34.6100,
+            longitude=-58.4200,
             location_valid=False,
         )
         self.client.force_authenticate(user=self.student.user)
-        response = self.client.get(my_attendances_url, {"semester_id": self.semester.id})
+        response = self.client.get(self.my_attendances_url, {"semester_id": self.semester.id})
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        session_data = next(item for item in response.data if item["qrid"] == str(self.active_session.qrid))
+        session_data = next(item for item in response.data if item["qrid"] == str(qr.qrid))
         self.assertIn("location_valid", session_data)
         self.assertFalse(session_data["location_valid"])

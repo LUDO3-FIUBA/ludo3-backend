@@ -1,26 +1,20 @@
-from datetime import timedelta
-
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from django.db.models import Exists, OuterRef, Subquery
-from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from backend.api_exceptions import AttendanceAlreadyValidError, LocationAttendanceWindowExpiredError
 from backend.models import Attendance, AttendanceQRCode, Semester
 from backend.permissions import *
 from backend.serializers.attendance_serializer import (
-    AttendanceLocationPostSerializer, AttendancePostSerializer,
+    AttendancePostSerializer,
     AttendanceQRCodeStudentStatusSerializer, AttendanceSerializer)
 from backend.services.location_service import is_within_campus
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import get_required_int_query_param, is_before_current_datetime
-
-LOCATION_WINDOW_MINUTES = 10
 
 
 class AttendanceViewSet(BaseViewSet):
@@ -45,10 +39,32 @@ class AttendanceViewSet(BaseViewSet):
         if self.get_queryset().filter(student=request.user.student, qr_code=attendance_qr_code, semester=semester).first():
             return Response("This QR code has already been scanned", status=status.HTTP_403_FORBIDDEN)
 
-        attendance = Attendance(student=request.user.student, semester=semester, qr_code=attendance_qr_code)
+        latitude = longitude = location_valid = None
+
+        if attendance_qr_code.mode == 'qr_location':
+            serializer = AttendancePostSerializer(data=request.data)
+            if not serializer.is_valid():
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            latitude = serializer.validated_data.get('latitude')
+            longitude = serializer.validated_data.get('longitude')
+            if latitude is None or longitude is None:
+                return Response(
+                    {"detail": "latitude and longitude are required for qr_location sessions."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            location_valid = is_within_campus(attendance_qr_code.campus, latitude, longitude)
+
+        attendance = Attendance(
+            student=request.user.student,
+            semester=semester,
+            qr_code=attendance_qr_code,
+            latitude=latitude,
+            longitude=longitude,
+            location_valid=location_valid,
+        )
         attendance.save()
         return Response(AttendanceSerializer(attendance).data, status=status.HTTP_201_CREATED)
-        
+
     @action(detail=False, methods=['GET'])
     @swagger_auto_schema(
         tags=["Attendances"],
@@ -82,62 +98,3 @@ class AttendanceViewSet(BaseViewSet):
         ).order_by('-created_at')
 
         return Response(AttendanceQRCodeStudentStatusSerializer(attendance_qr_codes, many=True).data, status.HTTP_200_OK)
-
-    @action(detail=False, methods=['POST'])
-    @swagger_auto_schema(
-        tags=["Attendances"],
-        operation_summary="Submit attendance by GPS location"
-    )
-    def location(self, request):
-        serializer = AttendanceLocationPostSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        session_id = serializer.validated_data['session_id']
-        latitude = serializer.validated_data['latitude']
-        longitude = serializer.validated_data['longitude']
-
-        attendance_qr_code = get_object_or_404(AttendanceQRCode.objects, qrid=session_id)
-
-        if attendance_qr_code.mode != 'location':
-            return Response("This session does not accept location-based attendance", status=status.HTTP_400_BAD_REQUEST)
-
-        semester = attendance_qr_code.semester
-
-        if not semester.students.filter(pk=request.user.student.pk).exists():
-            return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)
-
-        window_elapsed = timezone.now() - attendance_qr_code.created_at
-        if window_elapsed > timedelta(minutes=LOCATION_WINDOW_MINUTES):
-            raise LocationAttendanceWindowExpiredError()
-
-        existing = self.get_queryset().filter(
-            student=request.user.student,
-            qr_code=attendance_qr_code,
-            semester=semester,
-        ).first()
-
-        if existing:
-            if existing.location_valid:
-                raise AttendanceAlreadyValidError()
-            valid = is_within_campus(attendance_qr_code.campus, latitude, longitude)
-            Attendance.objects.filter(pk=existing.pk).update(
-                latitude=latitude,
-                longitude=longitude,
-                submitted_at=timezone.now(),
-                location_valid=valid,
-            )
-            existing.refresh_from_db()
-            return Response(AttendanceSerializer(existing).data, status=status.HTTP_200_OK)
-
-        valid = is_within_campus(attendance_qr_code.campus, latitude, longitude)
-        attendance = Attendance(
-            student=request.user.student,
-            semester=semester,
-            qr_code=attendance_qr_code,
-            latitude=latitude,
-            longitude=longitude,
-            location_valid=valid,
-        )
-        attendance.save()
-        return Response(AttendanceSerializer(attendance).data, status=status.HTTP_201_CREATED)
