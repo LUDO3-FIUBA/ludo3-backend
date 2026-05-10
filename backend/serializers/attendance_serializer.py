@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from rest_framework import serializers
 
 from backend.models import Attendance, AttendanceQRCode
@@ -69,10 +71,16 @@ class AttendanceQRCodeSerializer(serializers.ModelSerializer):
     qrid = serializers.UUIDField()
     mode = serializers.CharField()
     campus = serializers.CharField(allow_null=True)
+    valid_until = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceQRCode
-        fields = ('semester', 'owner_teacher', 'created_at', 'expires_at', 'qrid', 'mode', 'campus')
+        fields = ('semester', 'owner_teacher', 'created_at', 'expires_at', 'valid_until', 'qrid', 'mode', 'campus')
+
+    def get_valid_until(self, obj):
+        if obj.mode == 'location':
+            return obj.created_at + timedelta(minutes=10)
+        return obj.expires_at
 
 class AttendanceQRCodeSerializerNoSemester(serializers.ModelSerializer):
     owner_teacher = TeacherSerializer()
@@ -92,10 +100,16 @@ class AttendanceQRCodeStudentsSerializerNoSemester(serializers.ModelSerializer):
     attendances = AttendanceNoSemesterNoQridSerializer(many=True)
     mode = serializers.CharField()
     campus = serializers.CharField(allow_null=True)
+    valid_until = serializers.SerializerMethodField()
 
     class Meta:
         model = AttendanceQRCode
-        fields = ('created_at', 'expires_at', 'qrid', 'attendances', 'mode', 'campus')
+        fields = ('created_at', 'expires_at', 'valid_until', 'qrid', 'attendances', 'mode', 'campus')
+
+    def get_valid_until(self, obj):
+        if obj.mode == 'location':
+            return obj.created_at + timedelta(minutes=10)
+        return obj.expires_at
 
 
 class AttendanceQRCodePostSerializer(serializers.ModelSerializer):

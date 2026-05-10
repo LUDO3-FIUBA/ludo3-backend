@@ -20,12 +20,20 @@ class AttendanceTeacherViewSet(BaseViewSet):
     queryset = Attendance.objects.all()
     serializer_class = AttendanceQRCodePostSerializer
 
-    @action(detail=False, methods=['POST'])
+    @action(detail=False, methods=['POST', 'DELETE'])
     @swagger_auto_schema(
         tags=["Attendance QRs"],
-        operation_summary="Create an attendance QR code"
+        operation_summary="Create or delete an attendance QR code"
     )
     def qr(self, request):
+        if request.method == 'DELETE':
+            attendance_qr = get_object_or_404(AttendanceQRCode.objects, qrid=request.data.get('qrid'))
+            commission = attendance_qr.semester.commission
+            if teacher_not_in_commission_staff(request.user.teacher, commission):
+                return Response("Teacher not a member of this semester commission", status=status.HTTP_403_FORBIDDEN)
+            attendance_qr.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+
         serializer = AttendanceQRCodePostSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -75,7 +83,7 @@ class AttendanceTeacherViewSet(BaseViewSet):
             attendance_qr = AttendanceQRCode(semester=semester, owner_teacher=owner_teacher, mode=mode, campus=campus)
             attendance_qr.save()
             return Response(AttendanceQRCodeSerializer(attendance_qr).data, status=status.HTTP_201_CREATED)
-    
+
     @swagger_auto_schema(
         tags=["Attendances"],
         operation_summary="Get attendances for a semester"
