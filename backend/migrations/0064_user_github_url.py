@@ -4,7 +4,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0057_notification_semester'),
+        ('backend', '0063_seed_digital_forms'),
     ]
 
     operations = [
