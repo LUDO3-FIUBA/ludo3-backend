@@ -14,6 +14,7 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
     grade = serializers.IntegerField(required=False, allow_null=True)
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     grader = TeacherSerializer()
+    submission_file = serializers.FileField(required=False, allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
 
@@ -21,7 +22,7 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
         model = EvaluationSubmission
         fields = (
             'evaluation', 'student', 'grade', 'submission_status', 'grader',
-             'submission_text',
+             'submission_text', 'submission_file',
             'created_at', 'updated_at'
         )
 
@@ -31,6 +32,7 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     grade = serializers.IntegerField(required=False, allow_null=True)
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     grader = TeacherSerializer()
+    submission_file = serializers.FileField(required=False, allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
 
@@ -38,7 +40,7 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
         model = EvaluationSubmission
         fields = (
             'evaluation', 'student', 'grade', 'submission_status', 'grader',
-            'submission_text',
+            'submission_text', 'submission_file',
             'created_at', 'updated_at'
         )
 
@@ -72,10 +74,11 @@ class EvaluationSubmissionPostSerializer(serializers.ModelSerializer):
 
     evaluation = serializers.IntegerField()
     student = serializers.IntegerField()
+    submission_file = serializers.FileField(required=False, allow_null=True)
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('evaluation', 'student', 'submission_text')
+        fields = ('evaluation', 'student', 'submission_text', 'submission_file')
 
 
 class EvaluationSubmissionCorrectionSerializer(serializers.ModelSerializer):

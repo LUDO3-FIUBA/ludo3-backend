@@ -43,6 +43,7 @@ class EvaluationSubmissionViewSet(BaseViewSet):
             student=request.user.student,
             evaluation=evaluation,
             submission_text=request.data.get("submission_text"),
+            submission_file=request.FILES.get("submission_file") if "submission_file" in request.FILES else None,
         )
 
         try:
