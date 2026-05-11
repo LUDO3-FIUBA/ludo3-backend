@@ -16,6 +16,8 @@ import os
 import django_heroku
 import firebase_admin
 
+from ludo.storage_settings import get_storage_settings
+
 logging.basicConfig(level=logging.DEBUG)
 
 
@@ -33,8 +35,9 @@ SECRET_KEY="v4@)^40(m^%j-z)260(e7pw#9i2jyxmnx5bw7jh4%zr)&85lw_"
 DEBUG = int(os.environ.get("DEBUG", default=1))
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = os.environ.get('LOCAL_MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
+
+globals().update(get_storage_settings())
 
 CSRF_COOKIE_SECURE=False
 
@@ -71,6 +74,7 @@ USE_L10N = True
 
 INSTALLED_APPS = [
     'boto3',
+    'storages',
     'backend.apps.BackendConfig',
     'django.contrib.admin',
     'django.contrib.auth',

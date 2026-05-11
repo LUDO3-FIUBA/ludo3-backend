@@ -6,7 +6,7 @@ from rest_framework import serializers
 
 from backend.api_exceptions import InvalidImageError
 from backend.models import User
-from backend.services import AwsS3Service
+from backend.services import storage_service
 from backend.services.image_validator_service import ImageValidatorService
 
 logger = logging.getLogger(__name__)
@@ -67,7 +67,7 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         return super().create(validated_data)
 
     def _upload_image(self, image_b64, image_name):
-        return AwsS3Service().upload_b64_image(image_b64, image_name)
+        return storage_service.upload_b64_image(image_b64, image_name)
 
 
 class UserCustomGetSerializer(UserSerializer):
@@ -76,7 +76,7 @@ class UserCustomGetSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'file', 'legajo', 'face_registered')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'file', 'legajo', 'github_url', 'face_registered')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
@@ -89,6 +89,12 @@ class UserCustomGetSerializer(UserSerializer):
         if obj.is_teacher:
             return bool(getattr(obj, 'teacher', None) and obj.teacher.face_encodings)
         return False
+
+
+class UserGithubUrlSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ('github_url',)
 
 
 class SimpleLoginSerializer(serializers.Serializer):
