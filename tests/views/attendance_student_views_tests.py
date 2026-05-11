@@ -117,7 +117,7 @@ class AttendanceStudentViewsTests(APITestCase):
         attendance = Attendance.objects.get(student=self.student, qr_code=qr)
         self.assertIsNone(attendance.location_valid)
 
-    def test_qr_mode_duplicate_scan_is_rejected(self):
+    def test_qr_mode_duplicate_scan_returns_existing_attendance(self):
         from django.utils import timezone as tz
         qr = AttendanceQRCode.objects.create(
             semester=self.semester,
@@ -129,7 +129,8 @@ class AttendanceStudentViewsTests(APITestCase):
         self.client.post("/api/semesters/attendance/", {"qrid": str(qr.qrid)})
         response = self.client.post("/api/semesters/attendance/", {"qrid": str(qr.qrid)})
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Attendance.objects.filter(student=self.student, qr_code=qr).count(), 1)
 
     def test_qr_mode_expired_qr_is_rejected(self):
         from django.utils import timezone as tz
@@ -226,7 +227,7 @@ class AttendanceStudentViewsTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_qr_location_duplicate_rejected(self):
+    def test_qr_location_duplicate_returns_existing_attendance(self):
         from django.utils import timezone as tz
         qr = AttendanceQRCode.objects.create(
             semester=self.semester,
@@ -247,7 +248,8 @@ class AttendanceStudentViewsTests(APITestCase):
             "longitude": -58.39658985864721,
         })
 
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(Attendance.objects.filter(student=self.student, qr_code=qr).count(), 1)
 
     def test_qr_location_expired_qr_is_rejected(self):
         from django.utils import timezone as tz

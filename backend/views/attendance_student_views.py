@@ -36,8 +36,9 @@ class AttendanceViewSet(BaseViewSet):
         if is_before_current_datetime(attendance_qr_code.expires_at):
             return Response("QR code has expired", status=status.HTTP_403_FORBIDDEN)
 
-        if self.get_queryset().filter(student=request.user.student, qr_code=attendance_qr_code, semester=semester).first():
-            return Response("This QR code has already been scanned", status=status.HTTP_403_FORBIDDEN)
+        existing = self.get_queryset().filter(student=request.user.student, qr_code=attendance_qr_code, semester=semester).first()
+        if existing:
+            return Response(AttendanceSerializer(existing).data, status=status.HTTP_200_OK)
 
         latitude = longitude = location_valid = None
 
