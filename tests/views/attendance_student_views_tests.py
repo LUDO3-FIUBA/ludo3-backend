@@ -167,7 +167,7 @@ class AttendanceStudentViewsTests(APITestCase):
         attendance = Attendance.objects.get(student=self.student, qr_code=qr)
         self.assertTrue(attendance.location_valid)
 
-    def test_qr_location_outside_campus_records_invalid_attendance(self):
+    def test_qr_location_outside_campus_returns_422_no_record_created(self):
         from django.utils import timezone as tz
         qr = AttendanceQRCode.objects.create(
             semester=self.semester,
@@ -183,8 +183,34 @@ class AttendanceStudentViewsTests(APITestCase):
             "longitude": -58.4200,
         })
 
-        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
-        self.assertFalse(response.data["location_valid"])
+        self.assertEqual(response.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
+        self.assertFalse(Attendance.objects.filter(student=self.student, qr_code=qr).exists())
+
+    def test_qr_location_outside_campus_allows_retry_inside(self):
+        from django.utils import timezone as tz
+        qr = AttendanceQRCode.objects.create(
+            semester=self.semester,
+            owner_teacher=self.teacher,
+            mode='qr_location',
+            campus='las_heras',
+            expires_at=tz.now() + timedelta(hours=3),
+        )
+        self.client.force_authenticate(user=self.student.user)
+        first = self.client.post("/api/semesters/attendance/", {
+            "qrid": str(qr.qrid),
+            "latitude": -34.6100,
+            "longitude": -58.4200,
+        })
+        self.assertEqual(first.status_code, status.HTTP_422_UNPROCESSABLE_ENTITY)
+
+        second = self.client.post("/api/semesters/attendance/", {
+            "qrid": str(qr.qrid),
+            "latitude": -34.58881221211288,
+            "longitude": -58.39658985864721,
+        })
+        self.assertEqual(second.status_code, status.HTTP_201_CREATED)
+        self.assertTrue(second.data["location_valid"])
+        self.assertEqual(Attendance.objects.filter(student=self.student, qr_code=qr).count(), 1)
 
     def test_qr_location_missing_coords_returns_400(self):
         from django.utils import timezone as tz
@@ -254,9 +280,9 @@ class AttendanceStudentViewsTests(APITestCase):
             semester=self.semester,
             student=self.student,
             qr_code=qr,
-            latitude=-34.6100,
-            longitude=-58.4200,
-            location_valid=False,
+            latitude=-34.58881221211288,
+            longitude=-58.39658985864721,
+            location_valid=True,
         )
         self.client.force_authenticate(user=self.student.user)
         response = self.client.get(self.my_attendances_url, {"semester_id": self.semester.id})
@@ -264,4 +290,4 @@ class AttendanceStudentViewsTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         session_data = next(item for item in response.data if item["qrid"] == str(qr.qrid))
         self.assertIn("location_valid", session_data)
-        self.assertFalse(session_data["location_valid"])
+        self.assertTrue(session_data["location_valid"])

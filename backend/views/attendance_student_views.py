@@ -53,6 +53,11 @@ class AttendanceViewSet(BaseViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             location_valid = is_within_campus(attendance_qr_code.campus, latitude, longitude)
+            if not location_valid:
+                return Response(
+                    {"detail": "Location outside campus. Please try again."},
+                    status=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                )
 
         attendance = Attendance(
             student=request.user.student,
