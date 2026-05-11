@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('backend', '0058_calendar_reminders'),
-        ('backend', '0058_user_github_url'),
+        ('backend', '0059_user_github_url'),
     ]
 
     operations = [

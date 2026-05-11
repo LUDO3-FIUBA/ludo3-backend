@@ -84,7 +84,7 @@ def reverse_seed_catalogs(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0060_form_teacher_validation'),
+        ('backend', '0063_form_teacher_validation'),
     ]
 
     operations = [
