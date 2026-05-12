@@ -5,6 +5,7 @@ from .commission_serializer import CommissionSerializer
 
 class EvaluationSerializer(serializers.ModelSerializer):
     evaluation_name = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     is_graded = serializers.BooleanField()
     is_gradeable = serializers.BooleanField()
     parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', allow_null=True)
@@ -16,11 +17,12 @@ class EvaluationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'is_graded', 'is_gradeable', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
+        fields = ('id', 'evaluation_name', 'description', 'is_graded', 'is_gradeable', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
 
 
 class EvaluationWithMakeupSerializer(serializers.ModelSerializer):
     evaluation_name = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     is_graded = serializers.BooleanField()
     is_gradeable = serializers.BooleanField()
     parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', allow_null=True)
@@ -32,7 +34,7 @@ class EvaluationWithMakeupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'is_graded', 'is_gradeable', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'make_up_evaluation', 'requires_qr', 'requires_identity')
+        fields = ('id', 'evaluation_name', 'description', 'is_graded', 'is_gradeable', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'make_up_evaluation', 'requires_qr', 'requires_identity')
     
     def get_fields(self):
         fields = super(EvaluationWithMakeupSerializer, self).get_fields()
@@ -52,6 +54,7 @@ class SemesterEvaluationsSerializer(serializers.ModelSerializer):
 
 class EvaluationSemesterSerializer(serializers.ModelSerializer):
     evaluation_name = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', allow_null=True)
     passing_grade = serializers.IntegerField(allow_null=True, min_value=0, max_value=10)
     start_date = serializers.DateTimeField()
@@ -63,13 +66,14 @@ class EvaluationSemesterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Evaluation
-        fields = ('id', 'evaluation_name', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'semester', 'requires_qr', 'requires_identity')
+        fields = ('id', 'evaluation_name', 'description', 'parent_evaluation', 'passing_grade', 'start_date', 'end_date', 'semester', 'requires_qr', 'requires_identity')
 
 
 class EvaluationPostSerializer(serializers.ModelSerializer):
     semester_id = serializers.IntegerField()
     parent_evaluation = serializers.IntegerField(source='parent_evaluation_id', required=False, allow_null=True)
     evaluation_name = serializers.CharField()
+    description = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     is_graded = serializers.BooleanField()
     is_gradeable = serializers.BooleanField()
     passing_grade = serializers.IntegerField(allow_null=True, min_value=0, max_value=10)
@@ -80,7 +84,7 @@ class EvaluationPostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Evaluation
-        fields = ('semester_id', 'parent_evaluation', 'evaluation_name', 'is_graded', 'is_gradeable', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
+        fields = ('semester_id', 'parent_evaluation', 'evaluation_name', 'description', 'is_graded', 'is_gradeable', 'passing_grade', 'start_date', 'end_date', 'requires_qr', 'requires_identity')
 
     def create(self, validated_data):
         instance = Evaluation(**validated_data)
@@ -94,6 +98,7 @@ class EvaluationUpdateSerializer(serializers.ModelSerializer):
         model = Evaluation
         fields = (
             "evaluation_name",
+            "description",
             "is_graded",
             "is_gradeable",
             "passing_grade",
