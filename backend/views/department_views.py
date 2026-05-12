@@ -1,11 +1,12 @@
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models import Department
-from backend.permissions import IsAdmin
+from backend.permissions import IsAdmin, IsSuperAdmin, get_admin_department_id
 from backend.serializers.department_serializer import DepartmentSerializer, DepartmentWriteSerializer
 from backend.views.base_view import BaseViewSet
 
@@ -15,9 +16,18 @@ class DepartmentViewSet(BaseViewSet):
     serializer_class = DepartmentSerializer
 
     def get_permissions(self):
-        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+        if self.action in ('create', 'destroy'):
+            return [IsAuthenticated(), IsSuperAdmin()]
+        if self.action in ('update', 'partial_update'):
             return [IsAuthenticated(), IsAdmin()]
         return [IsAuthenticated()]
+
+    def _ensure_can_edit(self, request, department):
+        if request.user.is_superuser:
+            return
+        if get_admin_department_id(request.user) == department.id:
+            return
+        raise PermissionDenied("Solo podés editar tu propio departamento.")
 
     @swagger_auto_schema(tags=["Departments"], operation_summary="List all departments")
     def list(self, request, *args, **kwargs):
@@ -39,6 +49,7 @@ class DepartmentViewSet(BaseViewSet):
     @swagger_auto_schema(tags=["Departments"], operation_summary="Update a department", request_body=DepartmentWriteSerializer)
     def update(self, request, pk=None, *args, **kwargs):
         department = get_object_or_404(self.get_queryset(), pk=pk)
+        self._ensure_can_edit(request, department)
         serializer = DepartmentWriteSerializer(department, data=request.data)
         serializer.is_valid(raise_exception=True)
         serializer.save()
@@ -47,6 +58,7 @@ class DepartmentViewSet(BaseViewSet):
     @swagger_auto_schema(tags=["Departments"], operation_summary="Partial update a department", request_body=DepartmentWriteSerializer)
     def partial_update(self, request, pk=None, *args, **kwargs):
         department = get_object_or_404(self.get_queryset(), pk=pk)
+        self._ensure_can_edit(request, department)
         serializer = DepartmentWriteSerializer(department, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()

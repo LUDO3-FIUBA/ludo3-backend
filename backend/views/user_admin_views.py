@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from backend.models import User
 from backend.models.student import Student
 from backend.models.teacher import Teacher
-from backend.permissions import IsAdmin
+from backend.permissions import IsSuperAdmin
 from backend.serializers.user_admin_serializer import (
     UserAdminReadSerializer,
     UserAdminWriteSerializer,
@@ -20,7 +20,7 @@ from backend.views.base_view import BaseViewSet
 class UserAdminViewSet(BaseViewSet):
     queryset = User.objects.all()
     serializer_class = UserAdminReadSerializer
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
 
     @action(detail=False, methods=['GET'])
     @swagger_auto_schema(

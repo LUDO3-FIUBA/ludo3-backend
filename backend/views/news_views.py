@@ -11,7 +11,7 @@ from rest_framework.response import Response
 
 from backend.models import News
 from backend.news_tags import NEWS_TAGS
-from backend.permissions import IsAdmin
+from backend.permissions import IsSuperAdmin
 from backend.serializers.news_serializer import NewsSerializer, NewsWriteSerializer
 from backend.services import AwsS3Service
 from backend.views.base_view import BaseViewSet
@@ -25,7 +25,7 @@ class NewsViewSet(BaseViewSet):
 
     def get_permissions(self):
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
-            return [IsAuthenticated(), IsAdmin()]
+            return [IsAuthenticated(), IsSuperAdmin()]
         return [IsAuthenticated()]
 
     @swagger_auto_schema(tags=["News"], operation_summary="List available tags")

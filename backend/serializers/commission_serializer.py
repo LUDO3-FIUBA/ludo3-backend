@@ -11,10 +11,11 @@ class CommissionSerializer(serializers.ModelSerializer):
     siu_id = serializers.IntegerField(read_only=True)
     chief_teacher = TeacherSerializer()
     chief_teacher_grader_weight = serializers.FloatField()
+    department = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = Commission
-        fields = ('id', 'subject_siu_id', 'subject_name', 'siu_id', 'chief_teacher', 'chief_teacher_grader_weight')
+        fields = ('id', 'subject_siu_id', 'subject_name', 'siu_id', 'chief_teacher', 'chief_teacher_grader_weight', 'department')
 
 
 class CommissionPutSerializer(serializers.ModelSerializer):
@@ -31,4 +32,4 @@ class CommissionWriteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Commission
-        fields = ('subject_siu_id', 'subject_name', 'chief_teacher', 'siu_id', 'chief_teacher_grader_weight')
+        fields = ('subject_siu_id', 'subject_name', 'chief_teacher', 'siu_id', 'chief_teacher_grader_weight', 'department')

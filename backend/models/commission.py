@@ -6,6 +6,7 @@ from django.utils import timezone
 from backend.services.siu_service import SiuService
 from backend.utils import memoized
 
+from .department import Department
 from .teacher import Teacher
 
 
@@ -15,6 +16,14 @@ class Commission(models.Model):
     subject_name = models.CharField(max_length=100, db_index=True, null=False, verbose_name="Nombre de Materia")
     siu_id = models.IntegerField(db_index=True, null=False, editable=False)
     chief_teacher_grader_weight = models.FloatField(default=5.0, verbose_name="Peso al asignar correctores")
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='commissions',
+        verbose_name="Departamento",
+    )
 
     teachers =  models.ManyToManyField(Teacher, through='TeacherRole', verbose_name="Cuerpo Docente")
 

@@ -73,10 +73,11 @@ class UserCustomCreateSerializer(UserCreateSerializer):
 class UserCustomGetSerializer(UserSerializer):
     legajo = serializers.SerializerMethodField()
     face_registered = serializers.SerializerMethodField()
+    department_id = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'file', 'legajo', 'face_registered')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'department_id', 'file', 'legajo', 'face_registered')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
@@ -89,6 +90,12 @@ class UserCustomGetSerializer(UserSerializer):
         if obj.is_teacher:
             return bool(getattr(obj, 'teacher', None) and obj.teacher.face_encodings)
         return False
+
+    def get_department_id(self, obj):
+        if not obj.is_staff or obj.is_superuser:
+            return None
+        staff = getattr(obj, 'staff', None)
+        return staff.department_id if staff else None
 
 
 class SimpleLoginSerializer(serializers.Serializer):
