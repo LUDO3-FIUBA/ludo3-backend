@@ -14,6 +14,7 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
     grade = serializers.IntegerField(required=False, allow_null=True)
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     grader = TeacherSerializer()
+    feedback_text = serializers.CharField(required=False, allow_null=True)
     submission_file = serializers.FileField(required=False, allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
@@ -21,7 +22,7 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationSubmission
         fields = (
-            'evaluation', 'student', 'grade', 'submission_status', 'grader',
+            'evaluation', 'student', 'grade', 'submission_status', 'grader', 'feedback_text',
              'submission_text', 'submission_file',
             'created_at', 'updated_at'
         )
@@ -32,6 +33,7 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     grade = serializers.IntegerField(required=False, allow_null=True)
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     grader = TeacherSerializer()
+    feedback_text = serializers.CharField(required=False, allow_null=True)
     submission_file = serializers.FileField(required=False, allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
@@ -39,7 +41,7 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationSubmission
         fields = (
-            'evaluation', 'student', 'grade', 'submission_status', 'grader',
+            'evaluation', 'student', 'grade', 'submission_status', 'grader', 'feedback_text',
             'submission_text', 'submission_file',
             'created_at', 'updated_at'
         )
@@ -53,7 +55,7 @@ class EvaluationSubmissionPutSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('evaluation', 'student', 'grade', 'submission_status')
+        fields = ('evaluation', 'student', 'grade', 'submission_status', 'feedback_text')
 
     def validate(self, attrs):
         grade = attrs.get('grade', None)
@@ -88,7 +90,8 @@ class EvaluationSubmissionCorrectionSerializer(serializers.ModelSerializer):
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
+    feedback_text = serializers.CharField(required=False, allow_null=True)
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('student', 'grade', 'grader', 'submission_status', 'submission_text', 'created_at', 'updated_at')
+        fields = ('student', 'grade', 'grader', 'submission_status', 'feedback_text', 'submission_text', 'created_at', 'updated_at')
