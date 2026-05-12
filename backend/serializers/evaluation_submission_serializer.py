@@ -52,6 +52,7 @@ class EvaluationSubmissionPutSerializer(serializers.ModelSerializer):
     student = serializers.IntegerField()
     grade = serializers.IntegerField(required=False, allow_null=True)
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
+    feedback_text = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
     class Meta:
         model = EvaluationSubmission

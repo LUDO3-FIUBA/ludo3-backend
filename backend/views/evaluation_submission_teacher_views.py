@@ -64,6 +64,7 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
         serializer.is_valid(raise_exception=True)
         grade = serializer.validated_data.get('grade')
         submission_status = serializer.validated_data.get('submission_status')
+        feedback_text = serializer.validated_data.get('feedback_text')
         evaluation_id = serializer.validated_data['evaluation']
         student_id = serializer.validated_data['student']
         submission = self.queryset.filter(student__user__id=student_id, evaluation__id=evaluation_id).first()
@@ -78,9 +79,9 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
         submissions_service = EvaluationSubmissionService()
         try:
             if submission_status is not None:
-                submissions_service.set_status(submission, request.user.teacher, submission_status)
+                submissions_service.set_status(submission, request.user.teacher, submission_status, feedback_text)
             else:
-                submissions_service.set_grade(submission, request.user.teacher, grade)
+                submissions_service.set_grade(submission, request.user.teacher, grade, feedback_text)
         except ValidationError as e:
             payload = getattr(e, "message_dict", None) or {"detail": e.messages}
             return Response(payload, status=status.HTTP_400_BAD_REQUEST)
