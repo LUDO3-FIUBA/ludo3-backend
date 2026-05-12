@@ -1,8 +1,9 @@
+from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils import timezone
 
-from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator
+from backend.services.file_validator_service import FileValidatorService
 from .evaluation import Evaluation
 from .student import Student
 from .teacher import Teacher
@@ -35,6 +36,24 @@ class EvaluationSubmission(models.Model):
 
         if self.evaluation.is_gradeable and self.submission_status is not None:
             raise ValidationError({"submission_status": ["Esta evaluación usa calificación numérica."]})
+
+        if self.submission_file:
+            self._validate_submission_file()
+
+    def _validate_submission_file(self):
+        uploaded_file = self.submission_file
+        file_obj = getattr(uploaded_file, 'file', uploaded_file)
+
+        try:
+            is_pdf = FileValidatorService.validate_pdf(file_obj)
+            is_image = FileValidatorService.validate_image(file_obj)
+            
+            if not (is_pdf or is_image):
+                raise ValidationError({
+                    'submission_file': ['El archivo debe ser un PDF o una imagen válida (jpg, jpeg, png, webp).']
+                })
+        except ValidationError:
+            raise
 
     def is_passed(self):
         if self.evaluation is None:
