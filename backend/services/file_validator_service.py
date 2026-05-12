@@ -1,13 +1,13 @@
 from django.core.exceptions import ValidationError
 from PIL import Image
 from pypdf import PdfReader
+from pathlib import Path
 
 
 class FileValidatorService:
-    """Stateless validator for PDFs and images. Pass the file to each method."""
-
     MAX_PDF_SIZE = 5 * 1024 * 1024  # 5MB
     MAX_IMAGE_SIZE = 2 * 1024 * 1024  # 2MB
+    ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 
     @staticmethod
     def _get_file_size(file_obj):
@@ -31,7 +31,6 @@ class FileValidatorService:
             if header != b'%PDF-':
                 return False
 
-            # Validate PDF structure by parsing with pypdf
             reader = PdfReader(file_obj, strict=True)
             _ = len(reader.pages)
             file_obj.seek(0)
@@ -46,6 +45,11 @@ class FileValidatorService:
     @staticmethod
     def validate_image(file_obj):
         file_size = FileValidatorService._get_file_size(file_obj)
+        file_name = getattr(file_obj, 'name', '') or ''
+        file_extension = Path(file_name).suffix.lower()
+
+        if file_extension not in FileValidatorService.ALLOWED_IMAGE_EXTENSIONS:
+            return False
 
         if file_size > FileValidatorService.MAX_IMAGE_SIZE:
             raise ValidationError('La imagen no debe exceder 2MB.')
