@@ -5,11 +5,42 @@ from djoser.serializers import UserCreateSerializer, User, UserSerializer
 from rest_framework import serializers
 
 from backend.api_exceptions import InvalidImageError
+from backend.client.guarani_client import GuaraniClient
 from backend.models import User
 from backend.services import storage_service
 from backend.services.image_validator_service import ImageValidatorService
 
 logger = logging.getLogger(__name__)
+
+GUARANI_DNI_TIPO_DOCUMENTO = 0
+
+
+def fetch_alumno_email_from_guarani(dni):
+    """Look up an alumno by DNI in SIU Guaraní and return their email.
+
+    Raises ValidationError if the alumno is not found, the API call fails,
+    or the alumno has no email registered.
+    """
+    try:
+        alumno = GuaraniClient().get_alumno(GUARANI_DNI_TIPO_DOCUMENTO, dni)
+    except Exception:
+        logger.exception("Guaraní lookup failed for DNI %s", dni)
+        raise serializers.ValidationError({
+            'dni': 'No se pudo verificar el DNI con SIU Guaraní. Intentá de nuevo.'
+        })
+
+    if not alumno:
+        raise serializers.ValidationError({
+            'dni': 'No se encontró un alumno con ese DNI en SIU Guaraní.'
+        })
+
+    email = (alumno.get('email') or '').strip() if isinstance(alumno, dict) else ''
+    if not email:
+        raise serializers.ValidationError({
+            'dni': 'El alumno no tiene un email registrado en SIU Guaraní.'
+        })
+
+    return email
 
 
 class UserCustomCreateSerializer(UserCreateSerializer):
@@ -20,6 +51,8 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         max_length=7,
         help_text="Padrón del estudiante (5 a 7 dígitos)"
     )
+    # Email is not required from the client — it's fetched from SIU Guaraní by DNI for students.
+    email = serializers.EmailField(required=False, allow_blank=True)
 
     class Meta:
         model = User
@@ -29,6 +62,7 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         is_student = attrs.get('is_student', False)
         padron = attrs.get('padron')
         password = attrs.get('password')
+        dni = attrs.get('dni')
 
         if is_student:
             if not padron:
@@ -37,6 +71,12 @@ class UserCustomCreateSerializer(UserCreateSerializer):
                 raise serializers.ValidationError({'padron': 'El padrón debe contener solo números'})
             if not password:
                 raise serializers.ValidationError({'password': 'La contraseña es obligatoria para estudiantes'})
+
+            # Fetch email from SIU Guaraní; ignore any email the client sent.
+            attrs['email'] = fetch_alumno_email_from_guarani(dni)
+        else:
+            if not attrs.get('email'):
+                raise serializers.ValidationError({'email': 'El email es obligatorio.'})
 
         return attrs
 
