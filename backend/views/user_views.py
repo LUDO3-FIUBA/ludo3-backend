@@ -9,8 +9,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.serializers.user_serializer import (
-    UserCustomCreateSerializer, UserCustomGetSerializer, SimpleLoginSerializer)
-from backend.services import AwsS3Service
+    UserCustomCreateSerializer, UserCustomGetSerializer, SimpleLoginSerializer,
+    UserGithubUrlSerializer)
+from backend.services import storage_service
 from backend.services.image_validator_service import ImageValidatorService
 
 from ..api_exceptions import InvalidFaceError, InvalidImageError
@@ -27,9 +28,15 @@ class UserCustomViewSet(UserViewSet):
     def get_serializer_class(self):
         return UserCustomCreateSerializer
 
-    @action(["get"], detail=False)
+    @action(["get", "patch"], detail=False)
     def me(self, request, *args, **kwargs):
-        return super().me(request, *args, **kwargs)
+        if request.method == "PATCH":
+            serializer = UserGithubUrlSerializer(request.user, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(UserCustomGetSerializer(request.user).data, status=status.HTTP_200_OK)
+
+        return Response(UserCustomGetSerializer(request.user).data, status=status.HTTP_200_OK)
 
     @action(detail=False, methods=['POST'])
     def is_me(self, request):
@@ -61,7 +68,7 @@ class UserCustomViewSet(UserViewSet):
 
         if user.is_student:
             try:
-                model.image = AwsS3Service().upload_b64_image(image, f"{uuid.uuid4()}.jpg")
+                model.image = storage_service.upload_b64_image(image, f"{uuid.uuid4()}.jpg")
             except Exception:
                 logger.exception("S3 upload failed at register_face; face encodings saved without image URL.")
 

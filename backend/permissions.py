@@ -26,6 +26,11 @@ class IsAdmin(permissions.BasePermission):
         return request.user.is_staff
 
 
+class IsTeacherOrAdmin(permissions.BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_teacher or request.user.is_staff
+
+
 class IsSuperAdmin(permissions.BasePermission):
     """Permission that only allows full super-admin users (is_superuser=True)."""
 

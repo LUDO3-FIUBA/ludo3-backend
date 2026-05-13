@@ -51,7 +51,7 @@ def get_current_semester():
 
 
 def get_current_year():
-    return 2024
+    return datetime.now().year
 
 
 def get_hours_from_current_time(past_datetime):

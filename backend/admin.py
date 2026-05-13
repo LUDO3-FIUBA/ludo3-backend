@@ -555,8 +555,9 @@ admin.site.register(Semester, SemesterAdmin)
 
 @admin.register(AcademicCalendarEvent)
 class AcademicCalendarEventAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'year', 'start_date', 'end_date')
-    list_filter = ('category', 'year')
+    list_display = ('name', 'category', 'year', 'start_date', 'end_date', 'is_deadline')
+    list_filter = ('category', 'year', 'is_deadline')
+    list_editable = ('is_deadline',)
     search_fields = ('name',)
     ordering = ('year', 'start_date')
 
@@ -572,3 +573,11 @@ class NewsAdmin(admin.ModelAdmin):
         if not change and not obj.author_id:
             obj.author = request.user
         super().save_model(request, obj, form, change)
+
+
+@admin.register(CalendarEventReminder)
+class CalendarEventReminderAdmin(admin.ModelAdmin):
+    list_display = ('event', 'days_before', 'sent_at')
+    list_filter = ('days_before',)
+    ordering = ('-sent_at',)
+    readonly_fields = ('event', 'days_before', 'notification', 'sent_at')
