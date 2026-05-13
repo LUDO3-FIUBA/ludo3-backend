@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models import Notification, UserNotification
-from backend.permissions import IsAdmin
+from backend.permissions import IsSuperAdmin
 from backend.serializers.notification_serializer import (
     NotificationAdminSerializer,
     NotificationCreateSerializer,
@@ -14,7 +14,7 @@ from backend.views.notification_views import _resolve_recipients
 
 
 class NotificationAdminViewSet(BaseViewSet):
-    permission_classes = [IsAuthenticated, IsAdmin]
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
     queryset = Notification.objects.prefetch_related('user_notifications').order_by('-created_at')
     serializer_class = NotificationAdminSerializer
 

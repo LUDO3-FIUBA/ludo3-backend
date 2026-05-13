@@ -1,0 +1,16 @@
+from django.db import migrations, models
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('backend', '0068_merge_20260513_0003'),
+    ]
+
+    operations = [
+        migrations.AddField(
+            model_name='user',
+            name='linkedin_url',
+            field=models.URLField(blank=True, max_length=255, verbose_name='LinkedIn'),
+        ),
+    ]
