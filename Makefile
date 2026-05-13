@@ -14,6 +14,11 @@ up-remote:
 	docker compose -f docker-compose.remote.yml up -d --build --remove-orphans
 .PHONY: up-remote
 
+CMD ?=
+
+exec:
+	docker exec -it web $(CMD)
+
 migrate:
 	docker exec -it web python3 manage.py migrate
 	docker exec -it web python3 manage.py initdata
