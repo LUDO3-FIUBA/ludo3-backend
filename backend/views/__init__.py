@@ -22,7 +22,6 @@ from .statistics_student_views import StatisticsStudentViewSet
 from .statistics_teacher_views import StatisticsTeacherViewSet
 from .student_views import StudentViews
 from .subject_views import SubjectViewSet
-from .teacher_profile_views import TeacherProfileViewSet
 from .teacher_role_views import TeacherRoleViewSet
 from .teacher_views import TeacherViews
 from .notification_views import NotificationViewSet

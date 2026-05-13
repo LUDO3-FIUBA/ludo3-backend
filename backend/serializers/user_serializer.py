@@ -77,7 +77,7 @@ class UserCustomGetSerializer(UserSerializer):
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'department_id', 'file', 'legajo', 'github_url', 'face_registered')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'department_id', 'file', 'legajo', 'github_url', 'linkedin_url', 'face_registered')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
@@ -98,10 +98,11 @@ class UserCustomGetSerializer(UserSerializer):
         return staff.department_id if staff else None
 
 
-class UserGithubUrlSerializer(serializers.ModelSerializer):
+class UserMeUpdateSerializer(serializers.ModelSerializer):
+    """Editable profile fields on the /me PATCH endpoint."""
     class Meta:
         model = User
-        fields = ('github_url',)
+        fields = ('github_url', 'linkedin_url')
 
 
 class SimpleLoginSerializer(serializers.Serializer):

@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from backend.serializers.user_serializer import (
     UserCustomCreateSerializer, UserCustomGetSerializer, SimpleLoginSerializer,
-    UserGithubUrlSerializer)
+    UserMeUpdateSerializer)
 from backend.services import storage_service
 from backend.services.image_validator_service import ImageValidatorService
 
@@ -31,7 +31,7 @@ class UserCustomViewSet(UserViewSet):
     @action(["get", "patch"], detail=False)
     def me(self, request, *args, **kwargs):
         if request.method == "PATCH":
-            serializer = UserGithubUrlSerializer(request.user, data=request.data, partial=True)
+            serializer = UserMeUpdateSerializer(request.user, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             serializer.save()
             return Response(UserCustomGetSerializer(request.user).data, status=status.HTTP_200_OK)
