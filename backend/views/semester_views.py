@@ -95,7 +95,7 @@ class SemesterViewSet(BaseViewSet):
         attendance_qrs_count = semester.attendance_qrs.count()
         
         attendances_by_student = dict(
-            semester.attendances.values('student_id').annotate(total=Count('id')).values_list('student_id', 'total')
+            semester.attendances.exclude(location_valid=False).values('student_id').annotate(total=Count('id')).values_list('student_id', 'total')
         )
         
         submissions = EvaluationSubmission.objects.filter(
