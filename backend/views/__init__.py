@@ -22,7 +22,6 @@ from .statistics_student_views import StatisticsStudentViewSet
 from .statistics_teacher_views import StatisticsTeacherViewSet
 from .student_views import StudentViews
 from .subject_views import SubjectViewSet
-from .teacher_profile_views import TeacherProfileViewSet
 from .teacher_role_views import TeacherRoleViewSet
 from .teacher_views import TeacherViews
 from .notification_views import NotificationViewSet
@@ -33,4 +32,15 @@ from .department_views import DepartmentViewSet
 from .news_views import NewsViewSet
 from .commission_admin_views import CommissionAdminViewSet
 from .user_admin_views import UserAdminViewSet
+from .form_views import (
+    FormTypeViewSet,
+    FormProcedureTypeViewSet,
+    FormFieldTypeViewSet,
+    FormSubmissionStatusViewSet,
+    FormViewSet,
+    FormSubmissionViewSet,
+    SubmissionAdminViewSet,
+    TeacherFormSubmissionViewSet,
+    CatalogViewSet,
+)
 from .student_identity_views import StudentIdentityViewSet

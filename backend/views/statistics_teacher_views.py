@@ -51,7 +51,7 @@ class StatisticsTeacherViewSet(BaseViewSet):
 
         # Retention Rate
 
-        students_last_attended_class = Attendance.objects.get_queryset().filter(semester=semester).values(
+        students_last_attended_class = Attendance.objects.get_queryset().filter(semester=semester).exclude(location_valid=False).values(
             'student').annotate(last_attendance=Max('qr_code__created_at'))
         
         classes_with_attendance = AttendanceQRCode.objects.get_queryset().filter(semester=semester).order_by('created_at').all()
@@ -74,7 +74,7 @@ class StatisticsTeacherViewSet(BaseViewSet):
 
         # Assistance Rate
 
-        attendances_amount =  Attendance.objects.get_queryset().filter(semester=semester).count()
+        attendances_amount = Attendance.objects.get_queryset().filter(semester=semester).exclude(location_valid=False).count()
         classes_with_attendance_amount = len(classes_with_attendance)
 
         condition1 = Q(status='P')

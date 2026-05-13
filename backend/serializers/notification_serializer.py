@@ -22,10 +22,15 @@ class TeacherNotificationListSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         if not obj.image:
             return None
+        image_url = obj.image.url
+        # If URL is already absolute (from cloud storage), return as-is
+        if image_url.startswith(('http://', 'https://')):
+            return image_url
+        # Otherwise, make it absolute relative to the request
         request = self.context.get('request')
         if request:
-            return request.build_absolute_uri(obj.image.url)
-        return obj.image.url
+            return request.build_absolute_uri(image_url)
+        return image_url
 
     def get_sender_name(self, obj):
         sender = obj.sender
@@ -83,10 +88,15 @@ class NotificationSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         if not obj.image:
             return None
+        image_url = obj.image.url
+        # If URL is already absolute (from cloud storage), return as-is
+        if image_url.startswith(('http://', 'https://')):
+            return image_url
+        # Otherwise, make it absolute relative to the request
         request = self.context.get('request')
         if request:
-            return request.build_absolute_uri(obj.image.url)
-        return obj.image.url
+            return request.build_absolute_uri(image_url)
+        return image_url
 
     def get_sender_name(self, obj):
         sender = obj.sender
@@ -129,10 +139,15 @@ class NotificationAdminSerializer(serializers.ModelSerializer):
     def get_image(self, obj):
         if not obj.image:
             return None
+        image_url = obj.image.url
+        # If URL is already absolute (from cloud storage), return as-is
+        if image_url.startswith(('http://', 'https://')):
+            return image_url
+        # Otherwise, make it absolute relative to the request
         request = self.context.get('request')
         if request:
-            return request.build_absolute_uri(obj.image.url)
-        return obj.image.url
+            return request.build_absolute_uri(image_url)
+        return image_url
 
     def get_recipient_count(self, obj):
         return obj.user_notifications.count()

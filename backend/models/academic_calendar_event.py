@@ -20,6 +20,7 @@ class AcademicCalendarEvent(models.Model):
         verbose_name="Categoría",
     )
     year = models.IntegerField(verbose_name="Año")
+    is_deadline = models.BooleanField(default=False, verbose_name="Es vencimiento")
 
     class Meta:
         verbose_name = "Evento del Calendario Académico"

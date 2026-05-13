@@ -1,17 +1,20 @@
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
-from django.db.models import Prefetch
+from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Count, Prefetch
+from itertools import groupby
+from operator import itemgetter
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models import Attendance, AttendanceQRCode, EvaluationSubmission, Semester
-from backend.permissions import IsStudent
-from backend.serializers.semester_serializer import SemesterSerializer
+from backend.permissions import IsStudent, IsTeacher
+from backend.serializers.semester_serializer import SemesterCommissionSerializer, SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
 from backend.views.base_view import BaseViewSet
-from backend.views.utils import get_current_semester, get_current_year, get_required_int_query_param
+from backend.views.utils import get_current_semester, get_current_year, get_required_int_query_param, teacher_not_in_commission_staff
 
 
 class SemesterViewSet(BaseViewSet):
@@ -44,7 +47,7 @@ class SemesterViewSet(BaseViewSet):
                                             start_date__year__gte=get_current_year(), year_moment=get_current_semester())
         return Response(self.get_serializer(result, many=True).data, status.HTTP_200_OK)
     
-    @action(detail=False, methods=["GET"])
+    @action(detail=False, methods=["GET"], permission_classes=[IsAuthenticated, IsTeacher])
     @swagger_auto_schema(
         tags=["Semesters"],
         operation_summary="Get semesters for a commission",
@@ -53,13 +56,68 @@ class SemesterViewSet(BaseViewSet):
         ]
     )
     def commission_present_semester(self, request):
-        result = self.get_queryset().filter(commission=request.query_params['commission_id'], 
-                                            start_date__year__gte=get_current_year(), year_moment=get_current_semester()).first()
+        commission_id, error_response = get_required_int_query_param(request, 'commission_id')
+        if error_response is not None:
+            return error_response
+
+        current_year = get_current_year()
+        current_semester = get_current_semester()
+
+        result = self.get_queryset().filter(
+            commission=commission_id,
+            start_date__year__gte=current_year,
+            year_moment=current_semester,
+        ).first()
+
+        if result is None and current_semester == "SS":
+            result = self.get_queryset().filter(
+                commission=commission_id,
+                start_date__year__gte=current_year,
+                year_moment="FS",
+            ).first()
         
         if not result:
             return Response({"detail": "Not found."}, status.HTTP_404_NOT_FOUND)
 
-        return Response(self.get_serializer(result).data, status.HTTP_200_OK)
+        semester = result
+
+        try:
+            teacher = request.user.teacher
+        except ObjectDoesNotExist:
+            return Response(
+                {"detail": "Authenticated user has no teacher profile."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if teacher_not_in_commission_staff(teacher, semester.commission):
+            return Response("Teacher not a member of this semester commission", status=status.HTTP_403_FORBIDDEN)
+
+        attendance_qrs_count = semester.attendance_qrs.count()
+        
+        attendances_by_student = dict(
+            semester.attendances.exclude(location_valid=False).values('student_id').annotate(total=Count('id')).values_list('student_id', 'total')
+        )
+        
+        submissions = EvaluationSubmission.objects.filter(
+            evaluation__semester=semester
+        ).values(
+            'student_id', 'evaluation_id', 'grade', 'submission_status'
+        ).order_by('student_id')
+
+        submissions_by_student = {}
+        for student_id, group in groupby(submissions, key=itemgetter('student_id')):
+            submissions_by_student[student_id] = list(group)
+
+        serializer = SemesterCommissionSerializer(
+            semester,
+            context={
+                'attendance_qrs_count': attendance_qrs_count,
+                'attendances_by_student': attendances_by_student,
+                'submissions_by_student': submissions_by_student,
+            },
+        )
+
+        return Response(serializer.data, status.HTTP_200_OK)
     
     @action(detail=False, methods=["GET"], permission_classes=[IsAuthenticated, IsStudent])
     @swagger_auto_schema(

@@ -11,9 +11,9 @@ from rest_framework.response import Response
 
 from backend.models import News
 from backend.news_tags import NEWS_TAGS
-from backend.permissions import IsAdmin
+from backend.permissions import IsSuperAdmin
 from backend.serializers.news_serializer import NewsSerializer, NewsWriteSerializer
-from backend.services import AwsS3Service
+from backend.services import storage_service
 from backend.views.base_view import BaseViewSet
 
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class NewsViewSet(BaseViewSet):
 
     def get_permissions(self):
         if self.action in ('create', 'update', 'partial_update', 'destroy'):
-            return [IsAuthenticated(), IsAdmin()]
+            return [IsAuthenticated(), IsSuperAdmin()]
         return [IsAuthenticated()]
 
     @swagger_auto_schema(tags=["News"], operation_summary="List available tags")
@@ -90,7 +90,7 @@ class NewsViewSet(BaseViewSet):
         ext = (picture.name.rsplit('.', 1)[-1] if '.' in picture.name else 'jpg').lower()
         file_name = f"news/{uuid.uuid4()}.{ext}"
         try:
-            return AwsS3Service().upload_object(picture, file_name, acl='public-read')
+            return storage_service.upload_object(picture, file_name)
         except Exception:
             logger.exception("S3 upload failed for news picture")
             return ''

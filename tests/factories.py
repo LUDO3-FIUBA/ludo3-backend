@@ -4,8 +4,13 @@ import factory
 from faker import Faker
 
 from backend.models import Final
+from backend.models.catalog import Catalog, CatalogItem
 from backend.models.commission import Commission
+from backend.models.form import Form, FormField, FormFieldOption
+from backend.models.form_submission import FormSubmission
+from backend.models.form_types import FormFieldType, FormProcedureType, FormType
 from backend.models.semester import Semester
+from backend.models.user import User
 
 
 class UserFactory(factory.django.DjangoModelFactory):
@@ -122,3 +127,118 @@ class TeacherRoleFactory(factory.django.DjangoModelFactory):
     role = factory.Iterator(
         ["T", "A", "C"]
     )  # Assuming 'T' for Teacher, 'A' for Assistant, 'C' for Collaborator
+
+
+class AdminUserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    first_name = factory.Faker("first_name")
+    last_name = factory.Faker("last_name")
+    dni = factory.Faker("numerify", text="########")
+    email = factory.Faker("ascii_safe_email")
+    password = factory.Faker("password", length=10)
+    is_staff = True
+    is_superuser = True
+    is_student = False
+    is_teacher = False
+
+
+class FormProcedureTypeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FormProcedureType
+
+    form_procedure_value = factory.Iterator(['Administrativo', 'Exámenes', 'Carrera', 'Cursada'])
+
+
+class FormTypeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FormType
+
+    form_type_value = factory.Iterator(['Digital', 'Documento'])
+
+
+class FormFieldTypeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FormFieldType
+
+    form_field_type_value = factory.Iterator(['texto', 'numero', 'padron', 'mail', 'options', 'catalog', 'checkbox', 'adjunto'])
+
+
+class CatalogFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Catalog
+
+    catalog_key = factory.Sequence(lambda n: f"catalog_{n}")
+    catalog_name = factory.Faker("word")
+    catalog_description = None
+
+
+class CatalogItemFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CatalogItem
+
+    catalog = factory.SubFactory(CatalogFactory)
+    catalog_item_value = factory.Sequence(lambda n: str(n))
+    catalog_item_label = factory.Faker("word")
+    catalog_item_order = factory.Sequence(lambda n: n)
+    catalog_item_active = True
+
+
+class FormFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Form
+
+    form_name = factory.Faker("sentence", nb_words=3)
+    form_description = factory.Faker("sentence")
+    form_information = None
+    form_procedure = factory.SubFactory(FormProcedureTypeFactory)
+    form_type = factory.SubFactory(FormTypeFactory)
+
+
+class FormFieldFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FormField
+
+    form = factory.SubFactory(FormFactory)
+    form_field_label = factory.Faker("word")
+    form_field_type = factory.SubFactory(FormFieldTypeFactory)
+    form_field_require = False
+    form_field_order = factory.Sequence(lambda n: n)
+    catalog = None
+
+
+class FormFieldOptionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FormFieldOption
+
+    form_field = factory.SubFactory(FormFieldFactory)
+    form_option_value = factory.Sequence(lambda n: str(n))
+    form_option_label = factory.Faker("word")
+
+
+class FormSubmissionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FormSubmission
+
+    form = factory.SubFactory(FormFactory)
+    user = factory.SubFactory(UserFactory, is_student=True)
+class AttendanceQRCodeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = "backend.AttendanceQRCode"
+
+    semester = factory.SubFactory(SemesterFactory)
+    owner_teacher = factory.SubFactory(TeacherFactory)
+    created_at = factory.Faker("date_time", tzinfo=timezone.utc)
+    expires_at = factory.LazyAttribute(lambda obj: obj.created_at + timedelta(hours=3))
+    qrid = factory.Faker("uuid4")
+
+
+class AttendanceFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = "backend.Attendance"
+
+    semester = factory.SubFactory(SemesterFactory)
+    student = factory.SubFactory(StudentFactory)
+    qr_code = factory.SubFactory(AttendanceQRCodeFactory)
+    submitted_at = factory.Faker("date_time", tzinfo=timezone.utc)

@@ -70,6 +70,8 @@ class User(AbstractUser):
     last_name = models.CharField(max_length=50, blank=True, verbose_name="Apellido")
     username = models.CharField(max_length=30, unique=False, blank=True, default='')
     dni = models.CharField(validators=[validate_dni], max_length=9, unique=True, blank=False, verbose_name="DNI")
+    github_url = models.URLField(max_length=255, blank=True, verbose_name="GitHub")
+    linkedin_url = models.URLField(max_length=255, blank=True, verbose_name="LinkedIn")
 
 
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")
@@ -89,4 +91,3 @@ class User(AbstractUser):
         if self.is_teacher:
             return self.teacher.legajo
         return None
-

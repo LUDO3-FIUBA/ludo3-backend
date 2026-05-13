@@ -5,12 +5,15 @@ import time
 from backend.api_exceptions import ValidationError
 
 from backend.client.google_auth_client import GoogleAuthClient
+from backend.client.guarani_client import GuaraniClient
 from backend.models.auth_identity import AuthIdentity
 from backend.models.student import Student
 from backend.models.teacher import Teacher
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
+
+GUARANI_DNI_TIPO_DOCUMENTO = 0
 
 
 class GoogleAuthService:
@@ -50,7 +53,10 @@ class GoogleAuthService:
     def complete_registration(self, sub, email, dni, password, padron=None, first_name='', last_name='',
                              is_student=True, is_teacher=False):
         self._validate_new_identity_constraints(sub=sub, email=email, dni=dni)
-        
+
+        if is_student:
+            self._verify_dni_email_with_guarani(dni=dni, google_email=email)
+
         user = User(
             email=email,
             dni=dni,
@@ -115,3 +121,20 @@ class GoogleAuthService:
 
         if dni and User.objects.filter(dni=dni).exists():
             raise ValidationError("This DNI is already registered")
+
+    def _verify_dni_email_with_guarani(self, dni, google_email):
+        try:
+            alumno = GuaraniClient().get_alumno(GUARANI_DNI_TIPO_DOCUMENTO, dni)
+        except Exception:
+            logger.exception("Guaraní lookup failed for DNI %s", dni)
+            raise ValidationError("No se pudo verificar el DNI con SIU Guaraní. Intentá de nuevo.")
+
+        if not alumno:
+            raise ValidationError("No se encontró un alumno con ese DNI en SIU Guaraní.")
+
+        guarani_email = (alumno.get('email') or '').strip() if isinstance(alumno, dict) else ''
+        if not guarani_email:
+            raise ValidationError("El alumno no tiene un email registrado en SIU Guaraní.")
+
+        if guarani_email.lower() != (google_email or '').strip().lower():
+            raise ValidationError("El email de Google no coincide con el registrado en SIU Guaraní.")
