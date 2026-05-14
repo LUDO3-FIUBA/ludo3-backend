@@ -8,7 +8,6 @@ from .evaluation import Evaluation
 from .student import Student
 from .teacher import Teacher
 
-
 class EvaluationSubmission(models.Model):
     class SubmissionStatus(models.TextChoices):
         APROBADO = "APROBADO", "Aprobado"
@@ -21,7 +20,9 @@ class EvaluationSubmission(models.Model):
     
     submission_text = models.TextField(null=True, blank=True)
     submission_status = models.CharField(max_length=12, choices=SubmissionStatus.choices, null=True, blank=True, db_index=True, verbose_name="Estado de la entrega")
+
     submission_file = models.FileField(upload_to='submissions/', null=True, blank=True)
+    original_filename = models.CharField(max_length=255, null=True, blank=True, verbose_name="Nombre de archivo original")
     feedback_text = models.TextField(null=True, blank=True, verbose_name="Feedback del profesor")
     
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")

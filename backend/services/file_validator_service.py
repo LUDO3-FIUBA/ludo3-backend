@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from PIL import Image
 from pypdf import PdfReader
 from pathlib import Path
+import uuid
 
 
 class FileValidatorService:
@@ -65,3 +66,13 @@ class FileValidatorService:
         except Exception:
             file_obj.seek(0)
             return False
+
+    @staticmethod
+    def prepare_upload_with_unique_name(uploaded_file):
+        if not uploaded_file:
+            return None, None
+
+        original_filename = Path(uploaded_file.name).name
+        suffix = Path(original_filename).suffix
+        uploaded_file.name = f"{uuid.uuid4().hex}{suffix}"
+        return uploaded_file, original_filename

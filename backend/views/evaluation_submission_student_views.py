@@ -14,6 +14,7 @@ from backend.permissions import *
 from backend.serializers.evaluation_submission_serializer import (
     EvaluationSubmissionPostSerializer, EvaluationSubmissionSerializer)
 from backend.services.audit_log_service import AuditLogService
+from backend.services.file_validator_service import FileValidatorService
 from backend.views.base_view import BaseViewSet
 from backend.views.utils import get_required_int_query_param
 
@@ -39,11 +40,15 @@ class EvaluationSubmissionViewSet(BaseViewSet):
         if(request.user.student not in evaluation.semester.students.all()):
             return Response("Student not in commission", status=status.HTTP_403_FORBIDDEN)
 
+        uploaded_file = request.FILES.get("submission_file") if "submission_file" in request.FILES else None
+        uploaded_file, original_filename = FileValidatorService.prepare_upload_with_unique_name(uploaded_file)
+
         submission = EvaluationSubmission(
             student=request.user.student,
             evaluation=evaluation,
             submission_text=request.data.get("submission_text"),
-            submission_file=request.FILES.get("submission_file") if "submission_file" in request.FILES else None,
+            submission_file=uploaded_file,
+            original_filename=original_filename,
         )
 
         try:

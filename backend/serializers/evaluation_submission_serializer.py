@@ -15,6 +15,7 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     grader = TeacherSerializer()
     feedback_text = serializers.CharField(required=False, allow_null=True)
+    original_filename = serializers.CharField(required=False, allow_null=True)
     submission_file = serializers.FileField(required=False, allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
@@ -22,7 +23,7 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationSubmission
         fields = (
-            'evaluation', 'student', 'grade', 'submission_status', 'grader', 'feedback_text',
+            'evaluation', 'student', 'grade', 'submission_status', 'grader', 'feedback_text', 'original_filename',
              'submission_text', 'submission_file',
             'created_at', 'updated_at'
         )
@@ -34,6 +35,7 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     grader = TeacherSerializer()
     feedback_text = serializers.CharField(required=False, allow_null=True)
+    original_filename = serializers.CharField(required=False, allow_null=True)
     submission_file = serializers.FileField(required=False, allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
@@ -41,7 +43,7 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationSubmission
         fields = (
-            'evaluation', 'student', 'grade', 'submission_status', 'grader', 'feedback_text',
+            'evaluation', 'student', 'grade', 'submission_status', 'grader', 'feedback_text', 'original_filename',
             'submission_text', 'submission_file',
             'created_at', 'updated_at'
         )
@@ -89,10 +91,12 @@ class EvaluationSubmissionCorrectionSerializer(serializers.ModelSerializer):
     grade = serializers.IntegerField(required=False, allow_null=True)
     grader = TeacherSerializer()
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
+    submission_file = serializers.FileField(required=False, allow_null=True)
+    original_filename = serializers.CharField(required=False, allow_null=True)
     created_at = serializers.DateTimeField()
     updated_at = serializers.DateTimeField()
     feedback_text = serializers.CharField(required=False, allow_null=True)
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('student', 'grade', 'grader', 'submission_status', 'feedback_text', 'submission_text', 'created_at', 'updated_at')
+        fields = ('student', 'grade', 'grader', 'submission_status', 'feedback_text', 'submission_text', 'submission_file', 'original_filename', 'created_at', 'updated_at')
