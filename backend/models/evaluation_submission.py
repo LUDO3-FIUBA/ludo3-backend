@@ -2,6 +2,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils import timezone
+import os
 
 from backend.services.file_validator_service import FileValidatorService
 from .evaluation import Evaluation
@@ -54,6 +55,14 @@ class EvaluationSubmission(models.Model):
                 raise ValidationError({
                     'submission_file': ['El archivo debe ser un PDF o una imagen válida (jpg, jpeg, png, webp).']
                 })
+
+            filename = self.original_filename or getattr(self.submission_file, 'name', '')
+            if filename:
+                filename = os.path.basename(filename)
+                if len(filename) > 100:
+                    raise ValidationError({
+                        'original_filename': ['El nombre de archivo no puede tener más de 100 caracteres.']
+                    })
         except ValidationError:
             raise
 
