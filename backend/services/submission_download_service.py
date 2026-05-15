@@ -2,12 +2,26 @@ from django.http import FileResponse
 from django.core.exceptions import PermissionDenied
 from backend.models import EvaluationSubmission
 from backend.models.teacher import Teacher
+from backend.views.utils import teacher_not_in_commission_staff
 
 
 class SubmissionDownloadService:
 
     @staticmethod
     def get_download(submission: EvaluationSubmission, user):
+        print(
+            f"[submission_download] user_id={getattr(user, 'id', None)} "
+            f"student={getattr(user, 'student', None)} teacher={getattr(user, 'teacher', None)}"
+        )
+        print(
+            f"[student data] user_id={getattr(user, 'id', None)} "
+            f"submission.student.id={getattr(submission.student, 'id', None)} "
+        )
+
+        print(
+            f"[teacher data] user_id={getattr(user, 'id', None)} "
+            f"submission.evaluation.semester.commission.teacher_roles={getattr(submission.evaluation.semester.commission, 'teacher_roles', None)}"
+        )
         if not submission.submission_file:
             raise PermissionDenied("Submission has no file attached.")
 
@@ -22,7 +36,7 @@ class SubmissionDownloadService:
 
             if teacher is not None:
                 commission = submission.evaluation.semester.commission
-                is_staff_teacher = commission.teacher_roles.filter(teacher=teacher).exists()
+                is_staff_teacher = not teacher_not_in_commission_staff(teacher, commission)
 
         if not (is_owner_student or is_staff_teacher):
             raise PermissionDenied("You do not have permission to download this submission.")
