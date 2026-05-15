@@ -8,6 +8,7 @@ from .semester import Semester
 class Evaluation(models.Model):
     semester = models.ForeignKey(Semester, on_delete=models.CASCADE, related_name='evaluations', verbose_name="Evaluaciones")
     evaluation_name = models.CharField(max_length=100, db_index=True, verbose_name="Nombre de Evaluacion")
+    description = models.TextField(blank=True, null=True, verbose_name="Descripción")
     is_graded = models.BooleanField(default=True)
     is_gradeable = models.BooleanField(default=True, verbose_name="Requiere nota numérica")
     passing_grade = models.IntegerField(

@@ -9,18 +9,22 @@ class EvaluationSubmissionService:
         submission.updated_at = get_current_datetime()
         submission.save()
     
-    def set_grade(self, submission: EvaluationSubmission, teacher: Teacher, grade: int):
+    def set_grade(self, submission: EvaluationSubmission, teacher: Teacher, grade: int, feedback_text: str = None):
         submission.grade = grade
         submission.submission_status = None
+        if feedback_text is not None:
+            submission.feedback_text = feedback_text
         if submission.grader is None:
             submission.grader = teacher
         submission.updated_at = get_current_datetime()
         submission.full_clean()
         submission.save()
 
-    def set_status(self, submission: EvaluationSubmission, teacher: Teacher, status: str):
+    def set_status(self, submission: EvaluationSubmission, teacher: Teacher, status: str, feedback_text: str = None):
         submission.submission_status = status
         submission.grade = None
+        if feedback_text is not None:
+            submission.feedback_text = feedback_text
         if submission.grader is None:
             submission.grader = teacher
         submission.updated_at = get_current_datetime()
