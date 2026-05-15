@@ -9,19 +9,6 @@ class SubmissionDownloadService:
 
     @staticmethod
     def get_download(submission: EvaluationSubmission, user):
-        print(
-            f"[submission_download] user_id={getattr(user, 'id', None)} "
-            f"student={getattr(user, 'student', None)} teacher={getattr(user, 'teacher', None)}"
-        )
-        print(
-            f"[student data] user_id={getattr(user, 'id', None)} "
-            f"submission.student.id={getattr(submission.student, 'id', None)} "
-        )
-
-        print(
-            f"[teacher data] user_id={getattr(user, 'id', None)} "
-            f"submission.evaluation.semester.commission.teacher_roles={getattr(submission.evaluation.semester.commission, 'teacher_roles', None)}"
-        )
         if not submission.submission_file:
             raise PermissionDenied("Submission has no file attached.")
 
