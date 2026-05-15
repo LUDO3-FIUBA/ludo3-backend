@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.urls import reverse
 
 from backend.models import EvaluationSubmission
 
@@ -11,6 +12,7 @@ from .teacher_serializer import TeacherSerializer
 class EvaluationSubmissionSerializer(serializers.ModelSerializer):
     evaluation = EvaluationSerializer()
     student = StudentSerializer()
+    download_url = serializers.SerializerMethodField()
     grade = serializers.IntegerField(required=False, allow_null=True)
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     grader = TeacherSerializer()
@@ -25,12 +27,18 @@ class EvaluationSubmissionSerializer(serializers.ModelSerializer):
         fields = (
             'evaluation', 'student', 'grade', 'submission_status', 'grader', 'feedback_text', 'original_filename',
              'submission_text', 'submission_file',
-            'created_at', 'updated_at'
+            'download_url', 'created_at', 'updated_at'
         )
+
+    def get_download_url(self, obj):
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        url = reverse('evaluation-submission-download', kwargs={'pk': obj.pk})
+        return request.build_absolute_uri(url) if request else url
 
 class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
     evaluation = EvaluationWithMakeupSerializer()
     student = StudentSerializer()
+    download_url = serializers.SerializerMethodField()
     grade = serializers.IntegerField(required=False, allow_null=True)
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
     grader = TeacherSerializer()
@@ -45,8 +53,13 @@ class EvaluationSubmissionWithMakeupSerializer(serializers.ModelSerializer):
         fields = (
             'evaluation', 'student', 'grade', 'submission_status', 'grader', 'feedback_text', 'original_filename',
             'submission_text', 'submission_file',
-            'created_at', 'updated_at'
+            'download_url', 'created_at', 'updated_at'
         )
+
+    def get_download_url(self, obj):
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        url = reverse('evaluation-submission-download', kwargs={'pk': obj.pk})
+        return request.build_absolute_uri(url) if request else url
 
 class EvaluationSubmissionPutSerializer(serializers.ModelSerializer):
 
@@ -88,6 +101,7 @@ class EvaluationSubmissionPostSerializer(serializers.ModelSerializer):
 
 class EvaluationSubmissionCorrectionSerializer(serializers.ModelSerializer):
     student = StudentSerializer()
+    download_url = serializers.SerializerMethodField()
     grade = serializers.IntegerField(required=False, allow_null=True)
     grader = TeacherSerializer()
     submission_status = serializers.ChoiceField(choices=EvaluationSubmission.SubmissionStatus.choices, required=False, allow_null=True)
@@ -99,4 +113,9 @@ class EvaluationSubmissionCorrectionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = EvaluationSubmission
-        fields = ('student', 'grade', 'grader', 'submission_status', 'feedback_text', 'submission_text', 'submission_file', 'original_filename', 'created_at', 'updated_at')
+        fields = ('student', 'grade', 'grader', 'submission_status', 'feedback_text', 'submission_text', 'submission_file', 'original_filename', 'download_url', 'created_at', 'updated_at')
+
+    def get_download_url(self, obj):
+        request = self.context.get('request') if hasattr(self, 'context') else None
+        url = reverse('evaluation-submission-download', kwargs={'pk': obj.pk})
+        return request.build_absolute_uri(url) if request else url
