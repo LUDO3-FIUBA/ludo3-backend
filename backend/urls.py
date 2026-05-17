@@ -9,6 +9,7 @@ from .views import CustomGCMDeviceViewSet
 from .views.user_views import UserCustomViewSet, simple_login
 from .views.google_auth_views import google_sign_in, google_complete_registration
 from .views.password_views import change_password, forgot_password, reset_password_confirm
+from .views.cookie_auth_views import jwt_refresh, jwt_logout
 
 router = routers.SimpleRouter()
 router.register(r'final_exams', views.FinalExamStudentViewSet, 'final_exam')
@@ -73,6 +74,10 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path('api/', include(teacher_finals_router.urls)),
     path('api/', include(forms_submissions_router.urls)),
+
+    # custom cookie-aware JWT refresh/logout (must come before djoser include)
+    path('auth/jwt/refresh/', jwt_refresh, name='jwt-refresh'),
+    path('auth/jwt/logout/', jwt_logout, name='jwt-logout'),
 
     # path to djoser end points
     path('auth/', include('djoser.urls.jwt')),
