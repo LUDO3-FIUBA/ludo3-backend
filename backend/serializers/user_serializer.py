@@ -114,10 +114,11 @@ class UserCustomGetSerializer(UserSerializer):
     legajo = serializers.SerializerMethodField()
     face_registered = serializers.SerializerMethodField()
     department_id = serializers.SerializerMethodField()
+    is_bedelia = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'department_id', 'file', 'legajo', 'github_url', 'linkedin_url', 'face_registered')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'is_bedelia', 'department_id', 'file', 'legajo', 'github_url', 'linkedin_url', 'face_registered')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
@@ -136,6 +137,12 @@ class UserCustomGetSerializer(UserSerializer):
             return None
         staff = getattr(obj, 'staff', None)
         return staff.department_id if staff else None
+
+    def get_is_bedelia(self, obj):
+        if not obj.is_staff or obj.is_superuser:
+            return False
+        staff = getattr(obj, 'staff', None)
+        return bool(staff and staff.is_bedelia)
 
 
 class UserMeUpdateSerializer(serializers.ModelSerializer):
