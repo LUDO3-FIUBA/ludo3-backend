@@ -46,3 +46,4 @@ from .form_views import (
 )
 from .student_identity_views import StudentIdentityViewSet
 from .guarani_views import OfertaComisionesView
+from .bedelia_views import BedeliaClassroomChangeViewSet

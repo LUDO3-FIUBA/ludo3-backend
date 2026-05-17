@@ -72,7 +72,7 @@ class StaffInline(admin.TabularInline):
     model = Staff
     fieldsets = [
         (None, {
-            'fields': ('department_siu_id',)
+            'fields': ('department_siu_id', 'department', 'is_bedelia')
             }),
         ]
 

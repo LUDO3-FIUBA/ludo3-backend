@@ -15,6 +15,7 @@ class Staff(models.Model):
         related_name='admins',
         verbose_name="Departamento",
     )
+    is_bedelia = models.BooleanField(default=False, verbose_name="Es bedelía?")
 
     class Meta:
         verbose_name = "Usuario Administrador"
