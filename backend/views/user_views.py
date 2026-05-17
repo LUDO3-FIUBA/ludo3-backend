@@ -16,6 +16,7 @@ from backend.services.image_validator_service import ImageValidatorService
 
 from ..api_exceptions import InvalidFaceError, InvalidImageError
 from ..models import User
+from .cookie_auth_views import is_web_client, set_refresh_cookie
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +94,15 @@ class SimpleLoginView(GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        data = serializer.validated_data
+
+        if is_web_client(request):
+            response = Response({'access': data['access']}, status=status.HTTP_200_OK)
+            set_refresh_cookie(response, data['refresh'])
+        else:
+            response = Response(data, status=status.HTTP_200_OK)
+
+        return response
 
 
 simple_login = SimpleLoginView.as_view()

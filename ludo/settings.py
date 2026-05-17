@@ -49,8 +49,13 @@ ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'salty-badlands-32978.hero
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:19006",
     "http://127.0.0.1:19006",
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + ['x-client']
 
 # Allow all origins in development (temporary solution)
 # TODO: Remove in production
