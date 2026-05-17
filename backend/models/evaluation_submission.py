@@ -1,12 +1,13 @@
-from django.db import models
-from django.utils import timezone
-
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
+from django.utils import timezone
+import os
+
+from backend.services.file_validator_service import FileValidatorService
 from .evaluation import Evaluation
 from .student import Student
 from .teacher import Teacher
-
 
 class EvaluationSubmission(models.Model):
     class SubmissionStatus(models.TextChoices):
@@ -20,6 +21,11 @@ class EvaluationSubmission(models.Model):
     
     submission_text = models.TextField(null=True, blank=True)
     submission_status = models.CharField(max_length=12, choices=SubmissionStatus.choices, null=True, blank=True, db_index=True, verbose_name="Estado de la entrega")
+
+    submission_file = models.FileField(upload_to='submissions/', null=True, blank=True)
+    original_filename = models.CharField(max_length=255, null=True, blank=True, verbose_name="Nombre de archivo original")
+    feedback_text = models.TextField(null=True, blank=True, verbose_name="Feedback del profesor")
+    
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")
     updated_at = models.DateTimeField(default=timezone.now, verbose_name="Última actualización")
 
@@ -33,6 +39,32 @@ class EvaluationSubmission(models.Model):
 
         if self.evaluation.is_gradeable and self.submission_status is not None:
             raise ValidationError({"submission_status": ["Esta evaluación usa calificación numérica."]})
+
+        if self.submission_file:
+            self._validate_submission_file()
+
+    def _validate_submission_file(self):
+        uploaded_file = self.submission_file
+        file_obj = getattr(uploaded_file, 'file', uploaded_file)
+
+        try:
+            is_pdf = FileValidatorService.validate_pdf(file_obj)
+            is_image = FileValidatorService.validate_image(file_obj)
+            
+            if not (is_pdf or is_image):
+                raise ValidationError({
+                    'submission_file': ['El archivo debe ser un PDF o una imagen válida (jpg, jpeg, png, webp).']
+                })
+
+            filename = self.original_filename or getattr(self.submission_file, 'name', '')
+            if filename:
+                filename = os.path.basename(filename)
+                if len(filename) > 100:
+                    raise ValidationError({
+                        'original_filename': ['El nombre de archivo no puede tener más de 100 caracteres.']
+                    })
+        except ValidationError:
+            raise
 
     def is_passed(self):
         if self.evaluation is None:

@@ -72,6 +72,7 @@ schema_view = get_schema_view(
 urlpatterns = [
     # app own routes
     path('api/', include(router.urls)),
+    path('api/evaluations/submissions/<int:pk>/download/', views.EvaluationSubmissionDownloadView.as_view(), name='evaluation-submission-download'),
     path('api/', include(teacher_finals_router.urls)),
     path('api/', include(forms_submissions_router.urls)),
 

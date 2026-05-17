@@ -9,6 +9,7 @@ from .commission_views import CommissionViewSet
 from .commissionInscription_views import CommissionInscriptionViewSet
 from .custom_gcm_device_viewset import CustomGCMDeviceViewSet
 from .evaluation_submission_student_views import EvaluationSubmissionViewSet
+from .evaluation_submission_download_views import EvaluationSubmissionDownloadView
 from .evaluation_submission_teacher_views import \
     EvaluationSubmissionTeacherViewSet
 from .evaluation_teacher_views import EvaluationTeacherViewSet

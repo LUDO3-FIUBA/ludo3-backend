@@ -65,7 +65,7 @@ def get_required_int_query_param(request, param_name):
     value = request.query_params.get(param_name)
     if value is None:
         return None, Response(
-            {"detail": f"{param_name} query parameter is required."},
+            {param_name: ["This query parameter is required."]},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -73,7 +73,7 @@ def get_required_int_query_param(request, param_name):
         return int(value), None
     except (TypeError, ValueError):
         return None, Response(
-            {"detail": f"Invalid {param_name}."},
+            {param_name: ["Invalid value."]},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
