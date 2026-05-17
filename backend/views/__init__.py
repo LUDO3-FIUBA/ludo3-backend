@@ -45,3 +45,4 @@ from .form_views import (
     CatalogViewSet,
 )
 from .student_identity_views import StudentIdentityViewSet
+from .guarani_views import OfertaComisionesView
