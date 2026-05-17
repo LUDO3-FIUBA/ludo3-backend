@@ -353,6 +353,7 @@ class GuaraniClient:
             r = requests.request(
                 method, url,
                 params=params, json=json, headers=headers, auth=self.auth, verify=False,
+                timeout=(5, 30),
             )
         except requests.exceptions.RequestException as e:
             self.LOG.error("Guarani request failed: %s", e)

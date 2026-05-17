@@ -6,6 +6,7 @@ from rest_framework_nested import routers
 
 from . import views
 from .views import CustomGCMDeviceViewSet
+from .views.guarani_views import OfertaComisionesView
 from .views.user_views import UserCustomViewSet, simple_login
 from .views.google_auth_views import google_sign_in, google_complete_registration
 from .views.password_views import change_password, forgot_password, reset_password_confirm
@@ -91,6 +92,8 @@ urlpatterns = [
     
     path('auth/google/', google_sign_in, name='google-sign-in'),
     path('auth/google/registration/', google_complete_registration, name='google-registration'),
+
+    path('api/guarani/oferta-comisiones/', OfertaComisionesView.as_view(), name='guarani-oferta-comisiones'),
 
     path('docs/', schema_view.with_ui('swagger', cache_timeout=0),name='schema-swagger-ui')
 ]
