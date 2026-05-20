@@ -1,3 +1,4 @@
+from backend.serializers.image_serializer import AbsoluteImageField
 from rest_framework import serializers
 
 from backend.models import News
@@ -7,11 +8,12 @@ from backend.news_tags import NEWS_TAGS_BY_KEY
 class NewsSerializer(serializers.ModelSerializer):
     tag_label = serializers.SerializerMethodField()
     tag_color = serializers.SerializerMethodField()
+    image = AbsoluteImageField(required=False, allow_null=True)
 
     class Meta:
         model = News
         fields = (
-            'id', 'title', 'description', 'picture_url',
+            'id', 'title', 'description', 'image',
             'tag', 'tag_label', 'tag_color',
             'created_at', 'updated_at',
         )
@@ -25,8 +27,8 @@ class NewsSerializer(serializers.ModelSerializer):
 
 
 class NewsWriteSerializer(serializers.ModelSerializer):
-    picture = serializers.ImageField(required=False, allow_null=True, write_only=True)
+    image = AbsoluteImageField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = News
-        fields = ('title', 'description', 'tag', 'picture')
+        fields = ('title', 'description', 'tag', 'image')

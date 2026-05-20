@@ -567,7 +567,7 @@ class NewsAdmin(admin.ModelAdmin):
     list_display = ('title', 'tag', 'author', 'created_at')
     list_filter = ('tag',)
     search_fields = ('title', 'description')
-    readonly_fields = ('author', 'created_at', 'updated_at', 'picture_url')
+    readonly_fields = ('author', 'created_at', 'updated_at', 'image')
 
     def save_model(self, request, obj, form, change):
         if not change and not obj.author_id:

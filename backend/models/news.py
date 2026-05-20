@@ -9,7 +9,7 @@ from .user import User
 class News(models.Model):
     title = models.CharField(max_length=200, verbose_name="Título")
     description = models.TextField(blank=True, default='', verbose_name="Descripción")
-    picture_url = models.URLField(max_length=500, blank=True, default='', verbose_name="Imagen")
+    image = models.ImageField(upload_to='news/', null=True, blank=True, verbose_name="Imagen")
     tag = models.CharField(max_length=50, choices=NEWS_TAG_CHOICES, verbose_name="Categoría")
     author = models.ForeignKey(
         User,
