@@ -47,11 +47,10 @@ class NewsViewSet(BaseViewSet):
     def create(self, request, *args, **kwargs):
         serializer = NewsWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        picture = serializer.validated_data.pop('picture', None)
-        picture_url = self._upload_picture(picture)
+        image = serializer.validated_data.pop('image', None)
         post = News.objects.create(
             author=request.user,
-            picture_url=picture_url,
+            image=image,
             **serializer.validated_data,
         )
         return Response(NewsSerializer(post).data, status.HTTP_201_CREATED)
@@ -75,22 +74,11 @@ class NewsViewSet(BaseViewSet):
         serializer = NewsWriteSerializer(post, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
-        picture = serializer.validated_data.pop('picture', None)
+        image = serializer.validated_data.pop('image', None)
         for field, value in serializer.validated_data.items():
             setattr(post, field, value)
-        if picture is not None:
-            post.picture_url = self._upload_picture(picture)
+        if image is not None:
+            post.image = image
         post.updated_at = timezone.now()
         post.save()
         return Response(NewsSerializer(post).data, status.HTTP_200_OK)
-
-    def _upload_picture(self, picture):
-        if not picture:
-            return ''
-        ext = (picture.name.rsplit('.', 1)[-1] if '.' in picture.name else 'jpg').lower()
-        file_name = f"news/{uuid.uuid4()}.{ext}"
-        try:
-            return storage_service.upload_object(picture, file_name)
-        except Exception:
-            logger.exception("S3 upload failed for news picture")
-            return ''
