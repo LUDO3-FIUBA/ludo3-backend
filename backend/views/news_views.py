@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 
 from django.utils import timezone
@@ -17,6 +18,13 @@ from backend.services import storage_service
 from backend.views.base_view import BaseViewSet
 
 logger = logging.getLogger(__name__)
+
+
+def _upload_news_image(image_file) -> str:
+    ext = os.path.splitext(image_file.name)[1].lower() or '.jpg'
+    key = f"news/{uuid.uuid4().hex}{ext}"
+    storage_service.upload_object(image_file, key)
+    return key
 
 
 class NewsViewSet(BaseViewSet):
@@ -50,7 +58,7 @@ class NewsViewSet(BaseViewSet):
         image = serializer.validated_data.pop('image', None)
         post = News.objects.create(
             author=request.user,
-            image=image,
+            image=_upload_news_image(image) if image else None,
             **serializer.validated_data,
         )
         return Response(NewsSerializer(post).data, status.HTTP_201_CREATED)
@@ -78,7 +86,7 @@ class NewsViewSet(BaseViewSet):
         for field, value in serializer.validated_data.items():
             setattr(post, field, value)
         if image is not None:
-            post.image = image
+            post.image = _upload_news_image(image)
         post.updated_at = timezone.now()
         post.save()
         return Response(NewsSerializer(post).data, status.HTTP_200_OK)
