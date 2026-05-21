@@ -45,5 +45,5 @@ from .form_views import (
     CatalogViewSet,
 )
 from .student_identity_views import StudentIdentityViewSet
-from .guarani_views import OfertaComisionesView
+from .guarani_views import OfertaComisionesView, PlanCarreraView
 from .bedelia_views import BedeliaClassroomChangeViewSet
