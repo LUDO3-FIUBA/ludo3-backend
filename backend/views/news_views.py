@@ -41,12 +41,12 @@ class NewsViewSet(BaseViewSet):
     @swagger_auto_schema(tags=["News"], operation_summary="List all news posts")
     def list(self, request, *args, **kwargs):
         news = self.get_queryset()
-        return Response(NewsSerializer(news, many=True).data, status.HTTP_200_OK)
+        return Response(self.get_serializer(news, many=True).data, status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["News"], operation_summary="Get a news post")
     def retrieve(self, request, pk=None, *args, **kwargs):
         post = get_object_or_404(self.get_queryset(), pk=pk)
-        return Response(NewsSerializer(post).data, status.HTTP_200_OK)
+        return Response(self.get_serializer(post).data, status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["News"], operation_summary="Create a news post", request_body=NewsWriteSerializer)
     def create(self, request, *args, **kwargs):
@@ -58,7 +58,7 @@ class NewsViewSet(BaseViewSet):
             image=image,
             **serializer.validated_data,
         )
-        return Response(NewsSerializer(post).data, status.HTTP_201_CREATED)
+        return Response(self.get_serializer(post).data, status.HTTP_201_CREATED)
 
     @swagger_auto_schema(tags=["News"], operation_summary="Update a news post", request_body=NewsWriteSerializer)
     def update(self, request, pk=None, *args, **kwargs):
@@ -89,4 +89,4 @@ class NewsViewSet(BaseViewSet):
 
         post.updated_at = timezone.now()
         post.save()
-        return Response(NewsSerializer(post).data, status.HTTP_200_OK)
+        return Response(self.get_serializer(post).data, status.HTTP_200_OK)
