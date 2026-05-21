@@ -14,10 +14,7 @@ from backend.models import News
 from backend.news_tags import NEWS_TAGS
 from backend.permissions import IsSuperAdmin
 from backend.serializers.news_serializer import NewsSerializer, NewsWriteSerializer
-from backend.services import storage_service
 from backend.views.base_view import BaseViewSet
-
-logger = logging.getLogger(__name__)
 
 
 def _upload_news_image(image_file) -> str:
@@ -58,7 +55,7 @@ class NewsViewSet(BaseViewSet):
         image = serializer.validated_data.pop('image', None)
         post = News.objects.create(
             author=request.user,
-            image=_upload_news_image(image) if image else None,
+            image=image,
             **serializer.validated_data,
         )
         return Response(NewsSerializer(post).data, status.HTTP_201_CREATED)
@@ -82,11 +79,14 @@ class NewsViewSet(BaseViewSet):
         serializer = NewsWriteSerializer(post, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
-        image = serializer.validated_data.pop('image', None)
+        if 'image' in serializer.validated_data:
+            post.image = serializer.validated_data['image']
+
         for field, value in serializer.validated_data.items():
+            if field == 'image':
+                continue
             setattr(post, field, value)
-        if image is not None:
-            post.image = _upload_news_image(image)
+
         post.updated_at = timezone.now()
         post.save()
         return Response(NewsSerializer(post).data, status.HTTP_200_OK)
