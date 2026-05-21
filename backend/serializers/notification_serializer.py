@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from backend.models import Notification, UserNotification
+from backend.serializers.image_serializer import AbsoluteImageField
 
 
 RECIPIENT_GROUPS = ['all', 'students', 'teachers', 'staff']
@@ -10,27 +11,14 @@ class TeacherNotificationCreateSerializer(serializers.Serializer):
     title = serializers.CharField(max_length=200)
     message = serializers.CharField()
     is_urgent = serializers.BooleanField(required=False, default=False)
-    image = serializers.ImageField(required=False, allow_null=True)
+    image = AbsoluteImageField(required=False, allow_null=True)
     semester_id = serializers.IntegerField()
 
 
 class TeacherNotificationListSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+    image = AbsoluteImageField(required=False, allow_null=True)
     sender_name = serializers.SerializerMethodField()
     recipient_count = serializers.SerializerMethodField()
-
-    def get_image(self, obj):
-        if not obj.image:
-            return None
-        image_url = obj.image.url
-        # If URL is already absolute (from cloud storage), return as-is
-        if image_url.startswith(('http://', 'https://')):
-            return image_url
-        # Otherwise, make it absolute relative to the request
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(image_url)
-        return image_url
 
     def get_sender_name(self, obj):
         sender = obj.sender
@@ -54,7 +42,7 @@ class NotificationCreateSerializer(serializers.Serializer):
     is_urgent = serializers.BooleanField(required=False, default=False)
     send_push = serializers.BooleanField(required=False, default=False)
     send_email = serializers.BooleanField(required=False, default=False)
-    image = serializers.ImageField(required=False, allow_null=True)
+    image = AbsoluteImageField(required=False, allow_null=True)
     recipient_groups = serializers.ListField(
         child=serializers.ChoiceField(choices=RECIPIENT_GROUPS),
         required=False,
@@ -81,22 +69,9 @@ YEAR_MOMENT_LABELS = {
 
 
 class NotificationSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+    image = AbsoluteImageField(required=False, allow_null=True)
     sender_name = serializers.SerializerMethodField()
     semester_info = serializers.SerializerMethodField()
-
-    def get_image(self, obj):
-        if not obj.image:
-            return None
-        image_url = obj.image.url
-        # If URL is already absolute (from cloud storage), return as-is
-        if image_url.startswith(('http://', 'https://')):
-            return image_url
-        # Otherwise, make it absolute relative to the request
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(image_url)
-        return image_url
 
     def get_sender_name(self, obj):
         sender = obj.sender
@@ -133,21 +108,8 @@ class UserNotificationSerializer(serializers.ModelSerializer):
 
 
 class NotificationAdminSerializer(serializers.ModelSerializer):
-    image = serializers.SerializerMethodField()
+    image = AbsoluteImageField(required=False, allow_null=True)
     recipient_count = serializers.SerializerMethodField()
-
-    def get_image(self, obj):
-        if not obj.image:
-            return None
-        image_url = obj.image.url
-        # If URL is already absolute (from cloud storage), return as-is
-        if image_url.startswith(('http://', 'https://')):
-            return image_url
-        # Otherwise, make it absolute relative to the request
-        request = self.context.get('request')
-        if request:
-            return request.build_absolute_uri(image_url)
-        return image_url
 
     def get_recipient_count(self, obj):
         return obj.user_notifications.count()

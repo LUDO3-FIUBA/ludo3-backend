@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 
 from django.utils import timezone
@@ -13,10 +14,14 @@ from backend.models import News
 from backend.news_tags import NEWS_TAGS
 from backend.permissions import IsSuperAdmin
 from backend.serializers.news_serializer import NewsSerializer, NewsWriteSerializer
-from backend.services import storage_service
 from backend.views.base_view import BaseViewSet
 
-logger = logging.getLogger(__name__)
+
+def _upload_news_image(image_file) -> str:
+    ext = os.path.splitext(image_file.name)[1].lower() or '.jpg'
+    key = f"news/{uuid.uuid4().hex}{ext}"
+    storage_service.upload_object(image_file, key)
+    return key
 
 
 class NewsViewSet(BaseViewSet):
@@ -36,25 +41,24 @@ class NewsViewSet(BaseViewSet):
     @swagger_auto_schema(tags=["News"], operation_summary="List all news posts")
     def list(self, request, *args, **kwargs):
         news = self.get_queryset()
-        return Response(NewsSerializer(news, many=True).data, status.HTTP_200_OK)
+        return Response(self.get_serializer(news, many=True).data, status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["News"], operation_summary="Get a news post")
     def retrieve(self, request, pk=None, *args, **kwargs):
         post = get_object_or_404(self.get_queryset(), pk=pk)
-        return Response(NewsSerializer(post).data, status.HTTP_200_OK)
+        return Response(self.get_serializer(post).data, status.HTTP_200_OK)
 
     @swagger_auto_schema(tags=["News"], operation_summary="Create a news post", request_body=NewsWriteSerializer)
     def create(self, request, *args, **kwargs):
         serializer = NewsWriteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        picture = serializer.validated_data.pop('picture', None)
-        picture_url = self._upload_picture(picture)
+        image = serializer.validated_data.pop('image', None)
         post = News.objects.create(
             author=request.user,
-            picture_url=picture_url,
+            image=image,
             **serializer.validated_data,
         )
-        return Response(NewsSerializer(post).data, status.HTTP_201_CREATED)
+        return Response(self.get_serializer(post).data, status.HTTP_201_CREATED)
 
     @swagger_auto_schema(tags=["News"], operation_summary="Update a news post", request_body=NewsWriteSerializer)
     def update(self, request, pk=None, *args, **kwargs):
@@ -75,22 +79,14 @@ class NewsViewSet(BaseViewSet):
         serializer = NewsWriteSerializer(post, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
 
-        picture = serializer.validated_data.pop('picture', None)
+        if 'image' in serializer.validated_data:
+            post.image = serializer.validated_data['image']
+
         for field, value in serializer.validated_data.items():
+            if field == 'image':
+                continue
             setattr(post, field, value)
-        if picture is not None:
-            post.picture_url = self._upload_picture(picture)
+
         post.updated_at = timezone.now()
         post.save()
-        return Response(NewsSerializer(post).data, status.HTTP_200_OK)
-
-    def _upload_picture(self, picture):
-        if not picture:
-            return ''
-        ext = (picture.name.rsplit('.', 1)[-1] if '.' in picture.name else 'jpg').lower()
-        file_name = f"news/{uuid.uuid4()}.{ext}"
-        try:
-            return storage_service.upload_object(picture, file_name)
-        except Exception:
-            logger.exception("S3 upload failed for news picture")
-            return ''
+        return Response(self.get_serializer(post).data, status.HTTP_200_OK)

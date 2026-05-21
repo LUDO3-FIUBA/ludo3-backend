@@ -49,6 +49,7 @@ def get_storage_settings():
             AWS_STORAGE_BUCKET_NAME=aws_bucket_name,
             AWS_ACCESS_KEY_ID=os.environ.get('AWS_ACCESS_KEY_ID', ''),
             AWS_SECRET_ACCESS_KEY=os.environ.get('AWS_SECRET_ACCESS_KEY', ''),
+            AWS_S3_REGION_NAME=os.environ.get('AWS_REGION', ''),
             AWS_S3_ENDPOINT_URL=os.environ.get('AWS_ENDPOINT_URL', '') or None,
             AWS_S3_CUSTOM_DOMAIN=aws_s3_custom_domain,
             AWS_DEFAULT_ACL=None,
