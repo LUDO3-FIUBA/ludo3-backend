@@ -1,0 +1,26 @@
+backend/views/guarani_views.py
+  s_4d9056a3efbb15::t_542ffd7cc9654b 47-162
+  s_4d9056a3efbb15::t_6dbde32f581d17 3,9-44
+backend/views/__init__.py
+  s_4d9056a3efbb15::t_ad652fb227573f 48
+backend/urls.py
+  s_4d9056a3efbb15::t_a38b56d1a0c48d 9,97
+tests/views/plan_carrera_views_tests.py
+  s_4d9056a3efbb15::t_7cf973f2ffa47d 1-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.0",
+  "base_commit_sha": "9b071ae82b8d4a97680a50a29ebcdd4c18132c91",
+  "prompts": {},
+  "sessions": {
+    "s_4d9056a3efbb15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "282dedd0-f1fd-47fd-9265-660ba1eda0eb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Luca Salluzzi <luca.salluzzi@mercadolibre.com>"
+    }
+  }
+}
