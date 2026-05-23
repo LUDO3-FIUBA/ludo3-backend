@@ -72,8 +72,8 @@ class PlanCarreraViewTests(APITestCase):
         notas = [m['nota'] for m in response.data['materias_aprobadas']]
         self.assertTrue(all(n >= 4 for n in notas))
 
-    def test_duplicate_subject_included_once_per_unique_grade(self):
-        """Multiple approved attempts of the same subject appear as separate entries (different grades)."""
+    def test_single_approved_subject_returned_once(self):
+        """A subject with one approved attempt is returned exactly once."""
         p1, p2 = self._mock_guarani()
         with p1, p2:
             response = self.client.get(URI)
