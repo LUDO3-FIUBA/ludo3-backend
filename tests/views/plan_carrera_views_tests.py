@@ -93,7 +93,7 @@ class PlanCarreraViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_503_SERVICE_UNAVAILABLE)
 
     def test_unauthenticated_returns_401(self):
-        self.client.logout()
+        self.client.force_authenticate(user=None)
         response = self.client.get(URI)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
