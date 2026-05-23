@@ -6,10 +6,13 @@ from faker import Faker
 from backend.models import Final
 from backend.models.catalog import Catalog, CatalogItem
 from backend.models.commission import Commission
+from backend.models.department import Department
 from backend.models.form import Form, FormField, FormFieldOption
 from backend.models.form_submission import FormSubmission
 from backend.models.form_types import FormFieldType, FormProcedureType, FormType
+from backend.models.secretary import Secretary
 from backend.models.semester import Semester
+from backend.models.staff import Staff
 from backend.models.user import User
 
 
@@ -142,6 +145,54 @@ class AdminUserFactory(factory.django.DjangoModelFactory):
     is_superuser = True
     is_student = False
     is_teacher = False
+
+
+class DepartmentFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Department
+
+    name = factory.Faker("company")
+    location = factory.Faker("address")
+    schedule = ""
+    contact_info = ""
+    procedures = ""
+
+
+class SecretaryFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Secretary
+
+    name = factory.Faker("company")
+    parent_secretary = None
+    location = factory.Faker("address")
+    schedule = ""
+    contact_info = ""
+
+
+class DeptStaffUserFactory(factory.django.DjangoModelFactory):
+    """Creates a non-super staff user associated with a Department."""
+    class Meta:
+        model = User
+
+    first_name = factory.Faker("first_name")
+    last_name = factory.Faker("last_name")
+    dni = factory.Faker("numerify", text="########")
+    email = factory.Faker("ascii_safe_email")
+    password = factory.Faker("password", length=10)
+    is_staff = True
+    is_superuser = False
+    is_student = False
+    is_teacher = False
+
+
+class SecretaryStaffFactory(factory.django.DjangoModelFactory):
+    """Creates a Staff record linked to a Secretary (non-super admin)."""
+    class Meta:
+        model = Staff
+
+    user = factory.SubFactory(DeptStaffUserFactory)
+    secretary = factory.SubFactory(SecretaryFactory)
+    department_siu_id = 0
 
 
 class FormProcedureTypeFactory(factory.django.DjangoModelFactory):

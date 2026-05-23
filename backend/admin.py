@@ -72,7 +72,7 @@ class StaffInline(admin.TabularInline):
     model = Staff
     fieldsets = [
         (None, {
-            'fields': ('department_siu_id', 'department', 'is_bedelia')
+            'fields': ('department_siu_id', 'department', 'secretary', 'is_bedelia')
             }),
         ]
 
@@ -581,3 +581,24 @@ class CalendarEventReminderAdmin(admin.ModelAdmin):
     list_filter = ('days_before',)
     ordering = ('-sent_at',)
     readonly_fields = ('event', 'days_before', 'notification', 'sent_at')
+
+
+class SecretaryStaffInline(admin.TabularInline):
+    model = Staff
+    fields = ('user', 'is_bedelia')
+    readonly_fields = ('user',)
+    extra = 0
+    verbose_name = "Administrador asociado"
+    verbose_name_plural = "Administradores asociados"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(secretary__isnull=False)
+
+
+@admin.register(Secretary)
+class SecretaryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'parent_secretary', 'location', 'created_at')
+    list_filter = ('parent_secretary',)
+    search_fields = ('name',)
+    ordering = ('name',)
+    inlines = [SecretaryStaffInline]
