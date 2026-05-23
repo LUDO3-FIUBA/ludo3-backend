@@ -44,7 +44,7 @@ class PlanCarreraViewTests(APITestCase):
             response = self.client.get(URI)
         carrera = response.data['carreras'][0]
         self.assertEqual(carrera['propuesta'], 2)
-        self.assertEqual(carrera['fiuba_map_carrera_id'], 'informatica')
+        self.assertEqual(carrera['fiuba_map_carrera_id'], 'informatica-2020')
 
     def test_plan_1986_codes_converted_to_fiuba_map_format(self):
         """SIU code 7540 must become 75.40 for FIUBA-Map Plan 1986."""
@@ -56,13 +56,22 @@ class PlanCarreraViewTests(APITestCase):
         self.assertIn('75.41', ids)
         self.assertIn('61.03', ids)
 
-    def test_plan_2020_codes_returned_as_is(self):
-        """Alphanumeric SIU codes (Plan 2020) are returned unchanged."""
-        p1, p2 = self._mock_guarani()
+    def test_plan_2023_alphanumeric_codes_map_to_fiuba_map_ids(self):
+        """Alphanumeric SIU codes are mapped to FIUBA-Map node IDs."""
+        analitico = [
+            {
+                'actividad_codigo': 'CB001',
+                'actividad_nombre': 'Análisis Matemático II',
+                'nota': '8',
+                'propuesta': 2,
+                'propuesta_nombre': 'Ingeniería en Informática',
+            },
+        ]
+        p1, p2 = self._mock_guarani(analitico=analitico)
         with p1, p2:
             response = self.client.get(URI)
         ids = {m['id'] for m in response.data['materias_aprobadas']}
-        self.assertIn('CB001', ids)
+        self.assertIn('AMII', ids)
 
     def test_failed_exams_excluded(self):
         """Subjects with nota < 4 must not appear."""
