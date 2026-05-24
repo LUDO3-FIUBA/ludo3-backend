@@ -2,10 +2,10 @@ from rest_framework import serializers
 
 from backend.models.catalog import Catalog, CatalogItem
 from backend.models.form import Form, FormDocumentSource, FormField, FormFieldOption
+from backend.models.form_ownership import FormOwnershipGroup
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import (
     FormFieldType,
-    FormProcedureType,
     FormSubmissionStatus,
     FormType,
 )
@@ -41,13 +41,12 @@ class CatalogWithItemsSerializer(serializers.ModelSerializer):
 
 # ── Type catalog read ─────────────────────────────────────────────────────────
 
-class FormProcedureTypeSerializer(serializers.ModelSerializer):
+class FormOwnershipGroupSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
-    value = serializers.CharField(source='form_procedure_value', read_only=True)
 
     class Meta:
-        model = FormProcedureType
-        fields = ['id', 'value']
+        model = FormOwnershipGroup
+        fields = ['id', 'name']
 
 
 class FormTypeSerializer(serializers.ModelSerializer):
@@ -128,18 +127,18 @@ class FormDocumentSourceSerializer(serializers.ModelSerializer):
 
 class FormListSerializer(serializers.ModelSerializer):
     form_id = serializers.IntegerField(source='id', read_only=True)
-    form_procedure = FormProcedureTypeSerializer(read_only=True)
+    ownership_group = FormOwnershipGroupSerializer(read_only=True)
     form_type = FormTypeSerializer(read_only=True)
 
     class Meta:
         model = Form
-        fields = ['form_id', 'form_name', 'form_description', 'form_procedure', 'form_type',
+        fields = ['form_id', 'form_name', 'form_description', 'ownership_group', 'form_type',
                   'requires_teacher_validation', 'created_at']
 
 
 class FormDetailSerializer(serializers.ModelSerializer):
     form_id = serializers.IntegerField(source='id', read_only=True)
-    form_procedure = FormProcedureTypeSerializer(read_only=True)
+    ownership_group = FormOwnershipGroupSerializer(read_only=True)
     form_type = FormTypeSerializer(read_only=True)
     fields = FormFieldDetailSerializer(many=True, read_only=True)
     document_source = serializers.SerializerMethodField()
@@ -147,7 +146,7 @@ class FormDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Form
         fields = ['form_id', 'form_name', 'form_description', 'form_information',
-                  'form_procedure', 'form_type', 'requires_teacher_validation', 'fields', 'document_source']
+                  'ownership_group', 'form_type', 'requires_teacher_validation', 'fields', 'document_source']
 
     def get_document_source(self, obj):
         try:
@@ -176,15 +175,15 @@ class FormCreateSerializer(serializers.Serializer):
     form_name = serializers.CharField(max_length=100)
     form_description = serializers.CharField(max_length=300)
     form_information = serializers.CharField(allow_null=True, allow_blank=True, required=False)
-    form_procedure_id = serializers.IntegerField()
+    ownership_group_id = serializers.IntegerField()
     form_type_id = serializers.IntegerField()
     requires_teacher_validation = serializers.BooleanField(default=False, required=False)
     document_source = serializers.URLField(allow_null=True, required=False)
     fields = FormFieldCreateSerializer(many=True, required=False, default=list)
 
-    def validate_form_procedure_id(self, value):
-        if not FormProcedureType.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Tipo de trámite no encontrado.")
+    def validate_ownership_group_id(self, value):
+        if not FormOwnershipGroup.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Grupo de propiedad no encontrado.")
         return value
 
     def validate_form_type_id(self, value):

@@ -8,8 +8,9 @@ from backend.models.catalog import Catalog, CatalogItem
 from backend.models.commission import Commission
 from backend.models.department import Department
 from backend.models.form import Form, FormField, FormFieldOption
+from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
 from backend.models.form_submission import FormSubmission
-from backend.models.form_types import FormFieldType, FormProcedureType, FormType
+from backend.models.form_types import FormFieldType, FormType
 from backend.models.secretary import Secretary
 from backend.models.semester import Semester
 from backend.models.staff import Staff
@@ -195,11 +196,21 @@ class SecretaryStaffFactory(factory.django.DjangoModelFactory):
     department_siu_id = 0
 
 
-class FormProcedureTypeFactory(factory.django.DjangoModelFactory):
+class FormOwnershipGroupFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = FormProcedureType
+        model = FormOwnershipGroup
 
-    form_procedure_value = factory.Iterator(['Administrativo', 'Exámenes', 'Carrera', 'Cursada'])
+    name = factory.Sequence(lambda n: f"Grupo {n}")
+
+
+class FormOwnershipMemberFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = FormOwnershipMember
+
+    group = factory.SubFactory(FormOwnershipGroupFactory)
+    entity_type = FormOwnershipMember.DEPARTMENT
+    entity_id = factory.Sequence(lambda n: n + 1)
+    is_editor = False
 
 
 class FormTypeFactory(factory.django.DjangoModelFactory):
@@ -243,7 +254,7 @@ class FormFactory(factory.django.DjangoModelFactory):
     form_name = factory.Faker("sentence", nb_words=3)
     form_description = factory.Faker("sentence")
     form_information = None
-    form_procedure = factory.SubFactory(FormProcedureTypeFactory)
+    ownership_group = factory.SubFactory(FormOwnershipGroupFactory)
     form_type = factory.SubFactory(FormTypeFactory)
 
 

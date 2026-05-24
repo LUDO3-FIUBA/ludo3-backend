@@ -15,15 +15,15 @@ from rest_framework.response import Response
 
 from backend.models.catalog import Catalog, CatalogItem
 from backend.models.form import Form
+from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import (
     FormFieldType,
-    FormProcedureType,
     FormSubmissionStatus,
     FormType,
 )
 from backend.models.teacher import Teacher
-from backend.permissions import IsAdmin, IsStudent, IsTeacher
+from backend.permissions import IsAdmin, IsSuperAdmin, IsStudent, IsTeacher
 from backend.serializers.form_serializer import (
     CatalogItemSerializer,
     CatalogSerializer,
@@ -31,7 +31,7 @@ from backend.serializers.form_serializer import (
     FormDetailSerializer,
     FormFieldTypeSerializer,
     FormListSerializer,
-    FormProcedureTypeSerializer,
+    FormOwnershipGroupSerializer,
     FormSubmissionListSerializer,
     FormSubmissionStatusSerializer,
     FormTypeSerializer,
@@ -108,13 +108,68 @@ class FormTypeViewSet(BaseViewSet):
         return Response(FormTypeSerializer(self.get_queryset(), many=True).data)
 
 
-class FormProcedureTypeViewSet(BaseViewSet):
-    permission_classes = [IsAuthenticated]
-    queryset = FormProcedureType.objects.all()
+class FormOwnershipGroupViewSet(BaseViewSet):
+    queryset = FormOwnershipGroup.objects.all()
 
-    @swagger_auto_schema(tags=["Formularios"], operation_summary="Lista los tipos de trámite")
+    def get_permissions(self):
+        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+            return [IsAuthenticated(), IsSuperAdmin()]
+        return [IsAuthenticated(), IsAdmin()]
+
+    @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Lista los grupos de propiedad")
     def list(self, request):
-        return Response(FormProcedureTypeSerializer(self.get_queryset(), many=True).data)
+        return Response(FormOwnershipGroupSerializer(self.get_queryset(), many=True).data)
+
+    @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Detalle de un grupo de propiedad")
+    def retrieve(self, request, pk=None):
+        try:
+            group = self.get_queryset().get(pk=pk)
+        except FormOwnershipGroup.DoesNotExist:
+            return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(FormOwnershipGroupSerializer(group).data)
+
+    @swagger_auto_schema(
+        tags=["Grupos de propiedad"],
+        operation_summary="Crea un grupo de propiedad (superadmin)",
+        request_body=FormOwnershipGroupSerializer,
+    )
+    def create(self, request):
+        serializer = FormOwnershipGroupSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        group = FormOwnershipGroup.objects.create(name=serializer.validated_data['name'])
+        return Response(FormOwnershipGroupSerializer(group).data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+        tags=["Grupos de propiedad"],
+        operation_summary="Edita un grupo de propiedad (superadmin)",
+        request_body=FormOwnershipGroupSerializer,
+    )
+    def update(self, request, pk=None):
+        try:
+            group = self.get_queryset().get(pk=pk)
+        except FormOwnershipGroup.DoesNotExist:
+            return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = FormOwnershipGroupSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        group.name = serializer.validated_data['name']
+        group.save(update_fields=['name'])
+        return Response(FormOwnershipGroupSerializer(group).data)
+
+    @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Elimina un grupo de propiedad (superadmin)")
+    def destroy(self, request, pk=None):
+        try:
+            group = self.get_queryset().get(pk=pk)
+        except FormOwnershipGroup.DoesNotExist:
+            return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        if group.forms.exists():
+            return Response(
+                {'detail': 'No se puede eliminar un grupo que tiene formularios asociados.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        group.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class FormFieldTypeViewSet(BaseViewSet):
@@ -127,7 +182,7 @@ class FormFieldTypeViewSet(BaseViewSet):
 
 
 class FormViewSet(BaseViewSet):
-    queryset = Form.objects.select_related('form_procedure', 'form_type').all()
+    queryset = Form.objects.select_related('ownership_group', 'form_type').all()
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_permissions(self):
@@ -137,17 +192,17 @@ class FormViewSet(BaseViewSet):
 
     @swagger_auto_schema(
         tags=["Formularios"],
-        operation_summary="Lista formularios, opcionalmente filtrados por tipo de trámite",
+        operation_summary="Lista formularios, opcionalmente filtrados por grupo de propiedad",
         manual_parameters=[
-            openapi.Parameter('procedure_id', openapi.IN_QUERY, type=openapi.FORMAT_INT64,
-                              description="ID del tipo de trámite")
+            openapi.Parameter('group_id', openapi.IN_QUERY, type=openapi.FORMAT_INT64,
+                              description="ID del grupo de propiedad")
         ],
     )
     def list(self, request):
         qs = self.get_queryset()
-        procedure_id = request.query_params.get('procedure_id')
-        if procedure_id:
-            qs = qs.filter(form_procedure_id=procedure_id)
+        group_id = request.query_params.get('group_id')
+        if group_id:
+            qs = qs.filter(ownership_group_id=group_id)
         return Response(FormListSerializer(qs, many=True).data)
 
     @swagger_auto_schema(tags=["Formularios"], operation_summary="Detalle de un formulario con sus campos")

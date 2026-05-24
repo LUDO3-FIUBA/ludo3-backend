@@ -5,10 +5,10 @@ from django.db import transaction
 
 from backend.models.catalog import CatalogItem
 from backend.models.form import Form, FormDocumentSource, FormField, FormFieldOption
+from backend.models.form_ownership import FormOwnershipGroup
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import (
     FormFieldType,
-    FormProcedureType,
     FormSubmissionStatus,
     FormType,
 )
@@ -22,13 +22,13 @@ class FormService:
     @transaction.atomic
     def create_form(self, validated_data: dict) -> Form:
         form_type = FormType.objects.get(id=validated_data['form_type_id'])
-        form_procedure = FormProcedureType.objects.get(id=validated_data['form_procedure_id'])
+        ownership_group = FormOwnershipGroup.objects.get(id=validated_data['ownership_group_id'])
 
         form = Form.objects.create(
             form_name=validated_data['form_name'],
             form_description=validated_data['form_description'],
             form_information=validated_data.get('form_information'),
-            form_procedure=form_procedure,
+            ownership_group=ownership_group,
             form_type=form_type,
             requires_teacher_validation=validated_data.get('requires_teacher_validation', False),
         )
@@ -43,12 +43,12 @@ class FormService:
     @transaction.atomic
     def update_form(self, form: Form, validated_data: dict) -> Form:
         form_type = FormType.objects.get(id=validated_data['form_type_id'])
-        form_procedure = FormProcedureType.objects.get(id=validated_data['form_procedure_id'])
+        ownership_group = FormOwnershipGroup.objects.get(id=validated_data['ownership_group_id'])
 
         form.form_name = validated_data['form_name']
         form.form_description = validated_data['form_description']
         form.form_information = validated_data.get('form_information')
-        form.form_procedure = form_procedure
+        form.ownership_group = ownership_group
         form.form_type = form_type
         form.requires_teacher_validation = validated_data.get('requires_teacher_validation', False)
         form.save()

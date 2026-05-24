@@ -44,7 +44,7 @@ router.register(r'admin/commissions', views.CommissionAdminViewSet, 'admin-commi
 router.register(r'admin/users', views.UserAdminViewSet, 'admin-user')
 router.register(r'bedelia/classroom-changes', views.BedeliaClassroomChangeViewSet, 'bedelia-classroom-change')
 router.register(r'form-types', views.FormTypeViewSet, 'form-type')
-router.register(r'form-procedure-types', views.FormProcedureTypeViewSet, 'form-procedure-type')
+router.register(r'ownership-groups', views.FormOwnershipGroupViewSet, 'ownership-group')
 router.register(r'form-field-types', views.FormFieldTypeViewSet, 'form-field-type')
 router.register(r'form-submission-statuses', views.FormSubmissionStatusViewSet, 'form-submission-status')
 router.register(r'forms', views.FormViewSet, 'form')

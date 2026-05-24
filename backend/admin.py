@@ -602,3 +602,24 @@ class SecretaryAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     ordering = ('name',)
     inlines = [SecretaryStaffInline]
+
+
+class FormOwnershipMemberInline(admin.TabularInline):
+    model = FormOwnershipMember
+    extra = 1
+    fields = ('entity_type', 'entity_id', 'is_editor')
+
+
+@admin.register(FormOwnershipGroup)
+class FormOwnershipGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created_at')
+    search_fields = ('name',)
+    ordering = ('name',)
+    inlines = [FormOwnershipMemberInline]
+
+
+@admin.register(FormOwnershipMember)
+class FormOwnershipMemberAdmin(admin.ModelAdmin):
+    list_display = ('group', 'entity_type', 'entity_id', 'is_editor')
+    list_filter = ('entity_type', 'is_editor')
+    search_fields = ('group__name',)

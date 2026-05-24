@@ -36,7 +36,7 @@ from .commission_admin_views import CommissionAdminViewSet
 from .user_admin_views import UserAdminViewSet
 from .form_views import (
     FormTypeViewSet,
-    FormProcedureTypeViewSet,
+    FormOwnershipGroupViewSet,
     FormFieldTypeViewSet,
     FormSubmissionStatusViewSet,
     FormViewSet,
