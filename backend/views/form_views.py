@@ -14,8 +14,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models.catalog import Catalog, CatalogItem
+from backend.models.department import Department
 from backend.models.form import Form
 from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
+from backend.models.secretary import Secretary
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import (
     FormFieldType,
@@ -123,10 +125,61 @@ class FormOwnershipGroupViewSet(BaseViewSet):
     @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Detalle de un grupo de propiedad")
     def retrieve(self, request, pk=None):
         try:
-            group = self.get_queryset().get(pk=pk)
+            group = self.get_queryset().prefetch_related('members').get(pk=pk)
         except FormOwnershipGroup.DoesNotExist:
             return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-        return Response(FormOwnershipGroupSerializer(group).data)
+
+        members = list(group.members.all())
+        dept_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.DEPARTMENT]
+        sec_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.SECRETARY]
+
+        dept_map = {d.id: d.name for d in Department.objects.filter(id__in=dept_ids)}
+        sec_map = {
+            s.id: {'name': s.name, 'parent_secretary_name': s.parent_secretary.name if s.parent_secretary_id else None}
+            for s in Secretary.objects.select_related('parent_secretary').filter(id__in=sec_ids)
+        }
+
+        resolved_members = []
+        for m in members:
+            if m.entity_type == FormOwnershipMember.DEPARTMENT:
+                name = dept_map.get(m.entity_id, f'Departamento #{m.entity_id}')
+                parent_secretary_name = None
+            else:
+                sec = sec_map.get(m.entity_id, {})
+                name = sec.get('name', f'Secretaría #{m.entity_id}')
+                parent_secretary_name = sec.get('parent_secretary_name')
+            resolved_members.append({
+                'entity_type': m.entity_type,
+                'entity_id': m.entity_id,
+                'name': name,
+                'is_editor': m.is_editor,
+                'parent_secretary_name': parent_secretary_name,
+            })
+
+        data = FormOwnershipGroupSerializer(group).data
+        data['members'] = resolved_members
+        return Response(data)
+
+    @swagger_auto_schema(
+        tags=["Grupos de propiedad"],
+        operation_summary="Lista entidades elegibles como miembros (departamentos y secretarías)",
+    )
+    @action(detail=False, methods=['get'], url_path='eligible-entities', permission_classes=[IsAuthenticated, IsSuperAdmin])
+    def eligible_entities(self, request):
+        departments = [
+            {'entity_type': FormOwnershipMember.DEPARTMENT, 'entity_id': d.id, 'name': d.name}
+            for d in Department.objects.order_by('name')
+        ]
+        secretaries = [
+            {
+                'entity_type': FormOwnershipMember.SECRETARY,
+                'entity_id': s.id,
+                'name': s.name,
+                'parent_secretary_name': s.parent_secretary.name if s.parent_secretary_id else None,
+            }
+            for s in Secretary.objects.select_related('parent_secretary').order_by('name')
+        ]
+        return Response(sorted(departments + secretaries, key=lambda x: x['name']))
 
     @swagger_auto_schema(
         tags=["Grupos de propiedad"],
@@ -137,7 +190,43 @@ class FormOwnershipGroupViewSet(BaseViewSet):
         serializer = FormOwnershipGroupSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        members_data = request.data.get('members', [])
+        if not isinstance(members_data, list):
+            return Response({'members': ['Debe ser una lista.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_entity_types = {FormOwnershipMember.DEPARTMENT, FormOwnershipMember.SECRETARY}
+        seen = set()
+        for m in members_data:
+            et = m.get('entity_type')
+            eid = m.get('entity_id')
+            if et not in valid_entity_types:
+                return Response(
+                    {'members': [f'Tipo de entidad inválido: {et}.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            key = (et, eid)
+            if key in seen:
+                return Response(
+                    {'members': ['No puede haber miembros duplicados en el grupo.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            seen.add(key)
+
+        if members_data and not any(m.get('is_editor') for m in members_data):
+            return Response(
+                {'members': ['El grupo debe tener al menos un miembro con rol de editor.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         group = FormOwnershipGroup.objects.create(name=serializer.validated_data['name'])
+        for m in members_data:
+            FormOwnershipMember.objects.create(
+                group=group,
+                entity_type=m['entity_type'],
+                entity_id=m['entity_id'],
+                is_editor=bool(m.get('is_editor', False)),
+            )
         return Response(FormOwnershipGroupSerializer(group).data, status=status.HTTP_201_CREATED)
 
     @swagger_auto_schema(
@@ -150,11 +239,48 @@ class FormOwnershipGroupViewSet(BaseViewSet):
             group = self.get_queryset().get(pk=pk)
         except FormOwnershipGroup.DoesNotExist:
             return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = FormOwnershipGroupSerializer(data=request.data)
+        serializer = FormOwnershipGroupSerializer(group, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        members_data = request.data.get('members', [])
+        if not isinstance(members_data, list):
+            return Response({'members': ['Debe ser una lista.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_entity_types = {FormOwnershipMember.DEPARTMENT, FormOwnershipMember.SECRETARY}
+        seen = set()
+        for m in members_data:
+            et = m.get('entity_type')
+            eid = m.get('entity_id')
+            if et not in valid_entity_types:
+                return Response(
+                    {'members': [f'Tipo de entidad inválido: {et}.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            key = (et, eid)
+            if key in seen:
+                return Response(
+                    {'members': ['No puede haber miembros duplicados en el grupo.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            seen.add(key)
+
+        if members_data and not any(m.get('is_editor') for m in members_data):
+            return Response(
+                {'members': ['El grupo debe tener al menos un miembro con rol de editor.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         group.name = serializer.validated_data['name']
         group.save(update_fields=['name'])
+        group.members.all().delete()
+        for m in members_data:
+            FormOwnershipMember.objects.create(
+                group=group,
+                entity_type=m['entity_type'],
+                entity_id=m['entity_id'],
+                is_editor=bool(m.get('is_editor', False)),
+            )
         return Response(FormOwnershipGroupSerializer(group).data)
 
     @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Elimina un grupo de propiedad (superadmin)")

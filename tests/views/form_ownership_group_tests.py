@@ -61,6 +61,35 @@ class FormOwnershipGroupCreateTests(APITestCase):
         response = self.client.post(self.uri, {'name': 'Test'}, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
+    def test_create_with_members_but_no_editor_returns_400(self):
+        """A payload that lists members but none has is_editor=True must be rejected."""
+        from tests.factories import DepartmentFactory
+        dept = DepartmentFactory()
+        self.client.force_authenticate(user=self.superadmin)
+        payload = {
+            'name': 'Grupo sin editor',
+            'members': [
+                {'entity_type': 'department', 'entity_id': dept.id, 'is_editor': False},
+            ],
+        }
+        response = self.client.post(self.uri, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_with_duplicate_members_returns_400(self):
+        """A payload with the same (entity_type, entity_id) pair twice must be rejected."""
+        from tests.factories import DepartmentFactory
+        dept = DepartmentFactory()
+        self.client.force_authenticate(user=self.superadmin)
+        payload = {
+            'name': 'Grupo con duplicado',
+            'members': [
+                {'entity_type': 'department', 'entity_id': dept.id, 'is_editor': True},
+                {'entity_type': 'department', 'entity_id': dept.id, 'is_editor': False},
+            ],
+        }
+        response = self.client.post(self.uri, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 class FormOwnershipGroupUpdateTests(APITestCase):
     def setUp(self):
