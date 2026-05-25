@@ -2,7 +2,9 @@ from rest_framework import serializers
 
 from backend.models.catalog import Catalog, CatalogItem
 from backend.models.form import Form, FormDocumentSource, FormField, FormFieldOption
-from backend.models.form_ownership import FormOwnershipGroup
+from backend.models.department import Department
+from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
+from backend.models.secretary import Secretary
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import (
     FormFieldType,
@@ -47,6 +49,44 @@ class FormOwnershipGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = FormOwnershipGroup
         fields = ['id', 'name']
+
+
+class FormOwnershipMemberReadSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    parent_secretary_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FormOwnershipMember
+        fields = ['entity_type', 'entity_id', 'is_editor', 'name', 'parent_secretary_name']
+
+    def get_name(self, obj):
+        if obj.entity_type == FormOwnershipMember.DEPARTMENT:
+            try:
+                return Department.objects.get(pk=obj.entity_id).name
+            except Department.DoesNotExist:
+                return None
+        try:
+            return Secretary.objects.get(pk=obj.entity_id).name
+        except Secretary.DoesNotExist:
+            return None
+
+    def get_parent_secretary_name(self, obj):
+        if obj.entity_type != FormOwnershipMember.SECRETARY:
+            return None
+        try:
+            sec = Secretary.objects.select_related('parent_secretary').get(pk=obj.entity_id)
+            return sec.parent_secretary.name if sec.parent_secretary else None
+        except Secretary.DoesNotExist:
+            return None
+
+
+class FormOwnershipGroupWithMembersSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+    members = FormOwnershipMemberReadSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = FormOwnershipGroup
+        fields = ['id', 'name', 'members']
 
 
 class FormTypeSerializer(serializers.ModelSerializer):
@@ -138,7 +178,7 @@ class FormListSerializer(serializers.ModelSerializer):
 
 class FormDetailSerializer(serializers.ModelSerializer):
     form_id = serializers.IntegerField(source='id', read_only=True)
-    ownership_group = FormOwnershipGroupSerializer(read_only=True)
+    ownership_group = FormOwnershipGroupWithMembersSerializer(read_only=True)
     form_type = FormTypeSerializer(read_only=True)
     fields = FormFieldDetailSerializer(many=True, read_only=True)
     document_source = serializers.SerializerMethodField()
@@ -201,6 +241,15 @@ class AnswerCreateSerializer(serializers.Serializer):
 
 class SubmissionCreateSerializer(serializers.Serializer):
     answers = AnswerCreateSerializer(many=True)
+    recipient_entity_type = serializers.CharField(max_length=20, required=False, allow_null=True, allow_blank=True)
+    recipient_entity_id = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate_recipient_entity_type(self, value):
+        if value and value not in ('department', 'secretary'):
+            raise serializers.ValidationError(
+                "Tipo de destinatario inválido. Valores permitidos: 'department', 'secretary'."
+            )
+        return value
 
 
 # ── Submission read (admin) ───────────────────────────────────────────────────
@@ -234,6 +283,7 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
     teacher_id = serializers.SerializerMethodField()
     teacher_first_name = serializers.SerializerMethodField()
     teacher_last_name = serializers.SerializerMethodField()
+    recipient_name = serializers.SerializerMethodField()
 
     class Meta:
         model = FormSubmission
@@ -244,6 +294,7 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
             'form_id', 'form_name', 'form_requires_teacher_validation',
             'teacher_id', 'teacher_first_name', 'teacher_last_name',
             'teacher_status', 'teacher_comment',
+            'recipient_entity_type', 'recipient_entity_id', 'recipient_name',
         ]
 
     def get_student_padron(self, obj):
@@ -268,6 +319,19 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
 
     def get_teacher_last_name(self, obj):
         return obj.teacher.user.last_name if obj.teacher else None
+
+    def get_recipient_name(self, obj):
+        if obj.recipient_entity_type == FormOwnershipMember.DEPARTMENT:
+            try:
+                return Department.objects.get(pk=obj.recipient_entity_id).name
+            except Department.DoesNotExist:
+                return None
+        if obj.recipient_entity_type == FormOwnershipMember.SECRETARY:
+            try:
+                return Secretary.objects.get(pk=obj.recipient_entity_id).name
+            except Secretary.DoesNotExist:
+                return None
+        return None
 
 
 class TeacherValidationUpdateSerializer(serializers.Serializer):

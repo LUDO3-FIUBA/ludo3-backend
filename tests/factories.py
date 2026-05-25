@@ -186,6 +186,16 @@ class DeptStaffUserFactory(factory.django.DjangoModelFactory):
     is_teacher = False
 
 
+class DeptStaffFactory(factory.django.DjangoModelFactory):
+    """Creates a Staff record linked to a Department (non-super admin)."""
+    class Meta:
+        model = Staff
+
+    user = factory.SubFactory(DeptStaffUserFactory)
+    department = factory.SubFactory(DepartmentFactory)
+    department_siu_id = 0
+
+
 class SecretaryStaffFactory(factory.django.DjangoModelFactory):
     """Creates a Staff record linked to a Secretary (non-super admin)."""
     class Meta:

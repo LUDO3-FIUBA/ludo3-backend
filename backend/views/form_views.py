@@ -25,7 +25,13 @@ from backend.models.form_types import (
     FormType,
 )
 from backend.models.teacher import Teacher
-from backend.permissions import IsAdmin, IsSuperAdmin, IsStudent, IsTeacher
+from backend.permissions import (
+    IsAdmin,
+    IsSuperAdmin,
+    IsStudent,
+    IsTeacher,
+    get_user_ownership_memberships,
+)
 from backend.serializers.form_serializer import (
     CatalogItemSerializer,
     CatalogSerializer,
@@ -120,7 +126,25 @@ class FormOwnershipGroupViewSet(BaseViewSet):
 
     @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Lista los grupos de propiedad")
     def list(self, request):
-        return Response(FormOwnershipGroupSerializer(self.get_queryset(), many=True).data)
+        groups = self.get_queryset()
+        data = FormOwnershipGroupSerializer(groups, many=True).data
+        # Annotate is_editor for non-super admins so the frontend can conditionally
+        # show create/edit/delete actions per group.
+        if request.user.is_staff and not request.user.is_superuser:
+            memberships = get_user_ownership_memberships(request.user)
+            editor_group_ids = set(memberships.filter(is_editor=True).values_list('group_id', flat=True))
+            member_group_ids = set(memberships.values_list('group_id', flat=True))
+            for item in data:
+                gid = item['id']
+                if gid in editor_group_ids:
+                    item['is_editor'] = True
+                elif gid in member_group_ids:
+                    item['is_editor'] = False
+                # super-admin or student callers: no annotation needed
+        elif request.user.is_superuser:
+            for item in data:
+                item['is_editor'] = True
+        return Response(data)
 
     @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Detalle de un grupo de propiedad")
     def retrieve(self, request, pk=None):
@@ -316,6 +340,27 @@ class FormViewSet(BaseViewSet):
             return [IsAuthenticated(), IsAdmin()]
         return [IsAuthenticated()]
 
+    def _get_visible_queryset(self, request):
+        """
+        Returns a queryset of Forms visible to the requesting user:
+        - Super admins and unauthenticated/student callers: all forms.
+        - Non-super admins: only forms whose ownership_group contains the
+          admin's entity as a member.
+        """
+        qs = self.get_queryset()
+        if request.user.is_staff and not request.user.is_superuser:
+            memberships = get_user_ownership_memberships(request.user)
+            group_ids = memberships.values_list('group_id', flat=True)
+            qs = qs.filter(ownership_group_id__in=group_ids)
+        return qs
+
+    def _check_editor_for_group(self, request, group_id):
+        """Returns True if the user is an editor in the given group (or is super admin)."""
+        if request.user.is_superuser:
+            return True
+        memberships = get_user_ownership_memberships(request.user)
+        return memberships.filter(group_id=group_id, is_editor=True).exists()
+
     @swagger_auto_schema(
         tags=["Formularios"],
         operation_summary="Lista formularios, opcionalmente filtrados por grupo de propiedad",
@@ -325,7 +370,7 @@ class FormViewSet(BaseViewSet):
         ],
     )
     def list(self, request):
-        qs = self.get_queryset()
+        qs = self._get_visible_queryset(request)
         group_id = request.query_params.get('group_id')
         if group_id:
             qs = qs.filter(ownership_group_id=group_id)
@@ -338,6 +383,7 @@ class FormViewSet(BaseViewSet):
                 'fields__form_field_type',
                 'fields__options',
                 'fields__catalog__items',
+                'ownership_group__members',
             ).get(pk=pk)
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
@@ -356,6 +402,14 @@ class FormViewSet(BaseViewSet):
         serializer = FormCreateSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        target_group_id = serializer.validated_data.get('ownership_group_id')
+        if not self._check_editor_for_group(request, target_group_id):
+            return Response(
+                {'detail': 'No tenés permiso de editor en este grupo de propiedad.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         try:
             form = FormService().create_form(serializer.validated_data)
         except ValidationError as e:
@@ -370,9 +424,15 @@ class FormViewSet(BaseViewSet):
     )
     def update(self, request, pk=None):
         try:
-            form = self.get_queryset().get(pk=pk)
+            form = self._get_visible_queryset(request).get(pk=pk)
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not self._check_editor_for_group(request, form.ownership_group_id):
+            return Response(
+                {'detail': 'No tenés permiso de editor en este grupo de propiedad.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         try:
             data = _maybe_upload_template(request, request.data)
@@ -413,9 +473,14 @@ class FormViewSet(BaseViewSet):
     @swagger_auto_schema(tags=["Formularios"], operation_summary="Elimina un formulario (admin)")
     def destroy(self, request, pk=None):
         try:
-            form = self.get_queryset().get(pk=pk)
+            form = self._get_visible_queryset(request).get(pk=pk)
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        if not self._check_editor_for_group(request, form.ownership_group_id):
+            return Response(
+                {'detail': 'No tenés permiso de editor en este grupo de propiedad.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         form.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -445,14 +510,34 @@ class FormSubmissionViewSet(BaseViewSet):
         form = self._get_form(form_pk)
         if not form:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-        submissions = (
+
+        # Super admins see all submissions; other admins must be a member of the form's group.
+        if not request.user.is_superuser:
+            memberships = get_user_ownership_memberships(request.user)
+            is_member = memberships.filter(group=form.ownership_group).exists()
+            if not is_member:
+                return Response({'detail': 'No tenés acceso a este formulario.'}, status=status.HTTP_403_FORBIDDEN)
+
+        submissions_qs = (
             FormSubmission.objects
             .filter(form=form)
             .select_related('form', 'user__student', 'status', 'teacher__user')
             .prefetch_related('answers__field')
             .order_by('-submitted_at')
         )
-        return Response(FormSubmissionListSerializer(submissions, many=True).data)
+
+        # Non-editor members can only see submissions directed to their entity.
+        if not request.user.is_superuser:
+            is_editor = memberships.filter(group=form.ownership_group, is_editor=True).exists()
+            if not is_editor:
+                member = memberships.filter(group=form.ownership_group).first()
+                if member:
+                    submissions_qs = submissions_qs.filter(
+                        recipient_entity_type=member.entity_type,
+                        recipient_entity_id=member.entity_id,
+                    )
+
+        return Response(FormSubmissionListSerializer(submissions_qs, many=True).data)
 
     @swagger_auto_schema(
         tags=["Formularios — Respuestas"],
@@ -510,12 +595,17 @@ class FormSubmissionViewSet(BaseViewSet):
             else:
                 answers_data.append({'field_id': adjunto_field.id, 'answer_value': url})
 
+        recipient_entity_type = serializer.validated_data.get('recipient_entity_type') or None
+        recipient_entity_id = serializer.validated_data.get('recipient_entity_id')
+
         try:
             submission = FormService().create_digital_submission(
                 form=form,
                 user=request.user,
                 answers_data=answers_data,
                 teacher=teacher,
+                recipient_entity_type=recipient_entity_type,
+                recipient_entity_id=recipient_entity_id,
             )
         except ValidationError as e:
             return Response(e.message_dict if hasattr(e, 'message_dict') else e.messages,
@@ -562,6 +652,21 @@ class FormSubmissionViewSet(BaseViewSet):
         key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{ext}"
         url = storage_service.upload_object(file_obj, key)
 
+        raw_recipient_type = request.data.get('recipient_entity_type') or None
+        raw_recipient_id = request.data.get('recipient_entity_id')
+        try:
+            recipient_entity_id_val = int(raw_recipient_id) if raw_recipient_id is not None else None
+        except (ValueError, TypeError):
+            recipient_entity_id_val = None
+
+        try:
+            resolved_type, resolved_id = FormService._resolve_recipient(
+                form, raw_recipient_type, recipient_entity_id_val,
+            )
+        except ValidationError as e:
+            return Response(e.message_dict if hasattr(e, 'message_dict') else e.messages,
+                            status=status.HTTP_400_BAD_REQUEST)
+
         sent_status = FormSubmissionStatus.objects.get(
             form_submission_status_value=FormSubmissionStatus.SENT,
         )
@@ -571,6 +676,8 @@ class FormSubmissionViewSet(BaseViewSet):
             status=sent_status,
             teacher=teacher,
             teacher_status=FormSubmission.TEACHER_STATUS_PENDING if teacher else None,
+            recipient_entity_type=resolved_type,
+            recipient_entity_id=resolved_id,
         )
         FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=url)
 
@@ -644,6 +751,19 @@ class SubmissionAdminViewSet(BaseViewSet):
         serializer = SubmissionStatusUpdateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Only the designated recipient (or super admin) can change the submission status.
+        if not request.user.is_superuser and submission.recipient_entity_type and submission.recipient_entity_id:
+            memberships = get_user_ownership_memberships(request.user)
+            is_recipient = memberships.filter(
+                entity_type=submission.recipient_entity_type,
+                entity_id=submission.recipient_entity_id,
+            ).exists()
+            if not is_recipient:
+                return Response(
+                    {'detail': 'Solo el destinatario de la respuesta puede cambiar su estado.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
         new_status_value = serializer.validated_data['status']
 

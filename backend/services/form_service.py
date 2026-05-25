@@ -122,8 +122,39 @@ class FormService:
                         form_option_label=opt['form_option_label'],
                     )
 
+    @staticmethod
+    def _resolve_recipient(form: Form, recipient_entity_type, recipient_entity_id):
+        """
+        Resolve and validate the recipient for a submission.
+        - If the group has exactly one member, use it automatically (recipient args ignored).
+        - If the group has multiple members, the recipient is required and must be a member.
+        Returns (entity_type, entity_id) or raises ValidationError.
+        """
+        from backend.models.form_ownership import FormOwnershipMember
+        members = list(form.ownership_group.members.all())
+        if len(members) == 0:
+            # No members configured; allow submission without recipient.
+            return None, None
+        if len(members) == 1:
+            m = members[0]
+            return m.entity_type, m.entity_id
+        # Multiple members — recipient required.
+        if not recipient_entity_type or recipient_entity_id is None:
+            raise ValidationError(
+                {'recipient': ['Este formulario requiere que selecciones un destinatario.']}
+            )
+        member_keys = {(m.entity_type, m.entity_id) for m in members}
+        if (recipient_entity_type, recipient_entity_id) not in member_keys:
+            raise ValidationError(
+                {'recipient': ['El destinatario seleccionado no pertenece al grupo de este formulario.']}
+            )
+        return recipient_entity_type, recipient_entity_id
+
     @transaction.atomic
-    def create_digital_submission(self, form: Form, user, answers_data: list, teacher=None) -> FormSubmission:
+    def create_digital_submission(
+        self, form: Form, user, answers_data: list, teacher=None,
+        recipient_entity_type=None, recipient_entity_id=None,
+    ) -> FormSubmission:
         form_type = form.form_type.form_type_value
         if form_type != DIGITAL:
             raise ValidationError({'form': ['Este formulario no es de tipo Digital.']})
@@ -136,6 +167,8 @@ class FormService:
         if missing:
             raise ValidationError({'answers': [f'Los campos obligatorios sin respuesta: {list(missing)}.']})
 
+        resolved_type, resolved_id = self._resolve_recipient(form, recipient_entity_type, recipient_entity_id)
+
         sent_status = FormSubmissionStatus.objects.get(
             form_submission_status_value=FormSubmissionStatus.SENT,
         )
@@ -145,6 +178,8 @@ class FormService:
             status=sent_status,
             teacher=teacher,
             teacher_status=FormSubmission.TEACHER_STATUS_PENDING if teacher else None,
+            recipient_entity_type=resolved_type,
+            recipient_entity_id=resolved_id,
         )
 
         for answer_data in answers_data:
