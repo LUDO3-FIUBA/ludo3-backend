@@ -31,6 +31,7 @@ from .notification_teacher_views import NotificationTeacherViewSet
 from .academic_calendar_event_views import AcademicCalendarEventViewSet
 from .department_views import DepartmentViewSet
 from .news_views import NewsViewSet
+from .admin_finals_views import AdminFinalsViewSet
 from .commission_admin_views import CommissionAdminViewSet
 from .user_admin_views import UserAdminViewSet
 from .form_views import (
