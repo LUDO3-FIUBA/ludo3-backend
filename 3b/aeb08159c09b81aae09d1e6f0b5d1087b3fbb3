@@ -1,0 +1,21 @@
+backend/views/guarani_views.py
+  s_4d9056a3efbb15::t_25948fe17564d5 8
+  s_4d9056a3efbb15::t_d5a5dabf18acba 106
+  s_4d9056a3efbb15::t_d15d4708a5899c 132-143,157-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "3baeb08159c09b81aae09d1e6f0b5d1087b3fbb3",
+  "prompts": {},
+  "sessions": {
+    "s_4d9056a3efbb15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "282dedd0-f1fd-47fd-9265-660ba1eda0eb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Luca Salluzzi <luca.salluzzi@mercadolibre.com>"
+    }
+  }
+}
