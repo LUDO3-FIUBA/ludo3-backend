@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from backend.api_exceptions import ErrorCommunicatingWithExternalSourceError
 from backend.client.guarani_client import GuaraniClient
 from backend.permissions import IsStudent
 
@@ -102,7 +103,7 @@ class PlanCarreraView(APIView):
                                 properties={
                                     'propuesta': openapi.Schema(type=openapi.TYPE_INTEGER),
                                     'propuesta_nombre': openapi.Schema(type=openapi.TYPE_STRING),
-                                    'fiuba_map_carrera_id': openapi.Schema(type=openapi.TYPE_STRING),
+                                    'fiuba_map_carrera_id': openapi.Schema(type=openapi.TYPE_STRING, x_nullable=True),
                                 },
                             ),
                         ),
@@ -128,11 +129,18 @@ class PlanCarreraView(APIView):
         dni = request.user.dni
         client = GuaraniClient()
 
-        personas = client.list_personas(
-            tipo_documento=SIU_TIPO_DOCUMENTO_DNI,
-            numero_documento=dni,
-            pais=SIU_PAIS_ARGENTINA,
-        )
+        try:
+            personas = client.list_personas(
+                tipo_documento=SIU_TIPO_DOCUMENTO_DNI,
+                numero_documento=dni,
+                pais=SIU_PAIS_ARGENTINA,
+            )
+        except ErrorCommunicatingWithExternalSourceError:
+            return Response(
+                {'detail': 'Error al consultar el SIU Guaraní.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         if not personas or not isinstance(personas, (list, dict)):
             return Response(
                 {'detail': 'Alumno no encontrado en el SIU.'},
@@ -146,7 +154,14 @@ class PlanCarreraView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        analitico = client.get_persona_datos_analitico(persona_id)
+        try:
+            analitico = client.get_persona_datos_analitico(persona_id)
+        except ErrorCommunicatingWithExternalSourceError:
+            return Response(
+                {'detail': 'Error al consultar el SIU Guaraní.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
         if analitico is None:
             return Response(
                 {'detail': 'Error al consultar el SIU Guaraní.'},
