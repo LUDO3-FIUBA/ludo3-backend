@@ -215,6 +215,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
 # If DATABASE_URL is set, use it (supports both local and remote databases)
 if os.environ.get('DATABASE_URL'):
     import dj_database_url
