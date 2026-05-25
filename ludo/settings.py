@@ -85,7 +85,6 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'rest_framework_swagger',
     'drf_yasg',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
@@ -205,8 +204,6 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
-
-USE_L10N = True
 
 USE_TZ = True
 
