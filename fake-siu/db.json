@@ -240,8 +240,7 @@
       "codigo": "75.99",
       "nombre": "Trabajo Profesional",
       "departamentoId": 3,
-      "correlativas": [
-      ]
+      "correlativas": []
     }
   ],
   "alumnos": [
@@ -379,6 +378,12 @@
       "id": 7,
       "docenteId": 4,
       "materiaId": 22
+    },
+    {
+      "materia_id": "1",
+      "timestamp": "1779764400",
+      "docenteId": "1",
+      "id": 8
     }
   ],
   "comisiones": [
