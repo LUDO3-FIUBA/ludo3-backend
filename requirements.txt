@@ -6,7 +6,6 @@ django==3.1.2
 django-cors-headers
 django-extensions
 django-filter==2.3.0
-django-heroku
 djangorestframework==3.12.1
 djangorestframework-simplejwt
 django_reverse_admin

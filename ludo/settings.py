@@ -13,7 +13,6 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 import logging
 import os
 
-import django_heroku
 import firebase_admin
 
 from ludo.storage_settings import get_storage_settings
@@ -215,9 +214,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
-
-# Activate Django-Heroku.
-django_heroku.settings(locals(), databases=False)
 
 # If DATABASE_URL is set, use it (supports both local and remote databases)
 if os.environ.get('DATABASE_URL'):
