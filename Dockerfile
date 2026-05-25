@@ -1,6 +1,6 @@
 # pull official base image
 # Using Python 3.8 for ARM64 (Apple Silicon) compatibility
-FROM python:3.10
+FROM python:3.11
 
 # set work directory
 WORKDIR /usr/src/ludo
