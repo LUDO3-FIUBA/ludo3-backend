@@ -1,0 +1,24 @@
+tests/views/plan_carrera_views_tests.py
+  s_4d9056a3efbb15::t_05967cf15a9649 6,11-12,18-21,23-24,35,49-51,58-66,69,77-79,83-85,89,97,109,115-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.1",
+  "base_commit_sha": "7b5ee346e5380c34910dabac5b51cbb7179e1ea8",
+  "prompts": {},
+  "humans": {
+    "h_a97313da363eeb": {
+      "author": "Luca Salluzzi <luca.salluzzi@mercadolibre.com>"
+    }
+  },
+  "sessions": {
+    "s_4d9056a3efbb15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "282dedd0-f1fd-47fd-9265-660ba1eda0eb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Luca Salluzzi <luca.salluzzi@mercadolibre.com>"
+    }
+  }
+}
