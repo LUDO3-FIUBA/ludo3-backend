@@ -28,7 +28,14 @@ def get_storage_settings():
     if storage_provider == 'local':
         storage_settings.update(
             MEDIA_URL=os.environ.get('LOCAL_MEDIA_URL', '/media/'),
-            DEFAULT_FILE_STORAGE='django.core.files.storage.FileSystemStorage',
+            STORAGES={
+                "default": {
+                    "BACKEND": "django.core.files.storage.FileSystemStorage",
+                },
+                "staticfiles": {
+                    "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+                },
+            },
         )
         return storage_settings
 
@@ -65,7 +72,14 @@ def get_storage_settings():
             AWS_QUERYSTRING_AUTH=not s3_public_media,
             AWS_QUERYSTRING_EXPIRE=aws_querystring_expire,
             AWS_S3_FILE_OVERWRITE=False,
-            DEFAULT_FILE_STORAGE='storages.backends.s3boto3.S3Boto3Storage',
+            STORAGES={
+                "default": {
+                    "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+                },
+                "staticfiles": {
+                    "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+                },
+            },
             MEDIA_URL=media_url,
         )
         return storage_settings
@@ -78,7 +92,14 @@ def get_storage_settings():
         GS_BUCKET_NAME=gcs_bucket_name,
         GS_DEFAULT_ACL=None,
         GS_QUERYSTRING_AUTH=False,
-        DEFAULT_FILE_STORAGE='storages.backends.gcloud.GoogleCloudStorage',
+        STORAGES={
+            "default": {
+                "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+            },
+            "staticfiles": {
+                "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+            },
+        },
         MEDIA_URL=f'https://storage.googleapis.com/{gcs_bucket_name}/',
     )
     return storage_settings

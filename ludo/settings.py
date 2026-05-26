@@ -43,8 +43,6 @@ globals().update(get_storage_settings())
 
 CSRF_COOKIE_SECURE=False
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'salty-badlands-32978.herokuapp.com', 'ludo-backend.herokuapp.com']
 
 # CORS configuration for web app
@@ -75,7 +73,6 @@ AUTH_USER_MODEL = 'backend.User'
 
 LANGUAGE_CODE = 'es-AR'
 USE_I18N = True
-USE_L10N = True
 
 # Application definition
 
