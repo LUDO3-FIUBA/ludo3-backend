@@ -8,6 +8,12 @@ class EvaluationSubmissionService:
         submission.grader = teacher
         submission.updated_at = get_current_datetime()
         submission.save()
+
+    def set_feedback_text(self, submission: EvaluationSubmission, feedback_text: str):
+        submission.feedback_text = feedback_text
+        submission.updated_at = get_current_datetime()
+        submission.full_clean()
+        submission.save()
     
     def set_grade(self, submission: EvaluationSubmission, teacher: Teacher, grade: int, feedback_text: str = None):
         submission.grade = grade

@@ -76,11 +76,19 @@ class EvaluationSubmissionPutSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         grade = attrs.get('grade', None)
         submission_status = attrs.get('submission_status', None)
+        feedback_text = attrs.get('feedback_text', None)
 
-        if (grade is None) == (submission_status is None):
+        if grade is not None and submission_status is not None:
             raise serializers.ValidationError({
                 'non_field_errors': [
-                    'Provide exactly one of grade or submission_status.'
+                    'Provide either grade or submission_status, not both.'
+                ]
+            })
+
+        if grade is None and submission_status is None and feedback_text in (None, ''):
+            raise serializers.ValidationError({
+                'non_field_errors': [
+                    'Provide grade, submission_status, or feedback_text.'
                 ]
             })
 

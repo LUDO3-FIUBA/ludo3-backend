@@ -80,13 +80,16 @@ class EvaluationSubmissionTeacherViewSet(BaseViewSet):
         try:
             if submission_status is not None:
                 submissions_service.set_status(submission, request.user.teacher, submission_status, feedback_text)
-            else:
+            elif grade is not None:
                 submissions_service.set_grade(submission, request.user.teacher, grade, feedback_text)
+            else:
+                submissions_service.set_feedback_text(submission, feedback_text)
         except ValidationError as e:
             payload = getattr(e, "message_dict", None) or {"detail": e.messages}
             return Response(payload, status=status.HTTP_400_BAD_REQUEST)
 
         AuditLogService().log(request.user, submission.student.user, f"Docente corrigio una entrega: {submission}")
+        AuditLogService().log(request.user, submission.student.user, f"Submission fields: grade: {grade}, submission_status: {submission_status}, feedback_text: {feedback_text}")
 
         return Response(EvaluationSubmissionSerializer(submission).data, status=status.HTTP_200_OK)
 
