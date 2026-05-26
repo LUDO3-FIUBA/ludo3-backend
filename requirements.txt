@@ -2,7 +2,7 @@ boto3
 django-storages
 Pillow
 pypdf
-Django>=3.2,<3.3
+Django>=4.2,<4.3
 django-cors-headers
 django-extensions
 django-filter>=23.0

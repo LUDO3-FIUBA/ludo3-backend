@@ -17,7 +17,10 @@ import firebase_admin
 
 from ludo.storage_settings import get_storage_settings
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('s3transfer').setLevel(logging.WARNING)
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)

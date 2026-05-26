@@ -7,6 +7,15 @@ def _as_bool(value, default=False):
     return str(value).strip().lower() in ('1', 'true', 'yes', 'on')
 
 
+def _env_or_none(name):
+    value = os.environ.get(name)
+    if value is None:
+        return None
+
+    value = value.strip()
+    return value or None
+
+
 def get_storage_settings():
     storage_provider = os.environ.get('STORAGE_PROVIDER', 'local').lower()
     if storage_provider not in ('local', 's3', 'gcs'):
@@ -49,8 +58,8 @@ def get_storage_settings():
             AWS_STORAGE_BUCKET_NAME=aws_bucket_name,
             AWS_ACCESS_KEY_ID=os.environ.get('AWS_ACCESS_KEY_ID', ''),
             AWS_SECRET_ACCESS_KEY=os.environ.get('AWS_SECRET_ACCESS_KEY', ''),
-            AWS_S3_REGION_NAME=os.environ.get('AWS_REGION', ''),
-            AWS_S3_ENDPOINT_URL=os.environ.get('AWS_ENDPOINT_URL', '') or None,
+            AWS_S3_REGION_NAME=_env_or_none('AWS_REGION') or _env_or_none('AWS_DEFAULT_REGION'),
+            AWS_S3_ENDPOINT_URL=_env_or_none('AWS_ENDPOINT_URL'),
             AWS_S3_CUSTOM_DOMAIN=aws_s3_custom_domain,
             AWS_DEFAULT_ACL=None,
             AWS_QUERYSTRING_AUTH=not s3_public_media,

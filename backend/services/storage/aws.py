@@ -9,6 +9,15 @@ from backend.utils import decode_image
 from .base import StorageService
 
 
+def _env_or_none(name):
+    value = os.environ.get(name)
+    if value is None:
+        return None
+
+    value = value.strip()
+    return value or None
+
+
 class AwsS3StorageService(StorageService):
     """AWS S3 storage provider"""
 
@@ -17,8 +26,8 @@ class AwsS3StorageService(StorageService):
             's3',
             aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID"),
             aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.environ.get("AWS_REGION"),
-            endpoint_url=os.getenv("AWS_ENDPOINT_URL") or None,
+            region_name=_env_or_none("AWS_REGION") or _env_or_none("AWS_DEFAULT_REGION"),
+            endpoint_url=_env_or_none("AWS_ENDPOINT_URL"),
             config=Config(signature_version='s3v4'),
         )
         self.bucket = os.environ.get("AWS_BUCKET_NAME")
