@@ -40,6 +40,7 @@ router.register(r'academic_calendar', views.AcademicCalendarEventViewSet, 'acade
 router.register(r'departments', views.DepartmentViewSet, 'department')
 router.register(r'news', views.NewsViewSet, 'news')
 router.register(r'admin/commissions', views.CommissionAdminViewSet, 'admin-commission')
+router.register(r'admin/finals', views.AdminFinalsViewSet, 'admin-final')
 router.register(r'admin/users', views.UserAdminViewSet, 'admin-user')
 router.register(r'bedelia/classroom-changes', views.BedeliaClassroomChangeViewSet, 'bedelia-classroom-change')
 router.register(r'form-types', views.FormTypeViewSet, 'form-type')
