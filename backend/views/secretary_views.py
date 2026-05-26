@@ -1,11 +1,14 @@
+from django.db import transaction
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models import Secretary
+from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
 from backend.permissions import IsAdmin, IsSuperAdmin
 from backend.serializers.secretary_serializer import (
     SecretarySerializer,
@@ -32,7 +35,7 @@ class SecretaryViewSet(BaseViewSet):
     serializer_class = SecretarySerializer
 
     def get_permissions(self):
-        if self.action in ('create', 'destroy'):
+        if self.action in ('create', 'destroy', 'ownership_groups'):
             return [IsAuthenticated(), IsSuperAdmin()]
         if self.action in ('update', 'partial_update'):
             return [IsAuthenticated(), IsAdmin()]
@@ -85,3 +88,70 @@ class SecretaryViewSet(BaseViewSet):
         secretary = get_object_or_404(self.get_queryset(), pk=pk)
         secretary.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @swagger_auto_schema(tags=["Secretaries"], operation_summary="Set ownership group memberships for a secretary")
+    @action(detail=True, methods=['patch'], url_path='ownership-groups')
+    def ownership_groups(self, request, pk=None, *args, **kwargs):
+        """
+        PATCH /api/secretaries/{id}/ownership-groups/
+        Payload: {"groups": [{"group_id": 1, "is_editor": true}, ...]}
+        Atomically replaces all ownership-group memberships for this secretary.
+        """
+        secretary = get_object_or_404(self.get_queryset(), pk=pk)
+        groups_data = request.data.get('groups', [])
+
+        if not isinstance(groups_data, list):
+            return Response({'detail': 'El campo "groups" debe ser una lista.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        validated = []
+        for item in groups_data:
+            if 'group_id' not in item or 'is_editor' not in item:
+                return Response(
+                    {'detail': 'Cada elemento debe tener "group_id" y "is_editor".'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            try:
+                gid = int(item['group_id'])
+            except (ValueError, TypeError):
+                return Response({'detail': '"group_id" debe ser un entero.'}, status=status.HTTP_400_BAD_REQUEST)
+            validated.append({'group_id': gid, 'is_editor': bool(item['is_editor'])})
+
+        requested_ids = {v['group_id'] for v in validated}
+        existing_groups = FormOwnershipGroup.objects.filter(id__in=requested_ids)
+        if existing_groups.count() != len(requested_ids):
+            return Response({'detail': 'Uno o más grupos no existen.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Guard: removing this entity must not leave any group without an editor.
+        current_memberships = FormOwnershipMember.objects.filter(
+            entity_type=FormOwnershipMember.SECRETARY, entity_id=secretary.id
+        )
+        current_group_ids = set(current_memberships.values_list('group_id', flat=True))
+        groups_to_remove = current_group_ids - requested_ids
+        for gid in groups_to_remove:
+            group = FormOwnershipGroup.objects.get(id=gid)
+            editors = group.members.filter(is_editor=True)
+            is_sole_editor = editors.filter(
+                entity_type=FormOwnershipMember.SECRETARY, entity_id=secretary.id
+            ).exists() and editors.count() == 1
+            if is_sole_editor:
+                return Response(
+                    {'detail': f'No se puede quitar a la secretaría del grupo "{group.name}" porque es su única editora.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        with transaction.atomic():
+            FormOwnershipMember.objects.filter(
+                entity_type=FormOwnershipMember.SECRETARY,
+                entity_id=secretary.id,
+                group_id__in=groups_to_remove,
+            ).delete()
+            for v in validated:
+                FormOwnershipMember.objects.update_or_create(
+                    group_id=v['group_id'],
+                    entity_type=FormOwnershipMember.SECRETARY,
+                    entity_id=secretary.id,
+                    defaults={'is_editor': v['is_editor']},
+                )
+
+        secretary.refresh_from_db()
+        return Response(SecretarySerializer(secretary).data, status=status.HTTP_200_OK)

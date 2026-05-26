@@ -1,25 +1,38 @@
 from rest_framework import serializers
 
 from backend.models import Secretary
+from backend.models.form_ownership import FormOwnershipMember
 
 
 class SecretarySerializer(serializers.ModelSerializer):
     """Read serializer for Secretary — used for list and detail responses."""
 
     subsecretaries = serializers.SerializerMethodField()
+    ownership_groups = serializers.SerializerMethodField()
 
     class Meta:
         model = Secretary
         fields = (
             'id', 'name', 'parent_secretary', 'location', 'schedule',
-            'contact_info', 'subsecretaries', 'created_at', 'updated_at',
+            'contact_info', 'subsecretaries', 'ownership_groups', 'created_at', 'updated_at',
         )
-        read_only_fields = ('id', 'created_at', 'updated_at', 'subsecretaries')
+        read_only_fields = ('id', 'created_at', 'updated_at', 'subsecretaries', 'ownership_groups')
 
     def get_subsecretaries(self, obj):
         """Returns basic info for direct child subsecretaries."""
         qs = obj.subsecretaries.all()
         return SecretaryListSerializer(qs, many=True).data
+
+    def get_ownership_groups(self, obj):
+        members = (
+            FormOwnershipMember.objects
+            .filter(entity_type=FormOwnershipMember.SECRETARY, entity_id=obj.id)
+            .select_related('group')
+        )
+        return [
+            {'group_id': m.group_id, 'group_name': m.group.name, 'is_editor': m.is_editor}
+            for m in members
+        ]
 
 
 class SecretaryListSerializer(serializers.ModelSerializer):

@@ -120,28 +120,24 @@ class FormOwnershipGroupViewSet(BaseViewSet):
     queryset = FormOwnershipGroup.objects.all()
 
     def get_permissions(self):
-        if self.action in ('create', 'update', 'partial_update', 'destroy'):
+        if self.action in ('update', 'partial_update', 'destroy'):
             return [IsAuthenticated(), IsSuperAdmin()]
         return [IsAuthenticated(), IsAdmin()]
 
     @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Lista los grupos de propiedad")
     def list(self, request):
         groups = self.get_queryset()
-        data = FormOwnershipGroupSerializer(groups, many=True).data
-        # Annotate is_editor for non-super admins so the frontend can conditionally
-        # show create/edit/delete actions per group.
         if request.user.is_staff and not request.user.is_superuser:
             memberships = get_user_ownership_memberships(request.user)
-            editor_group_ids = set(memberships.filter(is_editor=True).values_list('group_id', flat=True))
             member_group_ids = set(memberships.values_list('group_id', flat=True))
+            editor_group_ids = set(memberships.filter(is_editor=True).values_list('group_id', flat=True))
+            # Non-super admins only see groups they belong to.
+            groups = groups.filter(id__in=member_group_ids)
+            data = FormOwnershipGroupSerializer(groups, many=True).data
             for item in data:
-                gid = item['id']
-                if gid in editor_group_ids:
-                    item['is_editor'] = True
-                elif gid in member_group_ids:
-                    item['is_editor'] = False
-                # super-admin or student callers: no annotation needed
-        elif request.user.is_superuser:
+                item['is_editor'] = item['id'] in editor_group_ids
+        else:
+            data = FormOwnershipGroupSerializer(groups, many=True).data
             for item in data:
                 item['is_editor'] = True
         return Response(data)
@@ -188,8 +184,38 @@ class FormOwnershipGroupViewSet(BaseViewSet):
         tags=["Grupos de propiedad"],
         operation_summary="Lista entidades elegibles como miembros (departamentos y secretarías)",
     )
-    @action(detail=False, methods=['get'], url_path='eligible-entities', permission_classes=[IsAuthenticated, IsSuperAdmin])
+    @action(detail=False, methods=['get'], url_path='eligible-entities', permission_classes=[IsAuthenticated, IsAdmin])
     def eligible_entities(self, request):
+        if not request.user.is_superuser:
+            staff = getattr(request.user, 'staff', None)
+            if staff is None:
+                return Response([])
+            if staff.department_id is not None:
+                try:
+                    d = Department.objects.get(id=staff.department_id)
+                    return Response([{'entity_type': FormOwnershipMember.DEPARTMENT, 'entity_id': d.id, 'name': d.name}])
+                except Department.DoesNotExist:
+                    return Response([])
+            if staff.secretary_id is not None:
+                try:
+                    s = Secretary.objects.prefetch_related('subsecretaries').get(id=staff.secretary_id)
+                except Secretary.DoesNotExist:
+                    return Response([])
+                result = [{
+                    'entity_type': FormOwnershipMember.SECRETARY,
+                    'entity_id': s.id,
+                    'name': s.name,
+                    'parent_secretary_name': None,
+                }]
+                for sub in s.subsecretaries.order_by('name'):
+                    result.append({
+                        'entity_type': FormOwnershipMember.SECRETARY,
+                        'entity_id': sub.id,
+                        'name': sub.name,
+                        'parent_secretary_name': s.name,
+                    })
+                return Response(result)
+            return Response([])
         departments = [
             {'entity_type': FormOwnershipMember.DEPARTMENT, 'entity_id': d.id, 'name': d.name}
             for d in Department.objects.order_by('name')
@@ -214,6 +240,42 @@ class FormOwnershipGroupViewSet(BaseViewSet):
         serializer = FormOwnershipGroupSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Non-superadmin staff: auto-inject their entity as editor, ignoring members payload.
+        if not request.user.is_superuser:
+            staff = getattr(request.user, 'staff', None)
+            if staff is None:
+                return Response({'detail': 'No se encontró el perfil de staff.'}, status=status.HTTP_403_FORBIDDEN)
+            if staff.department_id is not None:
+                group = FormOwnershipGroup.objects.create(name=serializer.validated_data['name'])
+                FormOwnershipMember.objects.create(
+                    group=group,
+                    entity_type=FormOwnershipMember.DEPARTMENT,
+                    entity_id=staff.department_id,
+                    is_editor=True,
+                )
+            elif staff.secretary_id is not None:
+                try:
+                    secretary = Secretary.objects.prefetch_related('subsecretaries').get(id=staff.secretary_id)
+                except Secretary.DoesNotExist:
+                    return Response({'detail': 'No se encontró el perfil de staff.'}, status=status.HTTP_403_FORBIDDEN)
+                group = FormOwnershipGroup.objects.create(name=serializer.validated_data['name'])
+                FormOwnershipMember.objects.create(
+                    group=group,
+                    entity_type=FormOwnershipMember.SECRETARY,
+                    entity_id=secretary.id,
+                    is_editor=True,
+                )
+                for sub in secretary.subsecretaries.all():
+                    FormOwnershipMember.objects.create(
+                        group=group,
+                        entity_type=FormOwnershipMember.SECRETARY,
+                        entity_id=sub.id,
+                        is_editor=False,
+                    )
+            else:
+                return Response({'detail': 'No se encontró el perfil de staff.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(FormOwnershipGroupSerializer(group).data, status=status.HTTP_201_CREATED)
 
         members_data = request.data.get('members', [])
         if not isinstance(members_data, list):
@@ -741,7 +803,7 @@ class SubmissionAdminViewSet(BaseViewSet):
         try:
             submission = (
                 self.get_queryset()
-                .select_related('form', 'status', 'user__student', 'teacher__user')
+                .select_related('form__ownership_group', 'status', 'user__student', 'teacher__user')
                 .prefetch_related('answers__field')
                 .get(pk=pk)
             )
@@ -752,8 +814,8 @@ class SubmissionAdminViewSet(BaseViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Only the designated recipient (or super admin) can change the submission status.
-        if not request.user.is_superuser and submission.recipient_entity_type and submission.recipient_entity_id:
+        # Only the designated recipient can change the submission status.
+        if submission.recipient_entity_type and submission.recipient_entity_id:
             memberships = get_user_ownership_memberships(request.user)
             is_recipient = memberships.filter(
                 entity_type=submission.recipient_entity_type,

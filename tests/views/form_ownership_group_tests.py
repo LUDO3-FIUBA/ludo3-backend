@@ -4,8 +4,11 @@ from rest_framework.test import APITestCase
 from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
 from tests.factories import (
     AdminUserFactory,
+    DeptStaffFactory,
     FormOwnershipGroupFactory,
     FormOwnershipMemberFactory,
+    SecretaryFactory,
+    SecretaryStaffFactory,
     StudentFactory,
 )
 
@@ -37,7 +40,6 @@ class FormOwnershipGroupListTests(APITestCase):
 class FormOwnershipGroupCreateTests(APITestCase):
     def setUp(self):
         self.superadmin = AdminUserFactory()
-        self.admin = AdminUserFactory(is_superuser=False)
         self.uri = '/api/ownership-groups/'
 
     def test_create_as_superadmin(self):
@@ -46,10 +48,66 @@ class FormOwnershipGroupCreateTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(FormOwnershipGroup.objects.filter(name='Trámites Electivos').exists())
 
-    def test_create_as_non_super_admin_forbidden(self):
-        self.client.force_authenticate(user=self.admin)
-        response = self.client.post(self.uri, {'name': 'No permitido'}, format='json')
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+    def test_create_as_dept_staff_auto_injects_own_entity(self):
+        staff = DeptStaffFactory()
+        self.client.force_authenticate(user=staff.user)
+        response = self.client.post(self.uri, {'name': 'Mi Grupo'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        group = FormOwnershipGroup.objects.get(name='Mi Grupo')
+        member = FormOwnershipMember.objects.get(group=group)
+        self.assertEqual(member.entity_type, FormOwnershipMember.DEPARTMENT)
+        self.assertEqual(member.entity_id, staff.department_id)
+        self.assertTrue(member.is_editor)
+
+    def test_create_as_dept_staff_ignores_members_payload(self):
+        """Members payload from non-superadmin is ignored; their entity is always auto-added."""
+        from tests.factories import DepartmentFactory
+        staff = DeptStaffFactory()
+        other_dept = DepartmentFactory()
+        self.client.force_authenticate(user=staff.user)
+        payload = {
+            'name': 'Grupo Payload',
+            'members': [{'entity_type': 'department', 'entity_id': other_dept.id, 'is_editor': True}],
+        }
+        response = self.client.post(self.uri, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        group = FormOwnershipGroup.objects.get(name='Grupo Payload')
+        members = list(FormOwnershipMember.objects.filter(group=group))
+        self.assertEqual(len(members), 1)
+        self.assertEqual(members[0].entity_id, staff.department_id)
+
+    def test_create_as_secretary_staff_includes_subsecretaries(self):
+        parent_sec = SecretaryFactory()
+        sub1 = SecretaryFactory(parent_secretary=parent_sec)
+        sub2 = SecretaryFactory(parent_secretary=parent_sec)
+        staff = SecretaryStaffFactory(secretary=parent_sec)
+        self.client.force_authenticate(user=staff.user)
+        response = self.client.post(self.uri, {'name': 'Grupo Secretaría'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        group = FormOwnershipGroup.objects.get(name='Grupo Secretaría')
+        members = list(FormOwnershipMember.objects.filter(group=group))
+        self.assertEqual(len(members), 3)
+        entity_ids = {m.entity_id for m in members}
+        self.assertIn(parent_sec.id, entity_ids)
+        self.assertIn(sub1.id, entity_ids)
+        self.assertIn(sub2.id, entity_ids)
+        parent_member = next(m for m in members if m.entity_id == parent_sec.id)
+        self.assertTrue(parent_member.is_editor)
+        for sub_id in (sub1.id, sub2.id):
+            sub_member = next(m for m in members if m.entity_id == sub_id)
+            self.assertFalse(sub_member.is_editor)
+
+    def test_create_as_secretary_staff_no_subsecretaries(self):
+        sec = SecretaryFactory()
+        staff = SecretaryStaffFactory(secretary=sec)
+        self.client.force_authenticate(user=staff.user)
+        response = self.client.post(self.uri, {'name': 'Solo Secretaría'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        group = FormOwnershipGroup.objects.get(name='Solo Secretaría')
+        members = list(FormOwnershipMember.objects.filter(group=group))
+        self.assertEqual(len(members), 1)
+        self.assertEqual(members[0].entity_id, sec.id)
+        self.assertTrue(members[0].is_editor)
 
     def test_create_duplicate_name_fails(self):
         FormOwnershipGroupFactory(name='Duplicado')

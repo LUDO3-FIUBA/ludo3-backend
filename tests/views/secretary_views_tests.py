@@ -3,11 +3,14 @@ from rest_framework.test import APITestCase
 
 from backend.models import Secretary
 from backend.models.staff import Staff
+from backend.models.form_ownership import FormOwnershipMember
 from tests.factories import (
     AdminUserFactory,
     SecretaryFactory,
     SecretaryStaffFactory,
     StudentFactory,
+    FormOwnershipGroupFactory,
+    FormOwnershipMemberFactory,
 )
 
 
@@ -182,3 +185,71 @@ class SecretaryAdminSignalTests(APITestCase):
         secretary.save()
         count_after_update = Staff.objects.filter(secretary=secretary).count()
         self.assertEqual(count_after_create, count_after_update)
+
+
+class SecretaryOwnershipGroupsViewTests(APITestCase):
+    def setUp(self):
+        self.superadmin = AdminUserFactory()
+        self.student = StudentFactory()
+        self.secretary = SecretaryFactory(name='Sec OG Test')
+        self.group = FormOwnershipGroupFactory(name='Grupo Sec')
+        self.uri = f'/api/secretaries/{self.secretary.id}/ownership-groups/'
+
+    def test_set_memberships_as_superadmin(self):
+        self.client.force_authenticate(user=self.superadmin)
+        payload = {'groups': [{'group_id': self.group.id, 'is_editor': True}]}
+        response = self.client.patch(self.uri, payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(
+            FormOwnershipMember.objects.filter(
+                group=self.group,
+                entity_type=FormOwnershipMember.SECRETARY,
+                entity_id=self.secretary.id,
+                is_editor=True,
+            ).exists()
+        )
+
+    def test_set_memberships_as_student_forbidden(self):
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.patch(self.uri, {'groups': []}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_set_memberships_as_sec_admin_forbidden(self):
+        staff = SecretaryStaffFactory(secretary=self.secretary)
+        self.client.force_authenticate(user=staff.user)
+        response = self.client.patch(self.uri, {'groups': []}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_ownership_groups_exposed_in_detail(self):
+        FormOwnershipMemberFactory(
+            group=self.group,
+            entity_type=FormOwnershipMember.SECRETARY,
+            entity_id=self.secretary.id,
+            is_editor=True,
+        )
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get(f'/api/secretaries/{self.secretary.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        groups = response.data.get('ownership_groups', [])
+        self.assertEqual(len(groups), 1)
+        self.assertEqual(groups[0]['group_id'], self.group.id)
+        self.assertEqual(groups[0]['group_name'], self.group.name)
+        self.assertTrue(groups[0]['is_editor'])
+
+    def test_cannot_remove_sole_editor(self):
+        FormOwnershipMemberFactory(
+            group=self.group,
+            entity_type=FormOwnershipMember.SECRETARY,
+            entity_id=self.secretary.id,
+            is_editor=True,
+        )
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.patch(self.uri, {'groups': []}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_nonexistent_group_returns_400(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.patch(
+            self.uri, {'groups': [{'group_id': 99999, 'is_editor': False}]}, format='json'
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
