@@ -1,0 +1,33 @@
+backend/migrations/0077_contact.py
+  s_4d9056a3efbb15::t_d7b31c275b3f8b 1-32
+backend/models/__init__.py
+  s_4d9056a3efbb15::t_a2e52a4ebdd806 2
+backend/models/contact.py
+  s_4d9056a3efbb15::t_c625870d062fa5 1-24
+backend/urls.py
+  s_4d9056a3efbb15::t_04daee295b1639 58
+  s_4d9056a3efbb15::t_937175cb269911 101
+  s_4d9056a3efbb15::t_92fe3ee8dcd582 9
+backend/serializers/contact_serializer.py
+  s_4d9056a3efbb15::t_954dbab6bee3cc 1-30
+tests/views/contact_views_tests.py
+  s_4d9056a3efbb15::t_38bb0e302af42b 1-120
+backend/views/contact_views.py
+  s_4d9056a3efbb15::t_6420f446f3f11c 1-149
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f23e67c6f3e30f2985be88d34af129fc77f74659",
+  "prompts": {},
+  "sessions": {
+    "s_4d9056a3efbb15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "282dedd0-f1fd-47fd-9265-660ba1eda0eb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Luca Salluzzi <luca.salluzzi@mercadolibre.com>"
+    }
+  }
+}
