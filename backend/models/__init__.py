@@ -1,4 +1,5 @@
 from .commission import Commission
+from .contact import Contact
 from .commissionInscription import CommissionInscription
 from .evaluation import Evaluation
 from .evaluation_submission import EvaluationSubmission
