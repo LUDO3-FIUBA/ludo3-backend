@@ -1,5 +1,4 @@
 # pull official base image
-# Using Python 3.8 for ARM64 (Apple Silicon) compatibility
 FROM python:3.12
 
 # set work directory
@@ -36,12 +35,11 @@ COPY . .
 # download face detection/recognition ONNX models from OpenCV Zoo
 # (baked into image for Heroku; in local dev the volume mount shadows these,
 # so entrypoint.sh re-downloads on start if missing)
-RUN mkdir -p /usr/src/ludo/backend/services/models
-# RUN mkdir -p /usr/src/ludo/backend/services/models \
-    # && curl -fSL -o /usr/src/ludo/backend/services/models/face_detection_yunet_2023mar.onnx \
-    #     https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx \
-    # && curl -fSL -o /usr/src/ludo/backend/services/models/face_recognition_sface_2021dec.onnx \
-    #     https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx
+RUN mkdir -p /usr/src/ludo/backend/services/models \
+    && curl -fSL -o /usr/src/ludo/backend/services/models/face_detection_yunet_2023mar.onnx \
+        https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx \
+    && curl -fSL -o /usr/src/ludo/backend/services/models/face_recognition_sface_2021dec.onnx \
+        https://github.com/opencv/opencv_zoo/raw/main/models/face_recognition_sface/face_recognition_sface_2021dec.onnx
 
 # collect static files
 RUN python manage.py collectstatic --noinput
