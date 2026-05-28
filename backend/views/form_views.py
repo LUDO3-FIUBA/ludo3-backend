@@ -325,53 +325,65 @@ class FormOwnershipGroupViewSet(BaseViewSet):
         operation_summary="Edita un grupo de propiedad (superadmin)",
         request_body=FormOwnershipGroupSerializer,
     )
+    @swagger_auto_schema(
+        tags=["Grupos de propiedad"],
+        operation_summary="Edita un grupo de propiedad (superadmin)",
+        request_body=FormOwnershipGroupSerializer,
+    )
     def update(self, request, pk=None):
         try:
             group = self.get_queryset().get(pk=pk)
         except FormOwnershipGroup.DoesNotExist:
             return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
         serializer = FormOwnershipGroupSerializer(group, data=request.data, partial=True)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        members_data = request.data.get('members', [])
-        if not isinstance(members_data, list):
-            return Response({'members': ['Debe ser una lista.']}, status=status.HTTP_400_BAD_REQUEST)
+        # Update name only if provided.
+        if 'name' in serializer.validated_data:
+            group.name = serializer.validated_data['name']
+            group.save(update_fields=['name'])
 
-        valid_entity_types = {FormOwnershipMember.DEPARTMENT, FormOwnershipMember.SECRETARY}
-        seen = set()
-        for m in members_data:
-            et = m.get('entity_type')
-            eid = m.get('entity_id')
-            if et not in valid_entity_types:
+        # Replace members only if the field is present in the request.
+        if 'members' in request.data:
+            members_data = request.data.get('members')
+            if not isinstance(members_data, list):
+                return Response({'members': ['Debe ser una lista.']}, status=status.HTTP_400_BAD_REQUEST)
+
+            valid_entity_types = {FormOwnershipMember.DEPARTMENT, FormOwnershipMember.SECRETARY}
+            seen = set()
+            for m in members_data:
+                et = m.get('entity_type')
+                eid = m.get('entity_id')
+                if et not in valid_entity_types:
+                    return Response(
+                        {'members': [f'Tipo de entidad inválido: {et}.']},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                key = (et, eid)
+                if key in seen:
+                    return Response(
+                        {'members': ['No puede haber miembros duplicados en el grupo.']},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                seen.add(key)
+
+            if members_data and not any(m.get('is_editor') for m in members_data):
                 return Response(
-                    {'members': [f'Tipo de entidad inválido: {et}.']},
+                    {'members': ['El grupo debe tener al menos un miembro con rol de editor.']},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            key = (et, eid)
-            if key in seen:
-                return Response(
-                    {'members': ['No puede haber miembros duplicados en el grupo.']},
-                    status=status.HTTP_400_BAD_REQUEST,
+
+            group.members.all().delete()
+            for m in members_data:
+                FormOwnershipMember.objects.create(
+                    group=group,
+                    entity_type=m['entity_type'],
+                    entity_id=m['entity_id'],
+                    is_editor=bool(m.get('is_editor', False)),
                 )
-            seen.add(key)
 
-        if members_data and not any(m.get('is_editor') for m in members_data):
-            return Response(
-                {'members': ['El grupo debe tener al menos un miembro con rol de editor.']},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        group.name = serializer.validated_data['name']
-        group.save(update_fields=['name'])
-        group.members.all().delete()
-        for m in members_data:
-            FormOwnershipMember.objects.create(
-                group=group,
-                entity_type=m['entity_type'],
-                entity_id=m['entity_id'],
-                is_editor=bool(m.get('is_editor', False)),
-            )
         return Response(FormOwnershipGroupSerializer(group).data)
 
     @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Elimina un grupo de propiedad (superadmin)")
@@ -824,8 +836,12 @@ class SubmissionAdminViewSet(BaseViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Only the designated recipient can change the submission status.
-        if submission.recipient_entity_type and submission.recipient_entity_id:
+        # Only the designated recipient can change the submission status (super admins bypass).
+        if (
+            not request.user.is_superuser
+            and submission.recipient_entity_type
+            and submission.recipient_entity_id
+        ):
             memberships = get_user_ownership_memberships(request.user)
             is_recipient = memberships.filter(
                 entity_type=submission.recipient_entity_type,
@@ -836,7 +852,6 @@ class SubmissionAdminViewSet(BaseViewSet):
                     {'detail': 'Solo el destinatario de la respuesta puede cambiar su estado.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-
         new_status_value = serializer.validated_data['status']
 
         if new_status_value == FormSubmissionStatus.APPROVED:
