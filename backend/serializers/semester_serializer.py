@@ -71,6 +71,7 @@ class SemesterCommissionSerializer(serializers.ModelSerializer):
             'minimum_attendance',
             'schedules',
             'attendance_qrs_count',
+            'calendar_source_url',
         )
 
     def get_attendance_qrs_count(self, obj):
