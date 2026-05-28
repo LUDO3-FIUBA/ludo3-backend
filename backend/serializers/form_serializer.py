@@ -74,26 +74,44 @@ class FormOwnershipMemberReadSerializer(serializers.ModelSerializer):
         model = FormOwnershipMember
         fields = ['entity_type', 'entity_id', 'is_editor', 'name', 'parent_secretary_name']
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Cache resolved names per group to avoid N+1 queries.
+        self._group_entity_cache = {}
+
+    def _ensure_group_cache(self, group):
+        gid = getattr(group, 'id', None)
+        if gid is None or gid in self._group_entity_cache:
+            return
+
+        members = list(group.members.all())
+        dept_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.DEPARTMENT]
+        sec_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.SECRETARY]
+
+        dept_map = {d.id: d.name for d in Department.objects.filter(id__in=dept_ids)}
+        secs = list(Secretary.objects.select_related('parent_secretary').filter(id__in=sec_ids))
+        sec_map = {s.id: s.name for s in secs}
+        sec_parent_map = {s.id: (s.parent_secretary.name if s.parent_secretary_id else None) for s in secs}
+
+        self._group_entity_cache[gid] = {
+            'department': dept_map,
+            'secretary': sec_map,
+            'secretary_parent': sec_parent_map,
+        }
+
     def get_name(self, obj):
+        self._ensure_group_cache(obj.group)
+        cache = self._group_entity_cache.get(obj.group_id, {})
         if obj.entity_type == FormOwnershipMember.DEPARTMENT:
-            try:
-                return Department.objects.get(pk=obj.entity_id).name
-            except Department.DoesNotExist:
-                return None
-        try:
-            return Secretary.objects.get(pk=obj.entity_id).name
-        except Secretary.DoesNotExist:
-            return None
+            return cache.get('department', {}).get(obj.entity_id)
+        return cache.get('secretary', {}).get(obj.entity_id)
 
     def get_parent_secretary_name(self, obj):
         if obj.entity_type != FormOwnershipMember.SECRETARY:
             return None
-        try:
-            sec = Secretary.objects.select_related('parent_secretary').get(pk=obj.entity_id)
-            return sec.parent_secretary.name if sec.parent_secretary else None
-        except Secretary.DoesNotExist:
-            return None
-
+        self._ensure_group_cache(obj.group)
+        cache = self._group_entity_cache.get(obj.group_id, {})
+        return cache.get('secretary_parent', {}).get(obj.entity_id)
 
 class FormOwnershipGroupWithMembersSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
