@@ -344,16 +344,33 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
         return obj.teacher.user.last_name if obj.teacher else None
 
     def get_recipient_name(self, obj):
+        # Cache lookups to avoid N+1 queries on large submission lists.
+        if not hasattr(self, '_recipient_name_cache'):
+            self._recipient_name_cache = {
+                FormOwnershipMember.DEPARTMENT: {},
+                FormOwnershipMember.SECRETARY: {},
+            }
+
+        cache_for_type = self._recipient_name_cache.get(obj.recipient_entity_type)
+        if cache_for_type is not None and obj.recipient_entity_id in cache_for_type:
+            return cache_for_type[obj.recipient_entity_id]
+
         if obj.recipient_entity_type == FormOwnershipMember.DEPARTMENT:
             try:
-                return Department.objects.get(pk=obj.recipient_entity_id).name
+                name = Department.objects.get(pk=obj.recipient_entity_id).name
             except Department.DoesNotExist:
-                return None
+                name = None
+            self._recipient_name_cache[FormOwnershipMember.DEPARTMENT][obj.recipient_entity_id] = name
+            return name
+
         if obj.recipient_entity_type == FormOwnershipMember.SECRETARY:
             try:
-                return Secretary.objects.get(pk=obj.recipient_entity_id).name
+                name = Secretary.objects.get(pk=obj.recipient_entity_id).name
             except Secretary.DoesNotExist:
-                return None
+                name = None
+            self._recipient_name_cache[FormOwnershipMember.SECRETARY][obj.recipient_entity_id] = name
+            return name
+
         return None
 
 
