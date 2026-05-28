@@ -119,7 +119,7 @@ class NotificationCreateTests(APITestCase):
         response = self.client.post(self.create_notification_url, data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("user_ids", response.data)
+        self.assertIn("non_field_errors", response.data)
 
     def test_create_notification_empty_user_ids(self):
         """
