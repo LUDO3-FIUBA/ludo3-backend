@@ -17,8 +17,8 @@ _SHEETS_EXPORT_RE = re.compile(
     r'https://docs\.google\.com/spreadsheets/d/([^/]+)'
 )
 
-CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'
-CLAUDE_MODEL   = 'claude-haiku-4-5-20251001'
+GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions'
+GROQ_MODEL = 'llama-3.3-70b-versatile'
 
 PARSE_PROMPT = """
 Tenés una tabla CSV que representa el calendario de una cátedra universitaria.
@@ -45,8 +45,6 @@ Reglas:
 CSV:
 """
 
-_CURRENT_YEAR = date.today().year
-
 
 def _sheets_to_csv_url(url: str) -> str:
     """Convierte una URL de Google Sheets (cualquier formato) a URL de export CSV."""
@@ -54,9 +52,8 @@ def _sheets_to_csv_url(url: str) -> str:
     if not m:
         raise ValueError(f"La URL no parece ser de Google Sheets: {url}")
     sheet_id = m.group(1)
-    # Extraer gid si está presente
     parsed = urlparse(url)
-    fragment = parsed.fragment  # e.g. "gid=123456789"
+    fragment = parsed.fragment
     gid_match = re.search(r'gid=(\d+)', url + '#' + fragment)
     gid = gid_match.group(1) if gid_match else '0'
     return f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&gid={gid}'
@@ -66,7 +63,7 @@ def _fetch_csv(url: str) -> str:
     csv_url = _sheets_to_csv_url(url)
     resp = requests.get(csv_url, timeout=15)
     resp.raise_for_status()
-    return resp.text
+    return resp.content.decode('latin-1')
 
 
 _MOCK_ENTRIES = [
@@ -77,29 +74,39 @@ _MOCK_ENTRIES = [
 ]
 
 
-def _parse_with_claude(csv_text: str) -> List[Dict]:
+def _parse_with_groq(csv_text: str, api_key: str, year: int) -> List[Dict]:
+    import time
 
-    # Limitar a 300 líneas para no exceder el contexto
     lines = csv_text.splitlines()
     truncated = '\n'.join(lines[:300])
 
+    year_hint = f'IMPORTANTE: Las fechas sin año explícito corresponden al año {year}.\n\n'
     payload = {
-        'model': CLAUDE_MODEL,
-        'max_tokens': 4096,
+        'model': GROQ_MODEL,
         'messages': [
-            {'role': 'user', 'content': PARSE_PROMPT + truncated},
+            {'role': 'user', 'content': PARSE_PROMPT + year_hint + truncated}
         ],
+        'temperature': 0,
     }
     headers = {
-        'x-api-key': api_key,
-        'anthropic-version': '2023-06-01',
-        'content-type': 'application/json',
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json',
     }
-    resp = requests.post(CLAUDE_API_URL, json=payload, headers=headers, timeout=60)
-    resp.raise_for_status()
-    content = resp.json()['content'][0]['text'].strip()
 
-    # Remover bloques markdown si Claude los incluyó igualmente
+    for attempt in range(3):
+        resp = requests.post(GROQ_API_URL, json=payload, headers=headers, timeout=60)
+        if resp.status_code == 429:
+            wait = 10 * (attempt + 1)
+            logger.warning(f'Groq rate limit, reintentando en {wait}s (intento {attempt + 1}/3)')
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+        break
+    else:
+        resp.raise_for_status()
+
+    content = resp.json()['choices'][0]['message']['content'].strip()
+
     if content.startswith('```'):
         content = re.sub(r'^```[a-z]*\n?', '', content)
         content = re.sub(r'\n?```$', '', content)
@@ -137,20 +144,21 @@ def _normalize_entry(raw: Dict, semester: Semester) -> Optional[CatedraCalendarE
 
 def sync_catedra_calendar(semester: Semester) -> int:
     """
-    Fetchea el Google Sheets del semestre, parsea con Claude y actualiza
+    Fetchea el Google Sheets del semestre, parsea con Groq (Llama) y actualiza
     los CatedraCalendarEntry. Devuelve la cantidad de entradas creadas.
-    Sin ANTHROPIC_API_KEY usa datos de prueba y omite el fetch.
+    Sin GROQ_API_KEY usa datos de prueba y omite el fetch.
     """
     if not semester.calendar_source_url:
         raise ValueError('El semestre no tiene una URL de calendario configurada')
 
-    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    api_key = os.environ.get('GROQ_API_KEY', '')
     if not api_key:
-        logger.warning('ANTHROPIC_API_KEY no configurada — usando datos de prueba (sin fetch)')
+        logger.warning('GROQ_API_KEY no configurada — usando datos de prueba (sin fetch)')
         raw_entries = _MOCK_ENTRIES
     else:
         csv_text = _fetch_csv(semester.calendar_source_url)
-        raw_entries = _parse_with_claude(csv_text)
+        year = semester.start_date.year if semester.start_date else date.today().year
+        raw_entries = _parse_with_groq(csv_text, api_key, year)
 
     entries = [_normalize_entry(r, semester) for r in raw_entries]
     entries = [e for e in entries if e is not None]
