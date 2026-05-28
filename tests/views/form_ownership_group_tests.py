@@ -194,6 +194,51 @@ class FormOwnershipGroupDeleteTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
+class FormOwnershipGroupRetrieveTests(APITestCase):
+    def setUp(self):
+        self.superadmin = AdminUserFactory()
+        self.staff = DeptStaffFactory()
+        self.own_group = FormOwnershipGroupFactory(name='Grupo Propio')
+        self.other_group = FormOwnershipGroupFactory(name='Grupo Ajeno')
+        FormOwnershipMemberFactory(
+            group=self.own_group,
+            entity_type=FormOwnershipMember.DEPARTMENT,
+            entity_id=self.staff.department_id,
+        )
+        self.student = StudentFactory()
+
+    def test_superadmin_can_retrieve_any_group(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get(f'/api/ownership-groups/{self.other_group.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Grupo Ajeno')
+
+    def test_non_superadmin_can_retrieve_own_group(self):
+        self.client.force_authenticate(user=self.staff.user)
+        response = self.client.get(f'/api/ownership-groups/{self.own_group.id}/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['name'], 'Grupo Propio')
+
+    def test_non_superadmin_cannot_retrieve_foreign_group(self):
+        self.client.force_authenticate(user=self.staff.user)
+        response = self.client.get(f'/api/ownership-groups/{self.other_group.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_retrieve_not_found(self):
+        self.client.force_authenticate(user=self.superadmin)
+        response = self.client.get('/api/ownership-groups/99999/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
+    def test_retrieve_unauthenticated(self):
+        response = self.client.get(f'/api/ownership-groups/{self.own_group.id}/')
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_retrieve_as_student_forbidden(self):
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.get(f'/api/ownership-groups/{self.own_group.id}/')
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
 class FormOwnershipMemberUniquenessTests(APITestCase):
     def test_duplicate_member_raises_integrity_error(self):
         group = FormOwnershipGroupFactory()

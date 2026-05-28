@@ -149,6 +149,11 @@ class FormOwnershipGroupViewSet(BaseViewSet):
         except FormOwnershipGroup.DoesNotExist:
             return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
+        if request.user.is_staff and not request.user.is_superuser:
+            memberships = get_user_ownership_memberships(request.user)
+            if not memberships.filter(group_id=group.pk).exists():
+                return Response({'detail': 'No tenés acceso a este grupo.'}, status=status.HTTP_403_FORBIDDEN)
+
         members = list(group.members.all())
         dept_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.DEPARTMENT]
         sec_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.SECRETARY]
