@@ -819,8 +819,12 @@ class SubmissionAdminViewSet(BaseViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Only the designated recipient can change the submission status.
-        if submission.recipient_entity_type and submission.recipient_entity_id:
+        # Only the designated recipient can change the submission status (super admins bypass).
+        if (
+            not request.user.is_superuser
+            and submission.recipient_entity_type
+            and submission.recipient_entity_id
+        ):
             memberships = get_user_ownership_memberships(request.user)
             is_recipient = memberships.filter(
                 entity_type=submission.recipient_entity_type,
@@ -831,7 +835,6 @@ class SubmissionAdminViewSet(BaseViewSet):
                     {'detail': 'Solo el destinatario de la respuesta puede cambiar su estado.'},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-
         new_status_value = serializer.validated_data['status']
 
         if new_status_value == FormSubmissionStatus.APPROVED:
