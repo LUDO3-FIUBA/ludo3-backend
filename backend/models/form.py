@@ -34,7 +34,7 @@ class FormDocumentSource(models.Model):
     form = models.OneToOneField(
         Form, on_delete=models.CASCADE, primary_key=True, related_name='document_source', verbose_name="Formulario"
     )
-    form_document_source = models.URLField(verbose_name="URL del documento")
+    form_document_source = models.CharField(max_length=500, verbose_name="Documento (clave relativa o URL)")
 
     class Meta:
         verbose_name = "Fuente de documento"

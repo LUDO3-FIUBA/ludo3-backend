@@ -65,16 +65,16 @@ def _safe_ext(filename: str) -> str:
 
 
 def _maybe_upload_template(request, data):
-    """If the request includes a `document_source_file`, upload it to S3 and
-    inject the resulting URL into `data['document_source']`. Returns mutated data.
-    Falls through unchanged if only a URL was sent (CMS link, backward compat)."""
+    """If the request includes a `document_source_file`, upload it to storage and
+    inject the resulting relative key into `data['document_source']`. Returns mutated
+    data. Falls through unchanged if only a URL was sent (CMS link, backward compat)."""
     file_obj = request.FILES.get('document_source_file')
     if file_obj is None:
         return data
     key = f"models/{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
-    url = storage_service.upload_object(file_obj, key)
+    storage_service.upload_object(file_obj, key)
     mutable = data.copy() if hasattr(data, 'copy') else dict(data)
-    mutable['document_source'] = url
+    mutable['document_source'] = key
     return mutable
 
 
@@ -102,7 +102,7 @@ def _fetch_submission_full(pk):
     return (
         FormSubmission.objects
         .select_related('form', 'user__student', 'status', 'teacher__user')
-        .prefetch_related('answers__field')
+        .prefetch_related('answers__field__form_field_type')
         .get(pk=pk)
     )
 
@@ -584,7 +584,7 @@ class FormSubmissionViewSet(BaseViewSet):
             FormSubmission.objects
             .filter(form=form)
             .select_related('form', 'user__student', 'status', 'teacher__user')
-            .prefetch_related('answers__field')
+            .prefetch_related('answers__field__form_field_type')
             .order_by('-submitted_at')
         )
 
@@ -622,7 +622,11 @@ class FormSubmissionViewSet(BaseViewSet):
                 parsed = json.loads(raw_answers)
             except json.JSONDecodeError:
                 return Response({'answers': ['Formato de respuestas inválido.']}, status=status.HTTP_400_BAD_REQUEST)
-            data_for_serializer = {'answers': parsed}
+            data_for_serializer = {
+                'answers': parsed,
+                'recipient_entity_type': request.data.get('recipient_entity_type'),
+                'recipient_entity_id': request.data.get('recipient_entity_id'),
+            }
         else:
             data_for_serializer = request.data
 
@@ -650,12 +654,12 @@ class FormSubmissionViewSet(BaseViewSet):
             padron = request.user.student.padron if hasattr(request.user, 'student') else 'unknown'
             timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
             key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{ext}"
-            url = storage_service.upload_object(file_obj, key)
+            storage_service.upload_object(file_obj, key)
             existing = next((a for a in answers_data if a['field_id'] == adjunto_field.id), None)
             if existing:
-                existing['answer_value'] = url
+                existing['answer_value'] = key
             else:
-                answers_data.append({'field_id': adjunto_field.id, 'answer_value': url})
+                answers_data.append({'field_id': adjunto_field.id, 'answer_value': key})
 
         recipient_entity_type = serializer.validated_data.get('recipient_entity_type') or None
         recipient_entity_id = serializer.validated_data.get('recipient_entity_id')
@@ -712,7 +716,7 @@ class FormSubmissionViewSet(BaseViewSet):
         padron = request.user.student.padron if request.user.is_student else 'unknown'
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{ext}"
-        url = storage_service.upload_object(file_obj, key)
+        storage_service.upload_object(file_obj, key)
 
         raw_recipient_type = request.data.get('recipient_entity_type') or None
         raw_recipient_id = request.data.get('recipient_entity_id')
@@ -741,7 +745,7 @@ class FormSubmissionViewSet(BaseViewSet):
             recipient_entity_type=resolved_type,
             recipient_entity_id=resolved_id,
         )
-        FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=url)
+        FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=key)
 
         return Response(FormSubmissionListSerializer(_fetch_submission_full(submission.pk)).data,
                         status=status.HTTP_201_CREATED)
@@ -759,7 +763,7 @@ class FormSubmissionViewSet(BaseViewSet):
             FormSubmission.objects
             .filter(form=form, user=request.user)
             .select_related('form', 'user__student', 'status', 'teacher__user')
-            .prefetch_related('answers__field')
+            .prefetch_related('answers__field__form_field_type')
             .order_by('-submitted_at')
         )
         return Response(FormSubmissionListSerializer(submissions, many=True).data)
@@ -783,12 +787,13 @@ class SubmissionAdminViewSet(BaseViewSet):
         for answer in submission.answers.all():
             if (answer.field.form_field_type.form_field_type_value == 'adjunto'
                     and answer.answer_value):
-                key = storage_service.key_from_url(answer.answer_value)
-                if key:
-                    try:
-                        storage_service.delete_object(key)
-                    except ClientError as e:
-                        logger.warning('Failed to delete file %s during submission deletion: %s', key, e)
+                # New submissions store the relative key directly; legacy rows may
+                # hold an absolute URL, so fall back to extracting the key from it.
+                key = storage_service.key_from_url(answer.answer_value) or answer.answer_value
+                try:
+                    storage_service.delete_object(key)
+                except ClientError as e:
+                    logger.warning('Failed to delete file %s during submission deletion: %s', key, e)
 
         submission.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -804,7 +809,7 @@ class SubmissionAdminViewSet(BaseViewSet):
             submission = (
                 self.get_queryset()
                 .select_related('form__ownership_group', 'status', 'user__student', 'teacher__user')
-                .prefetch_related('answers__field')
+                .prefetch_related('answers__field__form_field_type')
                 .get(pk=pk)
             )
         except FormSubmission.DoesNotExist:
@@ -854,7 +859,7 @@ class TeacherFormSubmissionViewSet(BaseViewSet):
             FormSubmission.objects
             .filter(teacher=request.user.teacher)
             .select_related('form', 'user__student', 'status', 'teacher__user')
-            .prefetch_related('answers__field')
+            .prefetch_related('answers__field__form_field_type')
             .order_by('-submitted_at')
         )
 

@@ -11,6 +11,21 @@ from backend.models.form_types import (
     FormSubmissionStatus,
     FormType,
 )
+from backend.services import storage_service
+
+
+def _absolute_document_url(value):
+    """Build an absolute URL for a stored document reference.
+
+    New rows persist only the relative storage key; the absolute prefix comes
+    from the storage provider's env configuration. Empty values and legacy
+    absolute URLs are returned unchanged.
+    """
+    if not value:
+        return value
+    if value.startswith(('http://', 'https://')):
+        return value
+    return storage_service.public_url(value)
 
 
 # ── Catalog read ─────────────────────────────────────────────────────────────
@@ -190,7 +205,7 @@ class FormDetailSerializer(serializers.ModelSerializer):
 
     def get_document_source(self, obj):
         try:
-            return obj.document_source.form_document_source
+            return _absolute_document_url(obj.document_source.form_document_source)
         except FormDocumentSource.DoesNotExist:
             return None
 
@@ -218,7 +233,8 @@ class FormCreateSerializer(serializers.Serializer):
     ownership_group_id = serializers.IntegerField()
     form_type_id = serializers.IntegerField()
     requires_teacher_validation = serializers.BooleanField(default=False, required=False)
-    document_source = serializers.URLField(allow_null=True, required=False)
+    # Holds either a relative storage key (uploaded template) or an external URL (CMS link).
+    document_source = serializers.CharField(allow_null=True, allow_blank=True, required=False)
     fields = FormFieldCreateSerializer(many=True, required=False, default=list)
 
     def validate_ownership_group_id(self, value):
@@ -257,10 +273,17 @@ class SubmissionCreateSerializer(serializers.Serializer):
 class FormAnswerReadSerializer(serializers.ModelSerializer):
     field_id = serializers.IntegerField(source='field.id', read_only=True)
     field_label = serializers.CharField(source='field.form_field_label', read_only=True)
+    answer_value = serializers.SerializerMethodField()
 
     class Meta:
         model = FormAnswer
         fields = ['field_id', 'field_label', 'answer_value']
+
+    def get_answer_value(self, obj):
+        # Only 'adjunto' answers hold a file reference; others store plain text/IDs.
+        if obj.field.form_field_type.form_field_type_value == FormFieldType.ADJUNTO:
+            return _absolute_document_url(obj.answer_value)
+        return obj.answer_value
 
 
 class FormSubmissionListSerializer(serializers.ModelSerializer):
