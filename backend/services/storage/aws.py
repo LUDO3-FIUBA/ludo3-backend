@@ -78,3 +78,19 @@ class AwsS3StorageService(StorageService):
             Params={'Bucket': self.bucket, 'Key': key},
             ExpiresIn=expiration,
         )
+
+    def get_download_url(self, file_name: str, filename_hint: str, expiration: int = 60) -> str | None:
+        if not file_name or not self.bucket:
+            return None
+
+        safe_filename = filename_hint.replace('"', '\\"')
+
+        return self.client.generate_presigned_url(
+            'get_object',
+            Params={
+                'Bucket': self.bucket,
+                'Key': file_name,
+                'ResponseContentDisposition': f'attachment; filename="{safe_filename}"',
+            },
+            ExpiresIn=expiration,
+        )
