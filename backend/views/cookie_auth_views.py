@@ -60,6 +60,8 @@ def jwt_refresh(request):
     try:
         token = RefreshToken(refresh_token)
         access = str(token.access_token)
+        token.set_jti()
+        token.set_exp()
         new_refresh = str(token)
     except TokenError as e:
         return Response({'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
