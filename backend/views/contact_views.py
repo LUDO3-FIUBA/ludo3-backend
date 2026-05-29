@@ -200,9 +200,28 @@ class ContactViewSet(ViewSet):
         my_blocks = get_schedule_blocks(student)
         their_blocks = get_schedule_blocks(other)
 
-        # Franjas libres en común: horas donde ninguno de los dos cursa
-        # Devolvemos los bloques de ambos para que el frontend lo visualice
+        # Compute free gaps: windows where neither is in class on the same day
+        # Working hours: 08:00-22:00, minimum gap: 30 min
+        def to_minutes(t): return int(t[:2]) * 60 + int(t[3:])
+        def from_minutes(m): return f"{m // 60:02d}:{m % 60:02d}"
+
+        all_days = sorted({b['day_of_week'] for b in my_blocks + their_blocks})
+        gaps = []
+        for day in all_days:
+            busy = sorted(
+                [(to_minutes(b['start_time']), to_minutes(b['end_time']))
+                 for b in my_blocks + their_blocks if b['day_of_week'] == day]
+            )
+            cursor = 8 * 60  # start at 08:00
+            for start, end in busy:
+                if start - cursor >= 30:
+                    gaps.append({'day_of_week': day, 'start_time': from_minutes(cursor), 'end_time': from_minutes(start)})
+                cursor = max(cursor, end)
+            if 22 * 60 - cursor >= 30:
+                gaps.append({'day_of_week': day, 'start_time': from_minutes(cursor), 'end_time': from_minutes(22 * 60)})
+
         return Response({
             'mine': my_blocks,
             'theirs': their_blocks,
+            'free_gaps': gaps,
         })
