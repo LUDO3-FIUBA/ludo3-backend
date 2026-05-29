@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.viewsets import ViewSet
 
-from backend.models import Contact, Student
+from backend.models import Contact, Notification, Student, UserNotification
 from backend.permissions import IsStudent
 from backend.serializers.contact_serializer import ContactSerializer, StudentContactSerializer
 
@@ -90,6 +90,16 @@ class ContactViewSet(ViewSet):
             return Response({'detail': 'La solicitud ya existe.'}, status=status.HTTP_409_CONFLICT)
 
         contact = Contact.objects.create(from_student=student, to_student=target)
+
+        sender_name = f"{student.user.first_name} {student.user.last_name}".strip() or student.padron
+        notification = Notification.objects.create(
+            title='Nueva solicitud de contacto',
+            message=f'{sender_name} te envió una solicitud de contacto.',
+            sender=student.user,
+            action_url='Contacts',
+        )
+        UserNotification.objects.create(notification=notification, user=target.user)
+
         return Response(ContactSerializer(contact, context={'student': student}).data, status=status.HTTP_201_CREATED)
 
     @swagger_auto_schema(tags=["Contacts"], operation_summary="Aceptar solicitud de contacto")
