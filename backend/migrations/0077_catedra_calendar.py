@@ -5,7 +5,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backend', '0075_auto_20260520_0602'),
+        ('backend', '0076_final_commissions'),
     ]
 
     operations = [
