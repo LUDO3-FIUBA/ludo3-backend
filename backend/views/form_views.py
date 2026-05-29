@@ -325,11 +325,6 @@ class FormOwnershipGroupViewSet(BaseViewSet):
         operation_summary="Edita un grupo de propiedad (superadmin)",
         request_body=FormOwnershipGroupSerializer,
     )
-    @swagger_auto_schema(
-        tags=["Grupos de propiedad"],
-        operation_summary="Edita un grupo de propiedad (superadmin)",
-        request_body=FormOwnershipGroupSerializer,
-    )
     def update(self, request, pk=None):
         try:
             group = self.get_queryset().get(pk=pk)
