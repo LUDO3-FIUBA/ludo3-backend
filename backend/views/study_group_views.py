@@ -39,26 +39,61 @@ def _get_blocks(student):
     ]
 
 
-def _compute_gaps(all_blocks):
-    by_day = defaultdict(list)
-    for b in all_blocks:
-        by_day[b['day_of_week']].append((_to_min(b['start_time']), _to_min(b['end_time'])))
+def _compute_ranked_gaps(blocks_per_member, min_duration=30):
+    """
+    For each day, sweep 08:00-22:00 and find windows where the maximum
+    number of members are simultaneously free. Returns gaps sorted by
+    free_count descending, each annotated with who can and cannot attend.
+    """
+    # members_info: list of {padron, full_name}
+    members = {p: n for p, n, *_ in [(b['padron'], b['full_name']) for b in sum(blocks_per_member.values(), [])]}
+    all_padrones = list(blocks_per_member.keys())
+    total = len(all_padrones)
+    if total == 0:
+        return []
+
+    # Build busy intervals per member per day
+    busy = defaultdict(lambda: defaultdict(list))  # padron -> day -> [(start, end)]
+    all_days = set()
+    for padron, blocks in blocks_per_member.items():
+        for b in blocks:
+            day = b['day_of_week']
+            busy[padron][day].append((_to_min(b['start_time']), _to_min(b['end_time'])))
+            all_days.add(day)
+
+    def is_busy(padron, day, t):
+        return any(s <= t < e for s, e in busy[padron].get(day, []))
 
     gaps = []
-    for day in sorted(by_day):
-        merged = []
-        for start, end in sorted(by_day[day]):
-            if merged and start <= merged[-1][1]:
-                merged[-1][1] = max(merged[-1][1], end)
-            else:
-                merged.append([start, end])
-        cursor = 8 * 60
-        for start, end in merged:
-            if start - cursor >= 30:
-                gaps.append({'day_of_week': day, 'start_time': _from_min(cursor), 'end_time': _from_min(start)})
-            cursor = max(cursor, end)
-        if 22 * 60 - cursor >= 30:
-            gaps.append({'day_of_week': day, 'start_time': _from_min(cursor), 'end_time': _from_min(22 * 60)})
+    for day in sorted(all_days):
+        STEP = 30
+        t = 8 * 60
+        end_day = 22 * 60
+        seg_start = t
+        seg_free = [p for p in all_padrones if not is_busy(p, day, t)]
+
+        while t <= end_day:
+            next_free = [p for p in all_padrones if not is_busy(p, day, t)]
+            if set(next_free) != set(seg_free) or t == end_day:
+                duration = t - seg_start
+                if duration >= min_duration and len(seg_free) >= 1:
+                    busy_members = [p for p in all_padrones if p not in seg_free]
+                    gaps.append({
+                        'day_of_week': day,
+                        'start_time': _from_min(seg_start),
+                        'end_time': _from_min(t),
+                        'free_count': len(seg_free),
+                        'total_count': total,
+                        'free_members': [{'padron': p, 'full_name': members.get(p, p)} for p in seg_free],
+                        'busy_members': [{'padron': p, 'full_name': members.get(p, p)} for p in busy_members],
+                        'type': 'all' if len(seg_free) == total else 'majority' if len(seg_free) >= total / 2 else 'minority',
+                    })
+                seg_start = t
+                seg_free = next_free
+            t += STEP
+
+    # Sort: more free members first, then by time
+    gaps.sort(key=lambda g: (-g['free_count'], g['day_of_week'], _to_min(g['start_time'])))
     return gaps
 
 
@@ -172,11 +207,11 @@ class StudyGroupViewSet(ViewSet):
             Q(pk=group.creator_id) | Q(pk__in=accepted_ids)
         ).select_related('user')
 
-        all_blocks = []
+        blocks_per_member = {}
         members_info = []
         for m in members:
             blocks = _get_blocks(m)
-            all_blocks.extend(blocks)
+            blocks_per_member[m.padron] = blocks
             members_info.append({
                 'padron': m.padron,
                 'full_name': f"{m.user.first_name} {m.user.last_name}".strip(),
@@ -184,10 +219,12 @@ class StudyGroupViewSet(ViewSet):
                 'block_count': len(blocks),
             })
 
+        all_blocks = [b for blocks in blocks_per_member.values() for b in blocks]
+
         return Response({
             'group_id': group.id,
             'group_name': group.name,
             'members': members_info,
             'blocks': all_blocks,
-            'free_gaps': _compute_gaps(all_blocks),
+            'free_gaps': _compute_ranked_gaps(blocks_per_member),
         })
