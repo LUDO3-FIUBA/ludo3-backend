@@ -1,0 +1,27 @@
+backend/migrations/0078_notification_action_url.py
+  s_4d9056a3efbb15::t_5f113e61b82890 1-18
+backend/models/notification.py
+  s_4d9056a3efbb15::t_6aa997b4930e21 25
+backend/serializers/notification_serializer.py
+  s_4d9056a3efbb15::t_ef1ffac0dc4dfd 98
+backend/views/contact_views.py
+  s_4d9056a3efbb15::t_dabfda585916aa 93-98,100-102
+  s_4d9056a3efbb15::t_42f26171e316a4 99
+  s_4d9056a3efbb15::t_ea91c69ccdaccd 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "26d862e926b8ba68d3c4273e90a3d100881f084b",
+  "prompts": {},
+  "sessions": {
+    "s_4d9056a3efbb15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "282dedd0-f1fd-47fd-9265-660ba1eda0eb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Luca Salluzzi <luca.salluzzi@mercadolibre.com>"
+    }
+  }
+}
