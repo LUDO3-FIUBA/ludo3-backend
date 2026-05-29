@@ -1,0 +1,22 @@
+tests/views/notification_views_tests.py
+  s_4d9056a3efbb15::t_c1d58d9533ce04 122-124
+tests/views/final_exam_student_views_tests.py
+  s_4d9056a3efbb15::t_d3d7621c650365 57
+  s_4d9056a3efbb15::t_0a127e8012e4eb 14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "0f1e7518748a75ed52e6f8ff10eaa6a6619a171f",
+  "prompts": {},
+  "sessions": {
+    "s_4d9056a3efbb15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "282dedd0-f1fd-47fd-9265-660ba1eda0eb",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Luca Salluzzi <luca.salluzzi@mercadolibre.com>"
+    }
+  }
+}
