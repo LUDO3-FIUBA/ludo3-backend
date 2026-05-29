@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from backend.models import Final
 
+from .commission_serializer import CommissionSerializer
 from .filterable_model_list_serializer import FilterableModelListSerializer
 from .final_exam_serializer import FinalExamTeacherDetailsSerializer
 
@@ -16,14 +17,17 @@ class FinalsListSerializer(FilterableModelListSerializer):
 
 class FinalTeacherSerializer(serializers.ModelSerializer):
     final_exams = FinalExamTeacherDetailsSerializer(many=True)
+    commissions = CommissionSerializer(many=True, read_only=True)
 
     class Meta:
         model = Final
-        fields = ('id', 'subject', 'date', 'qrid', 'status', 'siu_id', 'act', 'final_exams', 'teacher')
+        fields = ('id', 'subject', 'date', 'qrid', 'status', 'siu_id', 'act', 'final_exams', 'teacher', 'commissions')
 
 
 class FinalTeacherListSerializer(serializers.ModelSerializer):
+    commissions = CommissionSerializer(many=True, read_only=True)
+
     class Meta:
         model = Final
-        fields = ('id', 'subject', 'date', 'qrid', 'status', 'siu_id', 'act', 'teacher')
+        fields = ('id', 'subject', 'date', 'qrid', 'status', 'siu_id', 'act', 'teacher', 'commissions')
 

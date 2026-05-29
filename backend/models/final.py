@@ -6,6 +6,7 @@ from django.utils import timezone
 from backend.services.siu_service import SiuService
 from backend.utils import memoized
 
+from .commission import Commission
 from .teacher import Teacher
 
 
@@ -19,6 +20,7 @@ class Final(models.Model):
         ACT_SENT = 'AS', 'Act Sent'
 
     teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, related_name='finals', verbose_name="Docente")
+    commissions = models.ManyToManyField(Commission, related_name='finals', blank=True, verbose_name="Comisiones")
     date = models.DateTimeField(db_index=True, null=False, editable=False, verbose_name="Fecha")
     subject_siu_id = models.IntegerField(db_index=True, default=0, null=False, editable=False, verbose_name="SIU ID de Materia")
     subject_name = models.CharField(max_length=100, db_index=True, null=False, editable=False, verbose_name="Nombre de Materia")

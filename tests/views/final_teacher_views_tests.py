@@ -9,7 +9,9 @@ from backend.client.siu_client import SiuClient
 from backend.models import Final
 from backend.services.image_validator_service import ImageValidatorService
 from backend.services.notification_service import NotificationService
-from ..factories import TeacherFactory, FinalFactory, FinalExamFactory
+from backend.views.utils import get_current_semester, get_current_year
+from ..factories import (CommissionFactory, FinalExamFactory, FinalFactory,
+                         SemesterFactory, TeacherFactory)
 
 
 class FinalTeacherViewsTests(APITestCase):
@@ -17,6 +19,18 @@ class FinalTeacherViewsTests(APITestCase):
         self.teacher = TeacherFactory()
         self.subject_siu_id = Faker().numerify(text='###')
         self.subject_name = Faker().word()
+
+    def _active_commission(self, chief_teacher=None, subject_siu_id=None):
+        commission = CommissionFactory(
+            chief_teacher=chief_teacher or self.teacher,
+            subject_siu_id=subject_siu_id or self.subject_siu_id,
+        )
+        SemesterFactory(
+            commission=commission,
+            year_moment=get_current_semester(),
+            start_date=datetime(get_current_year(), 1, 1),
+        )
+        return commission
 
     def test_list_success(self):
         """
@@ -103,14 +117,17 @@ class FinalTeacherViewsTests(APITestCase):
 
     def test_create_success(self):
         """
-        Should create a final with the passed parameters
+        Should create a final shared with the given commissions
         """
 
         self.client.force_authenticate(user=self.teacher.user)
+        commission_a = self._active_commission()
+        commission_b = self._active_commission()
         final_fields = {
             'subject_name': self.subject_name,
             'subject_siu_id': self.subject_siu_id,
-            'timestamp': Faker().unix_time()
+            'timestamp': Faker().unix_time(),
+            'commission_ids': [commission_a.id, commission_b.id],
         }
         url = f"/api/finals/"
 
@@ -128,6 +145,157 @@ class FinalTeacherViewsTests(APITestCase):
             self.assertEqual(response.status_code, status.HTTP_201_CREATED)
             self.assertEqual(response.data['date'], serializers.DateTimeField().to_representation(datetime.utcfromtimestamp(final_fields['timestamp'])))
             self.assertEqual(response.data['status'], Final.Status.DRAFT)
+            self.assertEqual(
+                sorted(c['id'] for c in response.data['commissions']),
+                sorted([commission_a.id, commission_b.id]),
+            )
+            final = Final.objects.get(id=response.data['id'])
+            self.assertEqual(
+                sorted(final.commissions.values_list('id', flat=True)),
+                sorted([commission_a.id, commission_b.id]),
+            )
+
+    def test_create_requires_at_least_one_commission(self):
+        self.client.force_authenticate(user=self.teacher.user)
+        response = self.client.post(
+            "/api/finals/",
+            data={
+                'subject_name': self.subject_name,
+                'subject_siu_id': self.subject_siu_id,
+                'timestamp': Faker().unix_time(),
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_rejects_when_not_chief_of_any_commission(self):
+        """Si no sos chief de ninguna de las commissions elegidas, se rechaza."""
+        self.client.force_authenticate(user=self.teacher.user)
+        other_chief = TeacherFactory()
+        commission = self._active_commission(chief_teacher=other_chief)
+
+        response = self.client.post(
+            "/api/finals/",
+            data={
+                'subject_name': self.subject_name,
+                'subject_siu_id': self.subject_siu_id,
+                'timestamp': Faker().unix_time(),
+                'commission_ids': [commission.id],
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_create_allows_sharing_with_other_chiefs_commissions(self):
+        """Si sos chief de al menos una commission elegida, podés compartir con commissions de otros chiefs."""
+        self.client.force_authenticate(user=self.teacher.user)
+        own = self._active_commission()
+        other_chief = TeacherFactory()
+        someone_elses = self._active_commission(chief_teacher=other_chief)
+
+        response = self.client.post(
+            "/api/finals/",
+            data={
+                'subject_name': self.subject_name,
+                'subject_siu_id': self.subject_siu_id,
+                'timestamp': Faker().unix_time(),
+                'commission_ids': [own.id, someone_elses.id],
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(
+            sorted(c['id'] for c in response.data['commissions']),
+            sorted([own.id, someone_elses.id]),
+        )
+
+    def test_create_rejects_mismatched_subject(self):
+        self.client.force_authenticate(user=self.teacher.user)
+        commission = self._active_commission(subject_siu_id=str(int(self.subject_siu_id) + 1))
+
+        response = self.client.post(
+            "/api/finals/",
+            data={
+                'subject_name': self.subject_name,
+                'subject_siu_id': self.subject_siu_id,
+                'timestamp': Faker().unix_time(),
+                'commission_ids': [commission.id],
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_rejects_commission_not_in_active_semester(self):
+        self.client.force_authenticate(user=self.teacher.user)
+        commission = CommissionFactory(
+            chief_teacher=self.teacher,
+            subject_siu_id=self.subject_siu_id,
+        )
+        SemesterFactory(
+            commission=commission,
+            year_moment=get_current_semester(),
+            start_date=datetime(get_current_year() - 1, 1, 1),
+        )
+
+        response = self.client.post(
+            "/api/finals/",
+            data={
+                'subject_name': self.subject_name,
+                'subject_siu_id': self.subject_siu_id,
+                'timestamp': Faker().unix_time(),
+                'commission_ids': [commission.id],
+            },
+            format='json',
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_list_includes_shared_finals_for_other_chief(self):
+        """Si el final compartió a una commission donde el caller es chief_teacher (no creador),
+        igual debe verlo en el listado."""
+        creator = TeacherFactory()
+        other_chief = self.teacher
+
+        own_commission = CommissionFactory(chief_teacher=other_chief, subject_siu_id=self.subject_siu_id)
+        shared_final = FinalFactory(teacher=creator, subject_siu_id=self.subject_siu_id)
+        shared_final.commissions.add(own_commission)
+
+        self.client.force_authenticate(user=other_chief.user)
+        mock_subject = [{"id": 1, "codigo": "62.01", "nombre": "x", "departamentoId": 2, "correlativas": []}]
+        with mock.patch.object(SiuClient, "get_subject", return_value=mock_subject):
+            response = self.client.get("/api/finals/", {"subject_siu_id": self.subject_siu_id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(shared_final.id, [f['id'] for f in response.data])
+
+    def test_list_includes_shared_finals(self):
+        """
+        A teacher should also see finals shared with a commission they teach in,
+        even if they didn't create the final themselves.
+        """
+        from ..factories import TeacherRoleFactory
+
+        chief = TeacherFactory()
+        shared_commission = CommissionFactory(
+            chief_teacher=chief, subject_siu_id=self.subject_siu_id,
+        )
+        TeacherRoleFactory(commission=shared_commission, teacher=self.teacher)
+
+        shared_final = FinalFactory(teacher=chief, subject_siu_id=self.subject_siu_id)
+        shared_final.commissions.add(shared_commission)
+        own_final = FinalFactory(teacher=self.teacher, subject_siu_id=self.subject_siu_id)
+
+        self.client.force_authenticate(user=self.teacher.user)
+
+        mock_subject = [{
+            "id": 1, "codigo": "62.01", "nombre": "Física I",
+            "departamentoId": 2, "correlativas": [],
+        }]
+        with mock.patch.object(SiuClient, "get_subject", return_value=mock_subject):
+            response = self.client.get("/api/finals/", {"subject_siu_id": self.subject_siu_id}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        ids = sorted(f['id'] for f in response.data)
+        self.assertEqual(ids, sorted([shared_final.id, own_final.id]))
 
     def test_create_not_logged_in(self):
         """

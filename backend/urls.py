@@ -6,7 +6,7 @@ from rest_framework_nested import routers
 
 from . import views
 from .views import CustomGCMDeviceViewSet
-from .views.guarani_views import OfertaComisionesView
+from .views.guarani_views import OfertaComisionesView, PlanCarreraView
 from .views.user_views import UserCustomViewSet, simple_login
 from .views.google_auth_views import google_sign_in, google_complete_registration
 from .views.password_views import change_password, forgot_password, reset_password_confirm
@@ -40,6 +40,7 @@ router.register(r'academic_calendar', views.AcademicCalendarEventViewSet, 'acade
 router.register(r'departments', views.DepartmentViewSet, 'department')
 router.register(r'news', views.NewsViewSet, 'news')
 router.register(r'admin/commissions', views.CommissionAdminViewSet, 'admin-commission')
+router.register(r'admin/finals', views.AdminFinalsViewSet, 'admin-final')
 router.register(r'admin/users', views.UserAdminViewSet, 'admin-user')
 router.register(r'bedelia/classroom-changes', views.BedeliaClassroomChangeViewSet, 'bedelia-classroom-change')
 router.register(r'form-types', views.FormTypeViewSet, 'form-type')
@@ -94,6 +95,7 @@ urlpatterns = [
     path('auth/google/', google_sign_in, name='google-sign-in'),
     path('auth/google/registration/', google_complete_registration, name='google-registration'),
 
+    path('api/guarani/plan-carrera/', PlanCarreraView.as_view(), name='guarani-plan-carrera'),
     path('api/guarani/oferta-comisiones/', OfertaComisionesView.as_view(), name='guarani-oferta-comisiones'),
 
     path('docs/', schema_view.with_ui('swagger', cache_timeout=0),name='schema-swagger-ui')

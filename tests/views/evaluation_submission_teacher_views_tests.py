@@ -526,9 +526,37 @@ class GraderAssignmentServiceTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-    def test_grade_requires_grade_or_submission_status(self):
+    def test_grade_allows_feedback_only_update(self):
         """
-        Should reject requests that provide neither grade nor submission_status.
+        Should allow updating only the feedback text without changing grade or submission status.
+        """
+        self.client.force_authenticate(user=self.teacher.user)
+
+        feedback_text = "# Evaluaci\u00f3n\nTe fue muy mal\n- Hiciste todo mal\n- No entregaste a tiempo"
+
+        response = self.client.put(
+            self.grade_uri,
+            {
+                "student": self.student.user.id,
+                "evaluation": self.non_numeric_evaluation.id,
+                "feedback_text": feedback_text,
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["feedback_text"], feedback_text)
+        self.assertIsNone(response.data["grade"])
+        self.assertIsNone(response.data["submission_status"])
+
+        self.non_numeric_submission.refresh_from_db()
+        self.assertEqual(self.non_numeric_submission.feedback_text, feedback_text)
+        self.assertIsNone(self.non_numeric_submission.grade)
+        self.assertIsNone(self.non_numeric_submission.submission_status)
+
+    def test_grade_requires_grade_submission_status_or_feedback_text(self):
+        """
+        Should reject requests that provide neither grade, submission_status, nor feedback_text.
         """
         self.client.force_authenticate(user=self.teacher.user)
 

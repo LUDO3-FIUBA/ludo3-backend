@@ -10,6 +10,7 @@ from backend.permissions import IsTeacher
 from backend.serializers.commission_serializer import (CommissionPutSerializer,
                                                        CommissionSerializer)
 from backend.views.base_view import BaseViewSet
+from backend.views.utils import get_current_semester, get_current_year
 
 
 class CommissionTeacherViewSet(BaseViewSet):
@@ -27,6 +28,24 @@ class CommissionTeacherViewSet(BaseViewSet):
         result = self.get_queryset().filter(chief_teacher=request.user.teacher).union(self.get_queryset().filter(teachers=request.user.teacher))
         return Response(CommissionSerializer(result, many=True).data, status.HTTP_200_OK)
     
+    @action(detail=False, methods=["GET"], url_path="shareable_for_final")
+    @swagger_auto_schema(
+        tags=["Commissions"],
+        operation_summary="Commissions in the active semester for the given subject_siu_id (caller must be chief of at least one when creating the final)"
+    )
+    def shareable_for_final(self, request):
+        subject_siu_id = request.query_params.get('subject_siu_id')
+        if subject_siu_id is None:
+            return Response({'subject_siu_id': 'requerido'}, status=status.HTTP_400_BAD_REQUEST)
+
+        commissions = self.get_queryset().filter(
+            subject_siu_id=subject_siu_id,
+            semesters__start_date__year=get_current_year(),
+            semesters__year_moment=get_current_semester(),
+        ).distinct()
+
+        return Response(CommissionSerializer(commissions, many=True).data, status=status.HTTP_200_OK)
+
     @action(detail=False, methods=["PUT"])
     @swagger_auto_schema(
         tags=["Commissions"],
