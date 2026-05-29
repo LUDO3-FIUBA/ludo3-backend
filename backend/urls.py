@@ -7,6 +7,7 @@ from rest_framework_nested import routers
 from . import views
 from .views import CustomGCMDeviceViewSet
 from .views.contact_views import ContactViewSet, StudentSearchView
+from .views.study_group_views import StudyGroupViewSet
 from .views.guarani_views import OfertaComisionesView
 from .views.user_views import UserCustomViewSet, simple_login
 from .views.google_auth_views import google_sign_in, google_complete_registration
@@ -56,6 +57,7 @@ router.register(r'student_identity', views.StudentIdentityViewSet, 'student-iden
 router.register(r'admin/notifications', views.NotificationAdminViewSet, 'admin-notification')
 router.register(r'teacher/notifications', views.NotificationTeacherViewSet, 'teacher-notification')
 router.register(r'contacts', ContactViewSet, 'contact')
+router.register(r'study-groups', StudyGroupViewSet, 'study-group')
 
 teacher_finals_router = routers.NestedSimpleRouter(router, r'finals', lookup='final')
 teacher_finals_router.register(r'final_exams', views.FinalExamTeacherViews, basename='final-final_exams')
