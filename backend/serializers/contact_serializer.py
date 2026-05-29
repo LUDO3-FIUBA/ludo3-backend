@@ -17,14 +17,19 @@ class StudentContactSerializer(serializers.ModelSerializer):
 
 class ContactSerializer(serializers.ModelSerializer):
     contact = serializers.SerializerMethodField()
+    is_sender = serializers.SerializerMethodField()
     id = serializers.IntegerField()
 
     class Meta:
         model = Contact
-        fields = ('id', 'contact', 'status', 'created_at')
+        fields = ('id', 'contact', 'status', 'is_sender', 'created_at')
 
     def get_contact(self, obj):
         requesting_student = self.context.get('student')
         if obj.from_student == requesting_student:
             return StudentContactSerializer(obj.to_student).data
         return StudentContactSerializer(obj.from_student).data
+
+    def get_is_sender(self, obj):
+        requesting_student = self.context.get('student')
+        return obj.from_student == requesting_student
