@@ -146,14 +146,63 @@ class ContactViewSet(ViewSet):
         other = contact.to_student if contact.from_student == student else contact.from_student
         inscriptions = other.commissioninscription_set.filter(
             status='A'
-        ).select_related('semester__commission')
+        ).select_related('semester__commission').prefetch_related('semester__schedules')
 
         data = [
             {
                 'subject_name': i.semester.commission.subject_name,
                 'subject_siu_id': i.semester.commission.subject_siu_id,
                 'semester_id': i.semester.id,
+                'schedules': [
+                    {
+                        'day_of_week': s.day_of_week,
+                        'start_time': s.start_time.strftime('%H:%M'),
+                        'end_time': s.end_time.strftime('%H:%M'),
+                    }
+                    for s in i.semester.schedules.all()
+                ],
             }
             for i in inscriptions
         ]
         return Response(data)
+
+    @swagger_auto_schema(
+        tags=["Contacts"],
+        operation_summary="Comparar horarios con un contacto aceptado",
+    )
+    @action(detail=True, methods=['get'], url_path='schedule-comparison')
+    def schedule_comparison(self, request, pk=None):
+        student = _get_student(request)
+        try:
+            contact = Contact.objects.get(
+                Q(from_student=student) | Q(to_student=student),
+                pk=pk, status=Contact.Status.ACCEPTED
+            )
+        except Contact.DoesNotExist:
+            return Response({'detail': 'Contacto no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        other = contact.to_student if contact.from_student == student else contact.from_student
+
+        def get_schedule_blocks(s):
+            return [
+                {
+                    'subject_name': i.semester.commission.subject_name,
+                    'day_of_week': sc.day_of_week,
+                    'start_time': sc.start_time.strftime('%H:%M'),
+                    'end_time': sc.end_time.strftime('%H:%M'),
+                }
+                for i in s.commissioninscription_set.filter(status='A')
+                    .select_related('semester__commission')
+                    .prefetch_related('semester__schedules')
+                for sc in i.semester.schedules.all()
+            ]
+
+        my_blocks = get_schedule_blocks(student)
+        their_blocks = get_schedule_blocks(other)
+
+        # Franjas libres en común: horas donde ninguno de los dos cursa
+        # Devolvemos los bloques de ambos para que el frontend lo visualice
+        return Response({
+            'mine': my_blocks,
+            'theirs': their_blocks,
+        })

@@ -114,6 +114,32 @@ class ContactViewSetTests(APITestCase):
         response = self.client.get(f'{CONTACTS_URI}{contact.pk}/subjects/')
         self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
+    def test_subjects_include_schedules(self):
+        contact = Contact.objects.create(
+            from_student=self.student, to_student=self.other, status=Contact.Status.ACCEPTED
+        )
+        response = self.client.get(f'{CONTACTS_URI}{contact.pk}/subjects/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        for subject in response.data:
+            self.assertIn('schedules', subject)
+            self.assertIsInstance(subject['schedules'], list)
+
+    def test_schedule_comparison_returns_mine_and_theirs(self):
+        contact = Contact.objects.create(
+            from_student=self.student, to_student=self.other, status=Contact.Status.ACCEPTED
+        )
+        response = self.client.get(f'{CONTACTS_URI}{contact.pk}/schedule-comparison/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn('mine', response.data)
+        self.assertIn('theirs', response.data)
+        self.assertIsInstance(response.data['mine'], list)
+        self.assertIsInstance(response.data['theirs'], list)
+
+    def test_schedule_comparison_pending_contact_returns_404(self):
+        contact = Contact.objects.create(from_student=self.student, to_student=self.other)
+        response = self.client.get(f'{CONTACTS_URI}{contact.pk}/schedule-comparison/')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_unauthenticated_returns_401(self):
         self.client.logout()
         response = self.client.get(CONTACTS_URI)
