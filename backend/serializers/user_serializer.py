@@ -115,10 +115,11 @@ class UserCustomGetSerializer(UserSerializer):
     face_registered = serializers.SerializerMethodField()
     department_id = serializers.SerializerMethodField()
     is_bedelia = serializers.SerializerMethodField()
+    profile_photo = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'is_bedelia', 'department_id', 'file', 'legajo', 'github_url', 'linkedin_url', 'face_registered')
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'is_bedelia', 'department_id', 'file', 'legajo', 'github_url', 'linkedin_url', 'face_registered', 'profile_photo')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
@@ -144,12 +145,20 @@ class UserCustomGetSerializer(UserSerializer):
         staff = getattr(obj, 'staff', None)
         return bool(staff and staff.is_bedelia)
 
+    def get_profile_photo(self, obj):
+        if not obj.profile_photo:
+            return None
+        presigned = storage_service.presign_url(obj.profile_photo)
+        return presigned or obj.profile_photo
+
 
 class UserMeUpdateSerializer(serializers.ModelSerializer):
     """Editable profile fields on the /me PATCH endpoint."""
+    profile_photo = serializers.CharField(allow_null=True, allow_blank=True, required=False)
+
     class Meta:
         model = User
-        fields = ('github_url', 'linkedin_url')
+        fields = ('github_url', 'linkedin_url', 'profile_photo')
 
 
 class SimpleLoginSerializer(serializers.Serializer):
