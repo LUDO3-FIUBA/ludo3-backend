@@ -72,6 +72,7 @@ class EvaluationSubmissionPutSerializer(serializers.ModelSerializer):
     class Meta:
         model = EvaluationSubmission
         fields = ('evaluation', 'student', 'grade', 'submission_status', 'feedback_text')
+        validators = []
 
     def validate(self, attrs):
         grade = attrs.get('grade', None)

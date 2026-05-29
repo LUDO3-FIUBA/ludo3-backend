@@ -13,12 +13,14 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 import logging
 import os
 
-import django_heroku
 import firebase_admin
 
 from ludo.storage_settings import get_storage_settings
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('s3transfer').setLevel(logging.WARNING)
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -40,8 +42,6 @@ MEDIA_ROOT = os.environ.get('LOCAL_MEDIA_ROOT', os.path.join(BASE_DIR, 'media'))
 globals().update(get_storage_settings())
 
 CSRF_COOKIE_SECURE=False
-
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'salty-badlands-32978.herokuapp.com', 'ludo-backend.herokuapp.com']
 
@@ -73,7 +73,6 @@ AUTH_USER_MODEL = 'backend.User'
 
 LANGUAGE_CODE = 'es-AR'
 USE_I18N = True
-USE_L10N = True
 
 # Application definition
 
@@ -86,7 +85,6 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'rest_framework_swagger',
     'drf_yasg',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
@@ -207,8 +205,6 @@ TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
-USE_L10N = True
-
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
@@ -216,8 +212,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-# Activate Django-Heroku.
-django_heroku.settings(locals(), databases=False)
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+SWAGGER_USE_COMPAT_RENDERERS = False
 
 # If DATABASE_URL is set, use it (supports both local and remote databases)
 if os.environ.get('DATABASE_URL'):

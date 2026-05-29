@@ -1,6 +1,5 @@
 # pull official base image
-# Using Python 3.8 for ARM64 (Apple Silicon) compatibility
-FROM python:3.8
+FROM python:3.12
 
 # set work directory
 WORKDIR /usr/src/ludo
@@ -25,7 +24,7 @@ RUN apt-get update \
 
 # install dependencies
 RUN pip install --upgrade pip
-RUN pip install --upgrade pip setuptools wheel
+RUN pip install "setuptools<81" wheel
 RUN pip install --upgrade Pillow
 COPY requirements.txt .
 RUN pip install -r requirements.txt
