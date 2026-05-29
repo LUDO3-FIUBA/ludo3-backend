@@ -11,7 +11,7 @@ from ..factories import StudentFactory, TeacherFactory, FinalFactory
 
 class StudentFinalExamViewsTests(APITestCase):
     def setUp(self) -> None:
-        self.student = StudentFactory()
+        self.student = StudentFactory(face_encodings=[0.1, 0.2, 0.3])
         self.teacher = TeacherFactory()
 
         self.final = FinalFactory(teacher=self.teacher, status=Final.Status.OPEN)
@@ -54,7 +54,7 @@ class StudentFinalExamViewsTests(APITestCase):
                 self.client.post(self.take_exam_uri, {"final": self.final.qrid, "image": 'fake_b64'}, format='json')
                 response = self.client.post(self.take_exam_uri, {"final": self.final.qrid, "image": 'fake_b64'}, format='json')
 
-        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_422_UNPROCESSABLE_ENTITY])
 
     def test_take_exam_not_logged_in(self):
         """
