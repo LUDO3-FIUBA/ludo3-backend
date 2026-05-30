@@ -101,27 +101,49 @@ class StudyGroupViewSet(ViewSet):
     permission_classes = [IsAuthenticated, IsStudent]
 
     @swagger_auto_schema(tags=["StudyGroups"], operation_summary="Listar mis grupos de estudio")
+    
     def list(self, request):
         student = _get_student(request)
-        qs = StudyGroup.objects.filter(
-            Q(creator=student) | Q(memberships__student=student, memberships__status=GroupMembership.Status.ACCEPTED)
-        ).distinct().prefetch_related('memberships__student__user')
+
+        qs = (
+            StudyGroup.objects.filter(
+                Q(creator=student) |
+                Q(memberships__student=student)
+            )
+            .distinct()
+            .prefetch_related('memberships__student__user')
+        )
+
         groups = []
+
         for g in qs:
-            members = g.memberships.select_related('student__user')
-            my_mem = members.filter(student=student).first()
+            memberships = g.memberships.select_related('student__user')
+            my_mem = memberships.filter(student=student).first()
+
             groups.append({
                 'id': g.id,
                 'name': g.name,
                 'created_at': g.created_at,
                 'is_creator': g.creator == student,
-                'my_status': 'A' if g.creator == student else (my_mem.status if my_mem else 'P'),
-                'member_count': members.filter(status=GroupMembership.Status.ACCEPTED).count() + 1,
+                'my_status': (
+                    'A'
+                    if g.creator == student
+                    else (my_mem.status if my_mem else None)
+                ),
+                'member_count': (
+                    memberships.filter(
+                        status=GroupMembership.Status.ACCEPTED
+                    ).count() + 1
+                ),
                 'members': [
-                    {**StudentContactSerializer(mem.student).data, 'status': mem.status}
-                    for mem in members
+                    {
+                        **StudentContactSerializer(mem.student).data,
+                        'status': mem.status,
+                    }
+                    for mem in memberships
                 ],
             })
+
         return Response(groups)
 
     @swagger_auto_schema(
