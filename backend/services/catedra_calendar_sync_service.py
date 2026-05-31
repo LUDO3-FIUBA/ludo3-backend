@@ -63,7 +63,10 @@ def _fetch_csv(url: str) -> str:
     csv_url = _sheets_to_csv_url(url)
     resp = requests.get(csv_url, timeout=15)
     resp.raise_for_status()
-    return resp.content.decode('latin-1')
+    try:
+        return resp.content.decode('utf-8-sig')
+    except UnicodeDecodeError:
+        return resp.content.decode('latin-1')
 
 
 _MOCK_ENTRIES = [
