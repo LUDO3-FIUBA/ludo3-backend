@@ -39,8 +39,7 @@ class Migration(migrations.Migration):
                     on_delete=django.db.models.deletion.CASCADE,
                     related_name='catedra_calendar',
                     to='backend.semester',
-                    verbose_name='Semestre',
-                )),
+                ))
             ],
             options={
                 'verbose_name': 'Entrada del Calendario de Cátedra',
