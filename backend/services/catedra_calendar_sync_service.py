@@ -163,7 +163,10 @@ def sync_catedra_calendar(semester: Semester) -> int:
     entries = [_normalize_entry(r, semester) for r in raw_entries]
     entries = [e for e in entries if e is not None]
 
-    CatedraCalendarEntry.objects.filter(semester=semester).delete()
-    CatedraCalendarEntry.objects.bulk_create(entries)
+    from django.db import transaction
+
+    with transaction.atomic():
+        CatedraCalendarEntry.objects.filter(semester=semester).delete()
+        CatedraCalendarEntry.objects.bulk_create(entries)
 
     return len(entries)
