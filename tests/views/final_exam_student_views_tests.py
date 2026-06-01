@@ -16,6 +16,9 @@ class StudentFinalExamViewsTests(APITestCase):
 
         self.final = FinalFactory(teacher=self.teacher, status=Final.Status.OPEN)
 
+        self.student.face_encodings = [0.1]
+        self.student.save()
+
         self.take_exam_uri = "/api/final_exams/take_exam/"
 
         self.subject_response = {
