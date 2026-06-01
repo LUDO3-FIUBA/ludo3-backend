@@ -25,3 +25,5 @@ from .catalog import Catalog, CatalogItem
 from .form import Form, FormDocumentSource, FormField, FormFieldOption
 from .form_submission import FormSubmission, FormAnswer
 from .catedra_calendar_entry import CatedraCalendarEntry
+from .career import Career
+from .student_career import StudentCareer
