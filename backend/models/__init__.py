@@ -26,3 +26,5 @@ from .catalog import Catalog, CatalogItem
 from .form_ownership import FormOwnershipGroup, FormOwnershipMember
 from .form import Form, FormDocumentSource, FormField, FormFieldOption
 from .form_submission import FormSubmission, FormAnswer
+from .career import Career
+from .student_career import StudentCareer
