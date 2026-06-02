@@ -51,7 +51,10 @@ class AwsS3StorageService(StorageService):
             Body=file_content,
             ContentLength=len(file_content)
         )
-        return f"https://{self.public_read_domain}/{file_name}"
+        return self.public_url(file_name)
+
+    def public_url(self, key: str) -> str:
+        return f"https://{self.public_read_domain}/{key}"
 
     def download_object(self, file_name: str) -> io.IOBase:
         return self.client.get_object(Bucket=self.bucket, Key=file_name)['Body']

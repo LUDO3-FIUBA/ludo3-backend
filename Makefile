@@ -24,6 +24,10 @@ migrate:
 	docker exec -it web python3 manage.py initdata
 .PHONY: migrate
 
+merge:
+	docker exec -it web python3 manage.py makemigrations --merge
+.PHONY: merge
+
 down:
 	docker compose -f docker-compose.yml down
 .PHONY: down

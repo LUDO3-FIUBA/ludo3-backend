@@ -19,6 +19,9 @@ class GcsStorageService(StorageService):
     def upload_object(self, generic_object: io.IOBase, file_name: str) -> str:
         raise NotImplementedError()
 
+    def public_url(self, key: str) -> str:
+        raise NotImplementedError()
+
     def download_object(self, file_name: str) -> io.IOBase:
         raise NotImplementedError()
 

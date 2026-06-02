@@ -18,10 +18,12 @@ from .notification import Notification, UserNotification, CalendarEventReminder
 from .semester_schedule import SemesterSchedule
 from .academic_calendar_event import AcademicCalendarEvent
 from .department import Department
+from .secretary import Secretary
 from .news import News
 from .password_reset_otp import PasswordResetOTP
-from .form_types import FormProcedureType, FormType, FormFieldType
+from .form_types import FormType, FormFieldType
 from .catalog import Catalog, CatalogItem
+from .form_ownership import FormOwnershipGroup, FormOwnershipMember
 from .form import Form, FormDocumentSource, FormField, FormFieldOption
 from .form_submission import FormSubmission, FormAnswer
 from .career import Career

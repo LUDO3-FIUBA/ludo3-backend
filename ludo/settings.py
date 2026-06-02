@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 
 import logging
 import os
+from datetime import timedelta
 
 import firebase_admin
 
@@ -178,6 +179,11 @@ AUTH_PASSWORD_VALIDATORS = [
 
 DJOSER = {
     'USER_ID_FIELD': 'dni'
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
 }
 
 REST_FRAMEWORK = {

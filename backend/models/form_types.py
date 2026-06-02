@@ -1,17 +1,6 @@
 from django.db import models
 
 
-class FormProcedureType(models.Model):
-    form_procedure_value = models.CharField(max_length=100, verbose_name="Tipo de trámite")
-
-    class Meta:
-        verbose_name = "Tipo de trámite"
-        verbose_name_plural = "Tipos de trámite"
-
-    def __str__(self):
-        return self.form_procedure_value
-
-
 class FormType(models.Model):
     form_type_value = models.CharField(max_length=100, verbose_name="Tipo de formulario")
 

@@ -29,7 +29,10 @@ class LocalStorageService(StorageService):
         with open(full_path, 'wb') as f:
             f.write(file_content)
 
-        return f"{self.public_url_prefix}{file_name}"
+        return self.public_url(file_name)
+
+    def public_url(self, key: str) -> str:
+        return f"{self.public_url_prefix}{key}"
 
     def download_object(self, file_name: str) -> io.IOBase:
         full_path = os.path.join(self.media_root, file_name)

@@ -2,13 +2,30 @@ from rest_framework import serializers
 
 from backend.models.catalog import Catalog, CatalogItem
 from backend.models.form import Form, FormDocumentSource, FormField, FormFieldOption
+from backend.models.department import Department
+from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
+from backend.models.secretary import Secretary
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import (
     FormFieldType,
-    FormProcedureType,
     FormSubmissionStatus,
     FormType,
 )
+from backend.services import storage_service
+
+
+def _absolute_document_url(value):
+    """Build an absolute URL for a stored document reference.
+
+    New rows persist only the relative storage key; the absolute prefix comes
+    from the storage provider's env configuration. Empty values and legacy
+    absolute URLs are returned unchanged.
+    """
+    if not value:
+        return value
+    if value.startswith(('http://', 'https://')):
+        return value
+    return storage_service.public_url(value)
 
 
 # ── Catalog read ─────────────────────────────────────────────────────────────
@@ -41,13 +58,68 @@ class CatalogWithItemsSerializer(serializers.ModelSerializer):
 
 # ── Type catalog read ─────────────────────────────────────────────────────────
 
-class FormProcedureTypeSerializer(serializers.ModelSerializer):
+class FormOwnershipGroupSerializer(serializers.ModelSerializer):
     id = serializers.IntegerField(read_only=True)
-    value = serializers.CharField(source='form_procedure_value', read_only=True)
 
     class Meta:
-        model = FormProcedureType
-        fields = ['id', 'value']
+        model = FormOwnershipGroup
+        fields = ['id', 'name']
+
+
+class FormOwnershipMemberReadSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+    parent_secretary_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = FormOwnershipMember
+        fields = ['entity_type', 'entity_id', 'is_editor', 'name', 'parent_secretary_name']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Cache resolved names per group to avoid N+1 queries.
+        self._group_entity_cache = {}
+
+    def _ensure_group_cache(self, group):
+        gid = getattr(group, 'id', None)
+        if gid is None or gid in self._group_entity_cache:
+            return
+
+        members = list(group.members.all())
+        dept_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.DEPARTMENT]
+        sec_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.SECRETARY]
+
+        dept_map = {d.id: d.name for d in Department.objects.filter(id__in=dept_ids)}
+        secs = list(Secretary.objects.select_related('parent_secretary').filter(id__in=sec_ids))
+        sec_map = {s.id: s.name for s in secs}
+        sec_parent_map = {s.id: (s.parent_secretary.name if s.parent_secretary_id else None) for s in secs}
+
+        self._group_entity_cache[gid] = {
+            'department': dept_map,
+            'secretary': sec_map,
+            'secretary_parent': sec_parent_map,
+        }
+
+    def get_name(self, obj):
+        self._ensure_group_cache(obj.group)
+        cache = self._group_entity_cache.get(obj.group_id, {})
+        if obj.entity_type == FormOwnershipMember.DEPARTMENT:
+            return cache.get('department', {}).get(obj.entity_id)
+        return cache.get('secretary', {}).get(obj.entity_id)
+
+    def get_parent_secretary_name(self, obj):
+        if obj.entity_type != FormOwnershipMember.SECRETARY:
+            return None
+        self._ensure_group_cache(obj.group)
+        cache = self._group_entity_cache.get(obj.group_id, {})
+        return cache.get('secretary_parent', {}).get(obj.entity_id)
+
+class FormOwnershipGroupWithMembersSerializer(serializers.ModelSerializer):
+    id = serializers.IntegerField(read_only=True)
+    members = FormOwnershipMemberReadSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = FormOwnershipGroup
+        fields = ['id', 'name', 'members']
 
 
 class FormTypeSerializer(serializers.ModelSerializer):
@@ -128,18 +200,18 @@ class FormDocumentSourceSerializer(serializers.ModelSerializer):
 
 class FormListSerializer(serializers.ModelSerializer):
     form_id = serializers.IntegerField(source='id', read_only=True)
-    form_procedure = FormProcedureTypeSerializer(read_only=True)
+    ownership_group = FormOwnershipGroupSerializer(read_only=True)
     form_type = FormTypeSerializer(read_only=True)
 
     class Meta:
         model = Form
-        fields = ['form_id', 'form_name', 'form_description', 'form_procedure', 'form_type',
+        fields = ['form_id', 'form_name', 'form_description', 'ownership_group', 'form_type',
                   'requires_teacher_validation', 'created_at']
 
 
 class FormDetailSerializer(serializers.ModelSerializer):
     form_id = serializers.IntegerField(source='id', read_only=True)
-    form_procedure = FormProcedureTypeSerializer(read_only=True)
+    ownership_group = FormOwnershipGroupWithMembersSerializer(read_only=True)
     form_type = FormTypeSerializer(read_only=True)
     fields = FormFieldDetailSerializer(many=True, read_only=True)
     document_source = serializers.SerializerMethodField()
@@ -147,11 +219,11 @@ class FormDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Form
         fields = ['form_id', 'form_name', 'form_description', 'form_information',
-                  'form_procedure', 'form_type', 'requires_teacher_validation', 'fields', 'document_source']
+                  'ownership_group', 'form_type', 'requires_teacher_validation', 'fields', 'document_source']
 
     def get_document_source(self, obj):
         try:
-            return obj.document_source.form_document_source
+            return _absolute_document_url(obj.document_source.form_document_source)
         except FormDocumentSource.DoesNotExist:
             return None
 
@@ -176,15 +248,16 @@ class FormCreateSerializer(serializers.Serializer):
     form_name = serializers.CharField(max_length=100)
     form_description = serializers.CharField(max_length=300)
     form_information = serializers.CharField(allow_null=True, allow_blank=True, required=False)
-    form_procedure_id = serializers.IntegerField()
+    ownership_group_id = serializers.IntegerField()
     form_type_id = serializers.IntegerField()
     requires_teacher_validation = serializers.BooleanField(default=False, required=False)
-    document_source = serializers.URLField(allow_null=True, required=False)
+    # Holds either a relative storage key (uploaded template) or an external URL (CMS link).
+    document_source = serializers.CharField(allow_null=True, allow_blank=True, required=False)
     fields = FormFieldCreateSerializer(many=True, required=False, default=list)
 
-    def validate_form_procedure_id(self, value):
-        if not FormProcedureType.objects.filter(id=value).exists():
-            raise serializers.ValidationError("Tipo de trámite no encontrado.")
+    def validate_ownership_group_id(self, value):
+        if not FormOwnershipGroup.objects.filter(id=value).exists():
+            raise serializers.ValidationError("Grupo de propiedad no encontrado.")
         return value
 
     def validate_form_type_id(self, value):
@@ -202,6 +275,15 @@ class AnswerCreateSerializer(serializers.Serializer):
 
 class SubmissionCreateSerializer(serializers.Serializer):
     answers = AnswerCreateSerializer(many=True)
+    recipient_entity_type = serializers.CharField(max_length=20, required=False, allow_null=True, allow_blank=True)
+    recipient_entity_id = serializers.IntegerField(required=False, allow_null=True)
+
+    def validate_recipient_entity_type(self, value):
+        if value and value not in ('department', 'secretary'):
+            raise serializers.ValidationError(
+                "Tipo de destinatario inválido. Valores permitidos: 'department', 'secretary'."
+            )
+        return value
 
 
 # ── Submission read (admin) ───────────────────────────────────────────────────
@@ -209,10 +291,17 @@ class SubmissionCreateSerializer(serializers.Serializer):
 class FormAnswerReadSerializer(serializers.ModelSerializer):
     field_id = serializers.IntegerField(source='field.id', read_only=True)
     field_label = serializers.CharField(source='field.form_field_label', read_only=True)
+    answer_value = serializers.SerializerMethodField()
 
     class Meta:
         model = FormAnswer
         fields = ['field_id', 'field_label', 'answer_value']
+
+    def get_answer_value(self, obj):
+        # Only 'adjunto' answers hold a file reference; others store plain text/IDs.
+        if obj.field.form_field_type.form_field_type_value == FormFieldType.ADJUNTO:
+            return _absolute_document_url(obj.answer_value)
+        return obj.answer_value
 
 
 class FormSubmissionListSerializer(serializers.ModelSerializer):
@@ -235,6 +324,7 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
     teacher_id = serializers.SerializerMethodField()
     teacher_first_name = serializers.SerializerMethodField()
     teacher_last_name = serializers.SerializerMethodField()
+    recipient_name = serializers.SerializerMethodField()
 
     class Meta:
         model = FormSubmission
@@ -245,6 +335,7 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
             'form_id', 'form_name', 'form_requires_teacher_validation',
             'teacher_id', 'teacher_first_name', 'teacher_last_name',
             'teacher_status', 'teacher_comment',
+            'recipient_entity_type', 'recipient_entity_id', 'recipient_name',
         ]
 
     def get_student_padron(self, obj):
@@ -269,6 +360,36 @@ class FormSubmissionListSerializer(serializers.ModelSerializer):
 
     def get_teacher_last_name(self, obj):
         return obj.teacher.user.last_name if obj.teacher else None
+
+    def get_recipient_name(self, obj):
+        # Cache lookups to avoid N+1 queries on large submission lists.
+        if not hasattr(self, '_recipient_name_cache'):
+            self._recipient_name_cache = {
+                FormOwnershipMember.DEPARTMENT: {},
+                FormOwnershipMember.SECRETARY: {},
+            }
+
+        cache_for_type = self._recipient_name_cache.get(obj.recipient_entity_type)
+        if cache_for_type is not None and obj.recipient_entity_id in cache_for_type:
+            return cache_for_type[obj.recipient_entity_id]
+
+        if obj.recipient_entity_type == FormOwnershipMember.DEPARTMENT:
+            try:
+                name = Department.objects.get(pk=obj.recipient_entity_id).name
+            except Department.DoesNotExist:
+                name = None
+            self._recipient_name_cache[FormOwnershipMember.DEPARTMENT][obj.recipient_entity_id] = name
+            return name
+
+        if obj.recipient_entity_type == FormOwnershipMember.SECRETARY:
+            try:
+                name = Secretary.objects.get(pk=obj.recipient_entity_id).name
+            except Secretary.DoesNotExist:
+                name = None
+            self._recipient_name_cache[FormOwnershipMember.SECRETARY][obj.recipient_entity_id] = name
+            return name
+
+        return None
 
 
 class TeacherValidationUpdateSerializer(serializers.Serializer):
