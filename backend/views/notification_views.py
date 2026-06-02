@@ -14,6 +14,7 @@ from backend.serializers.notification_serializer import (
     UserNotificationSerializer,
 )
 from backend.views.base_view import BaseViewSet
+from backend.views.utils import user_can_view_semester
 
 
 def _resolve_recipients(recipient_groups, user_ids):
@@ -37,8 +38,6 @@ def _resolve_recipients(recipient_groups, user_ids):
         target_users = target_users.distinct()
 
     return target_users
-
-
 class NotificationViewSet(BaseViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Notification.objects.all()
@@ -66,9 +65,15 @@ class NotificationViewSet(BaseViewSet):
     )
     def by_semester(self, request, semester_id=None):
         semester = get_object_or_404(Semester.objects, id=semester_id)
+        if not user_can_view_semester(request.user, semester):
+            return Response(
+                {"detail": "You do not have access to this semester's notifications."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         notifications = Notification.objects.filter(
             semester=semester
-        ).prefetch_related('user_notifications').select_related('sender', 'semester__commission').order_by('-created_at')
+        ).select_related('sender', 'semester__commission').order_by('-created_at')
 
         return Response(
             NotificationSerializer(notifications, many=True, context={'request': request}).data,

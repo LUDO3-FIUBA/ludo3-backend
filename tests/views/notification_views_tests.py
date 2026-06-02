@@ -1,8 +1,8 @@
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from backend.models import Notification, UserNotification
-from tests.factories import SemesterFactory, UserFactory
+from backend.models import CommissionInscription, Notification, UserNotification
+from tests.factories import SemesterFactory, StudentFactory, UserFactory
 
 
 class NotificationCreateTests(APITestCase):
@@ -182,7 +182,8 @@ class NotificationCreateTests(APITestCase):
 
 class NotificationListTests(APITestCase):
     def setUp(self) -> None:
-        self.user = UserFactory()
+        self.student = StudentFactory()
+        self.user = self.student.user
         self.other_user = UserFactory()
         self.sender = UserFactory()
 
@@ -242,27 +243,25 @@ class NotificationListTests(APITestCase):
 
     def test_list_notifications_by_semester_success(self):
         """
-        Should return only the authenticated user's notifications for the given semester.
+        Should return semester notifications for an authenticated user that belongs to the semester,
+        even if the user notification was deleted from the personal inbox.
         """
         semester = SemesterFactory()
-        other_semester = SemesterFactory()
 
-        self._create_notification_for([self.user], title="Semester match", message="Included")
+        CommissionInscription.objects.create(
+            semester=semester,
+            student=self.student,
+            status=CommissionInscription.InscriptionStatus.ACCEPTED,
+        )
+
         matching_notification = Notification.objects.create(
             title="Semester scoped",
             message="Included by semester",
             sender=self.sender,
             semester=semester,
         )
-        UserNotification.objects.create(notification=matching_notification, user=self.user)
-
-        other_notification = Notification.objects.create(
-            title="Other semester",
-            message="Excluded",
-            sender=self.sender,
-            semester=other_semester,
-        )
-        UserNotification.objects.create(notification=other_notification, user=self.user)
+        user_notification = UserNotification.objects.create(notification=matching_notification, user=self.user)
+        user_notification.delete()
 
         self.client.force_authenticate(user=self.user)
         response = self.client.get(self.semester_notifications_url(semester.id))
@@ -271,6 +270,17 @@ class NotificationListTests(APITestCase):
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]["title"], "Semester scoped")
         self.assertEqual(response.data[0]["sender"], self.sender.id)
+
+    def test_list_notifications_by_semester_requires_membership(self):
+        """
+        Should reject users who do not belong to the semester.
+        """
+        semester = SemesterFactory()
+
+        self.client.force_authenticate(user=self.other_user)
+        response = self.client.get(self.semester_notifications_url(semester.id))
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
 
     def test_list_notifications_by_semester_not_logged_in(self):
         """
