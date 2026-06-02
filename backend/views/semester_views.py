@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from backend.models import Attendance, AttendanceQRCode, EvaluationSubmission, Semester
 from backend.permissions import IsStudent, IsTeacher
+from backend.serializers.catedra_calendar_entry_serializer import CatedraCalendarEntrySerializer
 from backend.serializers.semester_serializer import SemesterCommissionSerializer, SemesterSerializer
 from backend.services.rule_engine_service import RuleEngineService
 from backend.views.base_view import BaseViewSet
@@ -153,8 +154,28 @@ class SemesterViewSet(BaseViewSet):
         rule_engine_service = RuleEngineService()
         passed = rule_engine_service.is_student_passed(attendance_qrs, evaluation_submissions, request.user.student, semester)
         failed = rule_engine_service.is_student_failed(attendance_qrs, evaluation_submissions, request.user.student, semester)
-        
+
         response = {'passed': passed, 'failed': failed}
 
         return Response(response, status.HTTP_200_OK)
+
+    @action(detail=True, methods=['GET'], permission_classes=[IsAuthenticated, IsStudent])
+    @swagger_auto_schema(
+        tags=["Semesters"],
+        operation_summary="Get cátedra calendar entries for a semester (student view)",
+    )
+    def catedra_calendar(self, request, pk=None):
+        from rest_framework.generics import get_object_or_404
+        semester = get_object_or_404(self.get_queryset(), id=pk)
+
+        # Verificar que el alumno esté inscripto
+        is_enrolled = semester.commissioninscription_set.filter(
+            student=request.user.student,
+            status='A',
+        ).exists()
+        if not is_enrolled:
+            return Response("No estás inscripto en este semestre", status=status.HTTP_403_FORBIDDEN)
+
+        entries = semester.catedra_calendar.all()
+        return Response(CatedraCalendarEntrySerializer(entries, many=True).data, status=status.HTTP_200_OK)
 
