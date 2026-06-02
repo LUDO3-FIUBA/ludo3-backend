@@ -2,7 +2,7 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from backend.models import Notification, UserNotification
-from tests.factories import UserFactory
+from tests.factories import SemesterFactory, UserFactory
 
 
 class NotificationCreateTests(APITestCase):
@@ -187,6 +187,7 @@ class NotificationListTests(APITestCase):
         self.sender = UserFactory()
 
         self.my_notifications_url = "/api/notifications/my_notifications/"
+        self.semester_notifications_url = lambda semester_id: f"/api/notifications/semester/{semester_id}/"
 
     def _create_notification_for(self, recipients, title="Test", message="Test msg"):
         notification = Notification.objects.create(
@@ -236,6 +237,48 @@ class NotificationListTests(APITestCase):
         Should return 401 if the user is not authenticated.
         """
         response = self.client.get(self.my_notifications_url)
+
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_list_notifications_by_semester_success(self):
+        """
+        Should return only the authenticated user's notifications for the given semester.
+        """
+        semester = SemesterFactory()
+        other_semester = SemesterFactory()
+
+        self._create_notification_for([self.user], title="Semester match", message="Included")
+        matching_notification = Notification.objects.create(
+            title="Semester scoped",
+            message="Included by semester",
+            sender=self.sender,
+            semester=semester,
+        )
+        UserNotification.objects.create(notification=matching_notification, user=self.user)
+
+        other_notification = Notification.objects.create(
+            title="Other semester",
+            message="Excluded",
+            sender=self.sender,
+            semester=other_semester,
+        )
+        UserNotification.objects.create(notification=other_notification, user=self.user)
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(self.semester_notifications_url(semester.id))
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertEqual(response.data[0]["title"], "Semester scoped")
+        self.assertEqual(response.data[0]["sender"], self.sender.id)
+
+    def test_list_notifications_by_semester_not_logged_in(self):
+        """
+        Should return 401 if the user is not authenticated.
+        """
+        semester = SemesterFactory()
+
+        response = self.client.get(self.semester_notifications_url(semester.id))
 
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 

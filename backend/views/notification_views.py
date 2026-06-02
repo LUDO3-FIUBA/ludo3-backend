@@ -6,7 +6,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from backend.models import Notification, UserNotification
+from backend.models import Notification, Semester, UserNotification
 from backend.models.user import User
 from backend.serializers.notification_serializer import (
     NotificationCreateSerializer,
@@ -56,6 +56,22 @@ class NotificationViewSet(BaseViewSet):
 
         return Response(
             UserNotificationSerializer(user_notifications, many=True, context={'request': request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=['GET'], url_path=r'semester/(?P<semester_id>[^/.]+)')
+    @swagger_auto_schema(
+        tags=["Notifications"],
+        operation_summary="Get notifications for the authenticated user in a semester",
+    )
+    def by_semester(self, request, semester_id=None):
+        semester = get_object_or_404(Semester.objects, id=semester_id)
+        notifications = Notification.objects.filter(
+            semester=semester
+        ).prefetch_related('user_notifications').select_related('sender', 'semester__commission').order_by('-created_at')
+
+        return Response(
+            NotificationSerializer(notifications, many=True, context={'request': request}).data,
             status=status.HTTP_200_OK,
         )
 
