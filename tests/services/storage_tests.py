@@ -16,6 +16,7 @@ REQUIRED_METHODS = (
     'upload_object',
     'download_object',
     'delete_object',
+    'public_url',
     'key_from_url',
     'presign_url',
 )
@@ -53,6 +54,11 @@ class LocalStorageServiceTests(SimpleTestCase):
         self.assertEqual(url, 'http://localhost:8007/media/models/abc.pdf')
         with open(os.path.join(self.tmp.name, 'models/abc.pdf'), 'rb') as f:
             self.assertEqual(f.read(), b'hello')
+
+    def test_public_url_builds_absolute_url_from_key(self):
+        url = self.storage.public_url('submissions/1/foo.pdf')
+        self.assertEqual(url, 'http://localhost:8007/media/submissions/1/foo.pdf')
+        self.assertEqual(self.storage.key_from_url(url), 'submissions/1/foo.pdf')
 
     def test_key_from_url_round_trips(self):
         url = self.storage.upload_object(io.BytesIO(b'x'), 'submissions/1/foo.pdf')
@@ -99,6 +105,11 @@ class AwsS3StorageServiceTests(SimpleTestCase):
         self.client.delete_object.assert_called_once_with(
             Bucket='my-bucket', Key='models/abc.pdf',
         )
+
+    def test_public_url_builds_absolute_url_from_key(self):
+        url = self.storage.public_url('models/abc.pdf')
+        self.assertEqual(url, 'https://my-bucket.s3.amazonaws.com/models/abc.pdf')
+        self.assertEqual(self.storage.key_from_url(url), 'models/abc.pdf')
 
     def test_key_from_url_strips_bucket_prefix(self):
         url = 'https://my-bucket.s3.amazonaws.com/models/abc.pdf'

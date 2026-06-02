@@ -25,6 +25,7 @@ class Semester(models.Model):
     students =  models.ManyToManyField(Student, through='CommissionInscription', verbose_name="Alumnos Inscriptos")
     classes_amount = models.IntegerField(default=18, db_index=True, null=True, blank=True, verbose_name="Cantidad de Clases")
     minimum_attendance = models.FloatField(default=0.0, db_index=True, null=True, blank=True, verbose_name="Porcentage Minimo de Asistencias")
+    calendar_source_url = models.URLField(max_length=500, null=True, blank=True, verbose_name="URL del calendario de cátedra")
 
     # REQUIRED_FIELDS = ['date']
 

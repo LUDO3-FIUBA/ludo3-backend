@@ -16,6 +16,13 @@ class FormSubmission(models.Model):
         (TEACHER_STATUS_DENIED, 'Rechazado'),
     ]
 
+    RECIPIENT_ENTITY_DEPARTMENT = 'department'
+    RECIPIENT_ENTITY_SECRETARY = 'secretary'
+    RECIPIENT_ENTITY_CHOICES = [
+        (RECIPIENT_ENTITY_DEPARTMENT, 'Departamento'),
+        (RECIPIENT_ENTITY_SECRETARY, 'Secretaría'),
+    ]
+
     form = models.ForeignKey(Form, on_delete=models.CASCADE, related_name='submissions', verbose_name="Formulario")
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='form_submissions', verbose_name="Usuario")
     submitted_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Enviado en")
@@ -41,6 +48,20 @@ class FormSubmission(models.Model):
         verbose_name="Estado de validación docente",
     )
     teacher_comment = models.TextField(null=True, blank=True, verbose_name="Comentario del docente")
+    # Destinatario único seleccionado por el alumno al enviar.
+    # Si el grupo tiene un solo miembro, se completa automáticamente.
+    recipient_entity_type = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        choices=RECIPIENT_ENTITY_CHOICES,
+        verbose_name="Tipo de destinatario",
+    )
+    recipient_entity_id = models.IntegerField(
+        null=True,
+        blank=True,
+        verbose_name="ID del destinatario",
+    )
 
     class Meta:
         verbose_name = "Respuesta de formulario"

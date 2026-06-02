@@ -3,11 +3,12 @@ from rest_framework import status
 from rest_framework.test import APITestCase
 
 from backend.models.form import Form, FormDocumentSource, FormField, FormFieldOption
+from backend.models.form_ownership import FormOwnershipGroup
 from backend.models.form_submission import FormAnswer, FormSubmission
-from backend.models.form_types import FormFieldType, FormProcedureType, FormType
+from backend.models.form_types import FormFieldType, FormType
 from tests.factories import (
     FormFieldTypeFactory,
-    FormProcedureTypeFactory,
+    FormOwnershipGroupFactory,
     FormTypeFactory,
     AdminUserFactory,
     CatalogFactory,
@@ -19,24 +20,6 @@ from tests.factories import (
     StudentFactory,
     TeacherFactory,
 )
-
-
-class FormProcedureTypeViewTests(APITestCase):
-    def setUp(self):
-        self.student = StudentFactory()
-        self.procedure_type = FormProcedureTypeFactory(form_procedure_value='Administrativo')
-        self.uri = '/api/form-procedure-types/'
-
-    def test_list_returns_procedure_types(self):
-        self.client.force_authenticate(user=self.student.user)
-        response = self.client.get(self.uri)
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        values = [item['value'] for item in response.data]
-        self.assertIn('Administrativo', values)
-
-    def test_list_unauthenticated(self):
-        response = self.client.get(self.uri)
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
 
 class FormFieldTypeViewTests(APITestCase):
@@ -68,16 +51,16 @@ class FormFieldTypeViewTests(APITestCase):
 class FormListViewTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
-        self.procedure1 = FormProcedureTypeFactory(form_procedure_value='Administrativo')
-        self.procedure2 = FormProcedureTypeFactory(form_procedure_value='Exámenes')
+        self.group1 = FormOwnershipGroupFactory(name='Administrativo')
+        self.group2 = FormOwnershipGroupFactory(name='Exámenes')
         self.form_type = FormTypeFactory(form_type_value='Digital')
         self.form1 = Form.objects.create(
             form_name='Form A', form_description='Desc A',
-            form_procedure=self.procedure1, form_type=self.form_type,
+            ownership_group=self.group1, form_type=self.form_type,
         )
         self.form2 = Form.objects.create(
             form_name='Form B', form_description='Desc B',
-            form_procedure=self.procedure2, form_type=self.form_type,
+            ownership_group=self.group2, form_type=self.form_type,
         )
         self.uri = '/api/forms/'
 
@@ -87,12 +70,20 @@ class FormListViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
 
-    def test_list_filtered_by_procedure(self):
+    def test_list_filtered_by_group(self):
         self.client.force_authenticate(user=self.student.user)
-        response = self.client.get(self.uri, {'procedure_id': self.procedure1.id})
+        response = self.client.get(self.uri, {'group_id': self.group1.id})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['form_name'], 'Form A')
+
+    def test_list_response_includes_ownership_group(self):
+        self.client.force_authenticate(user=self.student.user)
+        response = self.client.get(self.uri)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        form_a = next(f for f in response.data if f['form_name'] == 'Form A')
+        self.assertIn('ownership_group', form_a)
+        self.assertEqual(form_a['ownership_group']['name'], 'Administrativo')
 
     def test_list_unauthenticated(self):
         response = self.client.get(self.uri)
@@ -102,7 +93,7 @@ class FormListViewTests(APITestCase):
 class FormDetailViewTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
-        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.group = FormOwnershipGroupFactory(name='Administrativo')
         self.form_type = FormTypeFactory(form_type_value='Digital')
         self.field_type_texto = FormFieldTypeFactory(form_field_type_value='texto')
         self.field_type_options = FormFieldTypeFactory(form_field_type_value='options')
@@ -110,7 +101,7 @@ class FormDetailViewTests(APITestCase):
 
         self.form = Form.objects.create(
             form_name='Test Form', form_description='Desc',
-            form_procedure=self.procedure, form_type=self.form_type,
+            ownership_group=self.group, form_type=self.form_type,
         )
         self.field_texto = FormField.objects.create(
             form=self.form, form_field_label='Nombre',
@@ -143,6 +134,8 @@ class FormDetailViewTests(APITestCase):
         self.assertEqual(data['form_id'], self.form.id)
         self.assertEqual(data['form_name'], 'Test Form')
         self.assertIsNone(data['document_source'])
+        self.assertIn('ownership_group', data)
+        self.assertEqual(data['ownership_group']['name'], 'Administrativo')
 
         fields = {f['form_field_id']: f for f in data['fields']}
 
@@ -172,7 +165,7 @@ class FormCreateViewTests(APITestCase):
     def setUp(self):
         self.admin = AdminUserFactory()
         self.student = StudentFactory()
-        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.group = FormOwnershipGroupFactory(name='Administrativo')
         self.form_type_digital = FormTypeFactory(form_type_value='Digital')
         self.form_type_doc = FormTypeFactory(form_type_value='Documento')
         self.field_type_texto = FormFieldTypeFactory(form_field_type_value='texto')
@@ -185,7 +178,7 @@ class FormCreateViewTests(APITestCase):
         payload = {
             'form_name': 'Solicitud',
             'form_description': 'Una solicitud de prueba',
-            'form_procedure_id': self.procedure.id,
+            'ownership_group_id': self.group.id,
             'form_type_id': self.form_type_digital.id,
             'fields': [
                 {
@@ -206,7 +199,7 @@ class FormCreateViewTests(APITestCase):
         payload = {
             'form_name': 'Con opciones',
             'form_description': 'Desc',
-            'form_procedure_id': self.procedure.id,
+            'ownership_group_id': self.group.id,
             'form_type_id': self.form_type_digital.id,
             'fields': [
                 {
@@ -230,7 +223,7 @@ class FormCreateViewTests(APITestCase):
         payload = {
             'form_name': 'Nota al decano',
             'form_description': 'Formulario de documento',
-            'form_procedure_id': self.procedure.id,
+            'ownership_group_id': self.group.id,
             'form_type_id': self.form_type_doc.id,
             'document_source': 'https://cms.fi.uba.ar/uploads/nota.pdf',
         }
@@ -245,7 +238,7 @@ class FormCreateViewTests(APITestCase):
         payload = {
             'form_name': 'Sin campos',
             'form_description': 'Desc',
-            'form_procedure_id': self.procedure.id,
+            'ownership_group_id': self.group.id,
             'form_type_id': self.form_type_digital.id,
             'fields': [],
         }
@@ -257,7 +250,7 @@ class FormCreateViewTests(APITestCase):
         payload = {
             'form_name': 'Sin fuente',
             'form_description': 'Desc',
-            'form_procedure_id': self.procedure.id,
+            'ownership_group_id': self.group.id,
             'form_type_id': self.form_type_doc.id,
         }
         response = self.client.post(self.uri, payload, format='json')
@@ -277,7 +270,7 @@ class FormCreateViewTests(APITestCase):
         payload = {
             'form_name': 'Debe fallar',
             'form_description': 'Desc',
-            'form_procedure_id': self.procedure.id,
+            'ownership_group_id': self.group.id,
             'form_type_id': self.form_type_digital.id,
             'fields': [
                 {
@@ -297,7 +290,7 @@ class FormDigitalSubmissionTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
         self.admin = AdminUserFactory()
-        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.group = FormOwnershipGroupFactory(name='Administrativo')
         self.form_type_digital = FormTypeFactory(form_type_value='Digital')
         self.field_type_texto = FormFieldTypeFactory(form_field_type_value='texto')
         self.field_type_numero = FormFieldTypeFactory(form_field_type_value='numero')
@@ -306,7 +299,7 @@ class FormDigitalSubmissionTests(APITestCase):
 
         self.form = Form.objects.create(
             form_name='Solicitud digital', form_description='Desc',
-            form_procedure=self.procedure, form_type=self.form_type_digital,
+            ownership_group=self.group, form_type=self.form_type_digital,
         )
         self.field_texto = FormField.objects.create(
             form=self.form, form_field_label='Nombre', form_field_type=self.field_type_texto,
@@ -381,13 +374,13 @@ class FormDigitalSubmissionTests(APITestCase):
 class FormDocumentSubmissionTests(APITestCase):
     def setUp(self):
         self.student = StudentFactory()
-        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.group = FormOwnershipGroupFactory(name='Administrativo')
         self.form_type_doc = FormTypeFactory(form_type_value='Documento')
         self.field_type_adjunto = FormFieldTypeFactory(form_field_type_value='adjunto')
 
         self.form = Form.objects.create(
             form_name='Nota al decano', form_description='Desc',
-            form_procedure=self.procedure, form_type=self.form_type_doc,
+            ownership_group=self.group, form_type=self.form_type_doc,
         )
         FormDocumentSource.objects.create(
             form=self.form, form_document_source='https://cms.fi.uba.ar/uploads/nota.pdf'
@@ -419,13 +412,13 @@ class SubmissionListAdminTests(APITestCase):
     def setUp(self):
         self.admin = AdminUserFactory()
         self.student = StudentFactory()
-        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.group = FormOwnershipGroupFactory(name='Administrativo')
         self.form_type = FormTypeFactory(form_type_value='Digital')
         self.field_type = FormFieldTypeFactory(form_field_type_value='texto')
 
         self.form = Form.objects.create(
             form_name='Form', form_description='Desc',
-            form_procedure=self.procedure, form_type=self.form_type,
+            ownership_group=self.group, form_type=self.form_type,
         )
         self.field = FormField.objects.create(
             form=self.form, form_field_label='Campo', form_field_type=self.field_type,
@@ -461,11 +454,11 @@ class SubmissionDeleteTests(APITestCase):
     def setUp(self):
         self.admin = AdminUserFactory()
         self.student = StudentFactory()
-        self.procedure = FormProcedureTypeFactory(form_procedure_value='Administrativo')
+        self.group = FormOwnershipGroupFactory(name='Administrativo')
         self.form_type = FormTypeFactory(form_type_value='Digital')
         self.form = Form.objects.create(
             form_name='Form', form_description='Desc',
-            form_procedure=self.procedure, form_type=self.form_type,
+            ownership_group=self.group, form_type=self.form_type,
         )
         self.submission = FormSubmission.objects.create(form=self.form, user=self.student.user)
 

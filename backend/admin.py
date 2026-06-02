@@ -1,5 +1,5 @@
 from django import forms
-from django.conf.urls import url
+from django.urls import re_path
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.db import transaction
@@ -72,7 +72,7 @@ class StaffInline(admin.TabularInline):
     model = Staff
     fieldsets = [
         (None, {
-            'fields': ('department_siu_id', 'department', 'is_bedelia')
+            'fields': ('department_siu_id', 'department', 'secretary', 'is_bedelia')
             }),
         ]
 
@@ -183,13 +183,13 @@ class StudentPreRegistered(StudentCommonAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<student_id>.+)/revisar/$',
+            re_path(r'^(?P<student_id>.+)/revisar/$',
                 self.admin_site.admin_view(self.revisar),
                 name='revisar'),
-            url(r'^(?P<student_id>.+)/aprobar/$',
+            re_path(r'^(?P<student_id>.+)/aprobar/$',
                 self.admin_site.admin_view(self.aprobar),
                 name='aprobar'),
-            url(r'^(?P<student_id>.+)/rechazar/$',
+            re_path(r'^(?P<student_id>.+)/rechazar/$',
                 self.admin_site.admin_view(self.rechazar),
                 name='rechazar'),
         ]
@@ -327,10 +327,10 @@ class FinalToApproveAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<final_id>.+)/approve/$',
+            re_path(r'^(?P<final_id>.+)/approve/$',
                 self.admin_site.admin_view(self.approve_action),
                 name='approve_action'),
-            url(r'^(?P<final_id>.+)/reject/$',
+            re_path(r'^(?P<final_id>.+)/reject/$',
                 self.admin_site.admin_view(self.reject_action),
                 name='reject_action'),
         ]
@@ -412,7 +412,7 @@ class FinalAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<final_id>.+)/download/$',
+            re_path(r'^(?P<final_id>.+)/download/$',
                 self.admin_site.admin_view(self.download_action),
                 name='download_action')
         ]
@@ -581,3 +581,45 @@ class CalendarEventReminderAdmin(admin.ModelAdmin):
     list_filter = ('days_before',)
     ordering = ('-sent_at',)
     readonly_fields = ('event', 'days_before', 'notification', 'sent_at')
+
+
+class SecretaryStaffInline(admin.TabularInline):
+    model = Staff
+    fields = ('user', 'is_bedelia')
+    readonly_fields = ('user',)
+    extra = 0
+    verbose_name = "Administrador asociado"
+    verbose_name_plural = "Administradores asociados"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(secretary__isnull=False)
+
+
+@admin.register(Secretary)
+class SecretaryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'parent_secretary', 'location', 'created_at')
+    list_filter = ('parent_secretary',)
+    search_fields = ('name',)
+    ordering = ('name',)
+    inlines = [SecretaryStaffInline]
+
+
+class FormOwnershipMemberInline(admin.TabularInline):
+    model = FormOwnershipMember
+    extra = 1
+    fields = ('entity_type', 'entity_id', 'is_editor')
+
+
+@admin.register(FormOwnershipGroup)
+class FormOwnershipGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created_at')
+    search_fields = ('name',)
+    ordering = ('name',)
+    inlines = [FormOwnershipMemberInline]
+
+
+@admin.register(FormOwnershipMember)
+class FormOwnershipMemberAdmin(admin.ModelAdmin):
+    list_display = ('group', 'entity_type', 'entity_id', 'is_editor')
+    list_filter = ('entity_type', 'is_editor')
+    search_fields = ('group__name',)

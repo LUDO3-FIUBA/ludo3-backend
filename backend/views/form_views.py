@@ -14,16 +14,24 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.models.catalog import Catalog, CatalogItem
+from backend.models.department import Department
 from backend.models.form import Form
+from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
+from backend.models.secretary import Secretary
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import (
     FormFieldType,
-    FormProcedureType,
     FormSubmissionStatus,
     FormType,
 )
 from backend.models.teacher import Teacher
-from backend.permissions import IsAdmin, IsStudent, IsTeacher
+from backend.permissions import (
+    IsAdmin,
+    IsSuperAdmin,
+    IsStudent,
+    IsTeacher,
+    get_user_ownership_memberships,
+)
 from backend.serializers.form_serializer import (
     CatalogItemSerializer,
     CatalogSerializer,
@@ -31,7 +39,7 @@ from backend.serializers.form_serializer import (
     FormDetailSerializer,
     FormFieldTypeSerializer,
     FormListSerializer,
-    FormProcedureTypeSerializer,
+    FormOwnershipGroupSerializer,
     FormSubmissionListSerializer,
     FormSubmissionStatusSerializer,
     FormTypeSerializer,
@@ -57,16 +65,16 @@ def _safe_ext(filename: str) -> str:
 
 
 def _maybe_upload_template(request, data):
-    """If the request includes a `document_source_file`, upload it to S3 and
-    inject the resulting URL into `data['document_source']`. Returns mutated data.
-    Falls through unchanged if only a URL was sent (CMS link, backward compat)."""
+    """If the request includes a `document_source_file`, upload it to storage and
+    inject the resulting relative key into `data['document_source']`. Returns mutated
+    data. Falls through unchanged if only a URL was sent (CMS link, backward compat)."""
     file_obj = request.FILES.get('document_source_file')
     if file_obj is None:
         return data
     key = f"models/{uuid.uuid4().hex}{_safe_ext(file_obj.name)}"
-    url = storage_service.upload_object(file_obj, key)
+    storage_service.upload_object(file_obj, key)
     mutable = data.copy() if hasattr(data, 'copy') else dict(data)
-    mutable['document_source'] = url
+    mutable['document_source'] = key
     return mutable
 
 
@@ -94,7 +102,7 @@ def _fetch_submission_full(pk):
     return (
         FormSubmission.objects
         .select_related('form', 'user__student', 'status', 'teacher__user')
-        .prefetch_related('answers__field')
+        .prefetch_related('answers__field__form_field_type')
         .get(pk=pk)
     )
 
@@ -108,13 +116,284 @@ class FormTypeViewSet(BaseViewSet):
         return Response(FormTypeSerializer(self.get_queryset(), many=True).data)
 
 
-class FormProcedureTypeViewSet(BaseViewSet):
-    permission_classes = [IsAuthenticated]
-    queryset = FormProcedureType.objects.all()
+class FormOwnershipGroupViewSet(BaseViewSet):
+    queryset = FormOwnershipGroup.objects.all()
 
-    @swagger_auto_schema(tags=["Formularios"], operation_summary="Lista los tipos de trámite")
+    def get_permissions(self):
+        if self.action in ('update', 'partial_update', 'destroy'):
+            return [IsAuthenticated(), IsSuperAdmin()]
+        return [IsAuthenticated(), IsAdmin()]
+
+    @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Lista los grupos de propiedad")
     def list(self, request):
-        return Response(FormProcedureTypeSerializer(self.get_queryset(), many=True).data)
+        groups = self.get_queryset()
+        if request.user.is_staff and not request.user.is_superuser:
+            memberships = get_user_ownership_memberships(request.user)
+            member_group_ids = set(memberships.values_list('group_id', flat=True))
+            editor_group_ids = set(memberships.filter(is_editor=True).values_list('group_id', flat=True))
+            # Non-super admins only see groups they belong to.
+            groups = groups.filter(id__in=member_group_ids)
+            data = FormOwnershipGroupSerializer(groups, many=True).data
+            for item in data:
+                item['is_editor'] = item['id'] in editor_group_ids
+        else:
+            data = FormOwnershipGroupSerializer(groups, many=True).data
+            for item in data:
+                item['is_editor'] = True
+        return Response(data)
+
+    @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Detalle de un grupo de propiedad")
+    def retrieve(self, request, pk=None):
+        try:
+            group = self.get_queryset().prefetch_related('members').get(pk=pk)
+        except FormOwnershipGroup.DoesNotExist:
+            return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.user.is_staff and not request.user.is_superuser:
+            memberships = get_user_ownership_memberships(request.user)
+            if not memberships.filter(group_id=group.pk).exists():
+                return Response({'detail': 'No tenés acceso a este grupo.'}, status=status.HTTP_403_FORBIDDEN)
+
+        members = list(group.members.all())
+        dept_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.DEPARTMENT]
+        sec_ids = [m.entity_id for m in members if m.entity_type == FormOwnershipMember.SECRETARY]
+
+        dept_map = {d.id: d.name for d in Department.objects.filter(id__in=dept_ids)}
+        sec_map = {
+            s.id: {'name': s.name, 'parent_secretary_name': s.parent_secretary.name if s.parent_secretary_id else None}
+            for s in Secretary.objects.select_related('parent_secretary').filter(id__in=sec_ids)
+        }
+
+        resolved_members = []
+        for m in members:
+            if m.entity_type == FormOwnershipMember.DEPARTMENT:
+                name = dept_map.get(m.entity_id, f'Departamento #{m.entity_id}')
+                parent_secretary_name = None
+            else:
+                sec = sec_map.get(m.entity_id, {})
+                name = sec.get('name', f'Secretaría #{m.entity_id}')
+                parent_secretary_name = sec.get('parent_secretary_name')
+            resolved_members.append({
+                'entity_type': m.entity_type,
+                'entity_id': m.entity_id,
+                'name': name,
+                'is_editor': m.is_editor,
+                'parent_secretary_name': parent_secretary_name,
+            })
+
+        data = FormOwnershipGroupSerializer(group).data
+        data['members'] = resolved_members
+        return Response(data)
+
+    @swagger_auto_schema(
+        tags=["Grupos de propiedad"],
+        operation_summary="Lista entidades elegibles como miembros (departamentos y secretarías)",
+    )
+    @action(detail=False, methods=['get'], url_path='eligible-entities', permission_classes=[IsAuthenticated, IsAdmin])
+    def eligible_entities(self, request):
+        if not request.user.is_superuser:
+            staff = getattr(request.user, 'staff', None)
+            if staff is None:
+                return Response([])
+            if staff.department_id is not None:
+                try:
+                    d = Department.objects.get(id=staff.department_id)
+                    return Response([{'entity_type': FormOwnershipMember.DEPARTMENT, 'entity_id': d.id, 'name': d.name}])
+                except Department.DoesNotExist:
+                    return Response([])
+            if staff.secretary_id is not None:
+                try:
+                    s = Secretary.objects.prefetch_related('subsecretaries').get(id=staff.secretary_id)
+                except Secretary.DoesNotExist:
+                    return Response([])
+                result = [{
+                    'entity_type': FormOwnershipMember.SECRETARY,
+                    'entity_id': s.id,
+                    'name': s.name,
+                    'parent_secretary_name': None,
+                }]
+                for sub in s.subsecretaries.order_by('name'):
+                    result.append({
+                        'entity_type': FormOwnershipMember.SECRETARY,
+                        'entity_id': sub.id,
+                        'name': sub.name,
+                        'parent_secretary_name': s.name,
+                    })
+                return Response(result)
+            return Response([])
+        departments = [
+            {'entity_type': FormOwnershipMember.DEPARTMENT, 'entity_id': d.id, 'name': d.name}
+            for d in Department.objects.order_by('name')
+        ]
+        secretaries = [
+            {
+                'entity_type': FormOwnershipMember.SECRETARY,
+                'entity_id': s.id,
+                'name': s.name,
+                'parent_secretary_name': s.parent_secretary.name if s.parent_secretary_id else None,
+            }
+            for s in Secretary.objects.select_related('parent_secretary').order_by('name')
+        ]
+        return Response(sorted(departments + secretaries, key=lambda x: x['name']))
+
+    @swagger_auto_schema(
+        tags=["Grupos de propiedad"],
+        operation_summary="Crea un grupo de propiedad (superadmin)",
+        request_body=FormOwnershipGroupSerializer,
+    )
+    def create(self, request):
+        serializer = FormOwnershipGroupSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Non-superadmin staff: auto-inject their entity as editor, ignoring members payload.
+        if not request.user.is_superuser:
+            staff = getattr(request.user, 'staff', None)
+            if staff is None:
+                return Response({'detail': 'No se encontró el perfil de staff.'}, status=status.HTTP_403_FORBIDDEN)
+            if staff.department_id is not None:
+                group = FormOwnershipGroup.objects.create(name=serializer.validated_data['name'])
+                FormOwnershipMember.objects.create(
+                    group=group,
+                    entity_type=FormOwnershipMember.DEPARTMENT,
+                    entity_id=staff.department_id,
+                    is_editor=True,
+                )
+            elif staff.secretary_id is not None:
+                try:
+                    secretary = Secretary.objects.prefetch_related('subsecretaries').get(id=staff.secretary_id)
+                except Secretary.DoesNotExist:
+                    return Response({'detail': 'No se encontró el perfil de staff.'}, status=status.HTTP_403_FORBIDDEN)
+                group = FormOwnershipGroup.objects.create(name=serializer.validated_data['name'])
+                FormOwnershipMember.objects.create(
+                    group=group,
+                    entity_type=FormOwnershipMember.SECRETARY,
+                    entity_id=secretary.id,
+                    is_editor=True,
+                )
+                for sub in secretary.subsecretaries.all():
+                    FormOwnershipMember.objects.create(
+                        group=group,
+                        entity_type=FormOwnershipMember.SECRETARY,
+                        entity_id=sub.id,
+                        is_editor=False,
+                    )
+            else:
+                return Response({'detail': 'No se encontró el perfil de staff.'}, status=status.HTTP_403_FORBIDDEN)
+            return Response(FormOwnershipGroupSerializer(group).data, status=status.HTTP_201_CREATED)
+
+        members_data = request.data.get('members', [])
+        if not isinstance(members_data, list):
+            return Response({'members': ['Debe ser una lista.']}, status=status.HTTP_400_BAD_REQUEST)
+
+        valid_entity_types = {FormOwnershipMember.DEPARTMENT, FormOwnershipMember.SECRETARY}
+        seen = set()
+        for m in members_data:
+            et = m.get('entity_type')
+            eid = m.get('entity_id')
+            if et not in valid_entity_types:
+                return Response(
+                    {'members': [f'Tipo de entidad inválido: {et}.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            key = (et, eid)
+            if key in seen:
+                return Response(
+                    {'members': ['No puede haber miembros duplicados en el grupo.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            seen.add(key)
+
+        if members_data and not any(m.get('is_editor') for m in members_data):
+            return Response(
+                {'members': ['El grupo debe tener al menos un miembro con rol de editor.']},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        group = FormOwnershipGroup.objects.create(name=serializer.validated_data['name'])
+        for m in members_data:
+            FormOwnershipMember.objects.create(
+                group=group,
+                entity_type=m['entity_type'],
+                entity_id=m['entity_id'],
+                is_editor=bool(m.get('is_editor', False)),
+            )
+        return Response(FormOwnershipGroupSerializer(group).data, status=status.HTTP_201_CREATED)
+
+    @swagger_auto_schema(
+        tags=["Grupos de propiedad"],
+        operation_summary="Edita un grupo de propiedad (superadmin)",
+        request_body=FormOwnershipGroupSerializer,
+    )
+    def update(self, request, pk=None):
+        try:
+            group = self.get_queryset().get(pk=pk)
+        except FormOwnershipGroup.DoesNotExist:
+            return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        serializer = FormOwnershipGroupSerializer(group, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update name only if provided.
+        if 'name' in serializer.validated_data:
+            group.name = serializer.validated_data['name']
+            group.save(update_fields=['name'])
+
+        # Replace members only if the field is present in the request.
+        if 'members' in request.data:
+            members_data = request.data.get('members')
+            if not isinstance(members_data, list):
+                return Response({'members': ['Debe ser una lista.']}, status=status.HTTP_400_BAD_REQUEST)
+
+            valid_entity_types = {FormOwnershipMember.DEPARTMENT, FormOwnershipMember.SECRETARY}
+            seen = set()
+            for m in members_data:
+                et = m.get('entity_type')
+                eid = m.get('entity_id')
+                if et not in valid_entity_types:
+                    return Response(
+                        {'members': [f'Tipo de entidad inválido: {et}.']},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                key = (et, eid)
+                if key in seen:
+                    return Response(
+                        {'members': ['No puede haber miembros duplicados en el grupo.']},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+                seen.add(key)
+
+            if members_data and not any(m.get('is_editor') for m in members_data):
+                return Response(
+                    {'members': ['El grupo debe tener al menos un miembro con rol de editor.']},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            group.members.all().delete()
+            for m in members_data:
+                FormOwnershipMember.objects.create(
+                    group=group,
+                    entity_type=m['entity_type'],
+                    entity_id=m['entity_id'],
+                    is_editor=bool(m.get('is_editor', False)),
+                )
+
+        return Response(FormOwnershipGroupSerializer(group).data)
+
+    @swagger_auto_schema(tags=["Grupos de propiedad"], operation_summary="Elimina un grupo de propiedad (superadmin)")
+    def destroy(self, request, pk=None):
+        try:
+            group = self.get_queryset().get(pk=pk)
+        except FormOwnershipGroup.DoesNotExist:
+            return Response({'detail': 'Grupo de propiedad no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        if group.forms.exists():
+            return Response(
+                {'detail': 'No se puede eliminar un grupo que tiene formularios asociados.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        group.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class FormFieldTypeViewSet(BaseViewSet):
@@ -127,7 +406,7 @@ class FormFieldTypeViewSet(BaseViewSet):
 
 
 class FormViewSet(BaseViewSet):
-    queryset = Form.objects.select_related('form_procedure', 'form_type').all()
+    queryset = Form.objects.select_related('ownership_group', 'form_type').all()
     parser_classes = [JSONParser, MultiPartParser, FormParser]
 
     def get_permissions(self):
@@ -135,19 +414,40 @@ class FormViewSet(BaseViewSet):
             return [IsAuthenticated(), IsAdmin()]
         return [IsAuthenticated()]
 
+    def _get_visible_queryset(self, request):
+        """
+        Returns a queryset of Forms visible to the requesting user:
+        - Super admins and unauthenticated/student callers: all forms.
+        - Non-super admins: only forms whose ownership_group contains the
+          admin's entity as a member.
+        """
+        qs = self.get_queryset()
+        if request.user.is_staff and not request.user.is_superuser:
+            memberships = get_user_ownership_memberships(request.user)
+            group_ids = memberships.values_list('group_id', flat=True)
+            qs = qs.filter(ownership_group_id__in=group_ids)
+        return qs
+
+    def _check_editor_for_group(self, request, group_id):
+        """Returns True if the user is an editor in the given group (or is super admin)."""
+        if request.user.is_superuser:
+            return True
+        memberships = get_user_ownership_memberships(request.user)
+        return memberships.filter(group_id=group_id, is_editor=True).exists()
+
     @swagger_auto_schema(
         tags=["Formularios"],
-        operation_summary="Lista formularios, opcionalmente filtrados por tipo de trámite",
+        operation_summary="Lista formularios, opcionalmente filtrados por grupo de propiedad",
         manual_parameters=[
-            openapi.Parameter('procedure_id', openapi.IN_QUERY, type=openapi.FORMAT_INT64,
-                              description="ID del tipo de trámite")
+            openapi.Parameter('group_id', openapi.IN_QUERY, type=openapi.FORMAT_INT64,
+                              description="ID del grupo de propiedad")
         ],
     )
     def list(self, request):
-        qs = self.get_queryset()
-        procedure_id = request.query_params.get('procedure_id')
-        if procedure_id:
-            qs = qs.filter(form_procedure_id=procedure_id)
+        qs = self._get_visible_queryset(request)
+        group_id = request.query_params.get('group_id')
+        if group_id:
+            qs = qs.filter(ownership_group_id=group_id)
         return Response(FormListSerializer(qs, many=True).data)
 
     @swagger_auto_schema(tags=["Formularios"], operation_summary="Detalle de un formulario con sus campos")
@@ -157,6 +457,7 @@ class FormViewSet(BaseViewSet):
                 'fields__form_field_type',
                 'fields__options',
                 'fields__catalog__items',
+                'ownership_group__members',
             ).get(pk=pk)
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
@@ -175,6 +476,14 @@ class FormViewSet(BaseViewSet):
         serializer = FormCreateSerializer(data=data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        target_group_id = serializer.validated_data.get('ownership_group_id')
+        if not self._check_editor_for_group(request, target_group_id):
+            return Response(
+                {'detail': 'No tenés permiso de editor en este grupo de propiedad.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         try:
             form = FormService().create_form(serializer.validated_data)
         except ValidationError as e:
@@ -189,9 +498,15 @@ class FormViewSet(BaseViewSet):
     )
     def update(self, request, pk=None):
         try:
-            form = self.get_queryset().get(pk=pk)
+            form = self._get_visible_queryset(request).get(pk=pk)
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if not self._check_editor_for_group(request, form.ownership_group_id):
+            return Response(
+                {'detail': 'No tenés permiso de editor en este grupo de propiedad.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         try:
             data = _maybe_upload_template(request, request.data)
@@ -232,9 +547,14 @@ class FormViewSet(BaseViewSet):
     @swagger_auto_schema(tags=["Formularios"], operation_summary="Elimina un formulario (admin)")
     def destroy(self, request, pk=None):
         try:
-            form = self.get_queryset().get(pk=pk)
+            form = self._get_visible_queryset(request).get(pk=pk)
         except Form.DoesNotExist:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        if not self._check_editor_for_group(request, form.ownership_group_id):
+            return Response(
+                {'detail': 'No tenés permiso de editor en este grupo de propiedad.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
         form.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
@@ -264,14 +584,34 @@ class FormSubmissionViewSet(BaseViewSet):
         form = self._get_form(form_pk)
         if not form:
             return Response({'detail': 'Formulario no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
-        submissions = (
+
+        # Super admins see all submissions; other admins must be a member of the form's group.
+        if not request.user.is_superuser:
+            memberships = get_user_ownership_memberships(request.user)
+            is_member = memberships.filter(group=form.ownership_group).exists()
+            if not is_member:
+                return Response({'detail': 'No tenés acceso a este formulario.'}, status=status.HTTP_403_FORBIDDEN)
+
+        submissions_qs = (
             FormSubmission.objects
             .filter(form=form)
             .select_related('form', 'user__student', 'status', 'teacher__user')
-            .prefetch_related('answers__field')
+            .prefetch_related('answers__field__form_field_type')
             .order_by('-submitted_at')
         )
-        return Response(FormSubmissionListSerializer(submissions, many=True).data)
+
+        # Non-editor members can only see submissions directed to their entity.
+        if not request.user.is_superuser:
+            is_editor = memberships.filter(group=form.ownership_group, is_editor=True).exists()
+            if not is_editor:
+                member = memberships.filter(group=form.ownership_group).first()
+                if member:
+                    submissions_qs = submissions_qs.filter(
+                        recipient_entity_type=member.entity_type,
+                        recipient_entity_id=member.entity_id,
+                    )
+
+        return Response(FormSubmissionListSerializer(submissions_qs, many=True).data)
 
     @swagger_auto_schema(
         tags=["Formularios — Respuestas"],
@@ -294,7 +634,11 @@ class FormSubmissionViewSet(BaseViewSet):
                 parsed = json.loads(raw_answers)
             except json.JSONDecodeError:
                 return Response({'answers': ['Formato de respuestas inválido.']}, status=status.HTTP_400_BAD_REQUEST)
-            data_for_serializer = {'answers': parsed}
+            data_for_serializer = {
+                'answers': parsed,
+                'recipient_entity_type': request.data.get('recipient_entity_type'),
+                'recipient_entity_id': request.data.get('recipient_entity_id'),
+            }
         else:
             data_for_serializer = request.data
 
@@ -322,12 +666,15 @@ class FormSubmissionViewSet(BaseViewSet):
             padron = request.user.student.padron if hasattr(request.user, 'student') else 'unknown'
             timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
             key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{ext}"
-            url = storage_service.upload_object(file_obj, key)
+            storage_service.upload_object(file_obj, key)
             existing = next((a for a in answers_data if a['field_id'] == adjunto_field.id), None)
             if existing:
-                existing['answer_value'] = url
+                existing['answer_value'] = key
             else:
-                answers_data.append({'field_id': adjunto_field.id, 'answer_value': url})
+                answers_data.append({'field_id': adjunto_field.id, 'answer_value': key})
+
+        recipient_entity_type = serializer.validated_data.get('recipient_entity_type') or None
+        recipient_entity_id = serializer.validated_data.get('recipient_entity_id')
 
         try:
             submission = FormService().create_digital_submission(
@@ -335,6 +682,8 @@ class FormSubmissionViewSet(BaseViewSet):
                 user=request.user,
                 answers_data=answers_data,
                 teacher=teacher,
+                recipient_entity_type=recipient_entity_type,
+                recipient_entity_id=recipient_entity_id,
             )
         except ValidationError as e:
             return Response(e.message_dict if hasattr(e, 'message_dict') else e.messages,
@@ -379,7 +728,22 @@ class FormSubmissionViewSet(BaseViewSet):
         padron = request.user.student.padron if request.user.is_student else 'unknown'
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
         key = f"submissions/{form.id}/{padron}_{timestamp}_{uuid.uuid4().hex}{ext}"
-        url = storage_service.upload_object(file_obj, key)
+        storage_service.upload_object(file_obj, key)
+
+        raw_recipient_type = request.data.get('recipient_entity_type') or None
+        raw_recipient_id = request.data.get('recipient_entity_id')
+        try:
+            recipient_entity_id_val = int(raw_recipient_id) if raw_recipient_id is not None else None
+        except (ValueError, TypeError):
+            recipient_entity_id_val = None
+
+        try:
+            resolved_type, resolved_id = FormService._resolve_recipient(
+                form, raw_recipient_type, recipient_entity_id_val,
+            )
+        except ValidationError as e:
+            return Response(e.message_dict if hasattr(e, 'message_dict') else e.messages,
+                            status=status.HTTP_400_BAD_REQUEST)
 
         sent_status = FormSubmissionStatus.objects.get(
             form_submission_status_value=FormSubmissionStatus.SENT,
@@ -390,8 +754,10 @@ class FormSubmissionViewSet(BaseViewSet):
             status=sent_status,
             teacher=teacher,
             teacher_status=FormSubmission.TEACHER_STATUS_PENDING if teacher else None,
+            recipient_entity_type=resolved_type,
+            recipient_entity_id=resolved_id,
         )
-        FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=url)
+        FormAnswer.objects.create(submission=submission, field=adjunto_field, answer_value=key)
 
         return Response(FormSubmissionListSerializer(_fetch_submission_full(submission.pk)).data,
                         status=status.HTTP_201_CREATED)
@@ -409,7 +775,7 @@ class FormSubmissionViewSet(BaseViewSet):
             FormSubmission.objects
             .filter(form=form, user=request.user)
             .select_related('form', 'user__student', 'status', 'teacher__user')
-            .prefetch_related('answers__field')
+            .prefetch_related('answers__field__form_field_type')
             .order_by('-submitted_at')
         )
         return Response(FormSubmissionListSerializer(submissions, many=True).data)
@@ -433,12 +799,13 @@ class SubmissionAdminViewSet(BaseViewSet):
         for answer in submission.answers.all():
             if (answer.field.form_field_type.form_field_type_value == 'adjunto'
                     and answer.answer_value):
-                key = storage_service.key_from_url(answer.answer_value)
-                if key:
-                    try:
-                        storage_service.delete_object(key)
-                    except ClientError as e:
-                        logger.warning('Failed to delete file %s during submission deletion: %s', key, e)
+                # New submissions store the relative key directly; legacy rows may
+                # hold an absolute URL, so fall back to extracting the key from it.
+                key = storage_service.key_from_url(answer.answer_value) or answer.answer_value
+                try:
+                    storage_service.delete_object(key)
+                except ClientError as e:
+                    logger.warning('Failed to delete file %s during submission deletion: %s', key, e)
 
         submission.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -453,8 +820,8 @@ class SubmissionAdminViewSet(BaseViewSet):
         try:
             submission = (
                 self.get_queryset()
-                .select_related('form', 'status', 'user__student', 'teacher__user')
-                .prefetch_related('answers__field')
+                .select_related('form__ownership_group', 'status', 'user__student', 'teacher__user')
+                .prefetch_related('answers__field__form_field_type')
                 .get(pk=pk)
             )
         except FormSubmission.DoesNotExist:
@@ -464,6 +831,22 @@ class SubmissionAdminViewSet(BaseViewSet):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+        # Only the designated recipient can change the submission status (super admins bypass).
+        if (
+            not request.user.is_superuser
+            and submission.recipient_entity_type
+            and submission.recipient_entity_id
+        ):
+            memberships = get_user_ownership_memberships(request.user)
+            is_recipient = memberships.filter(
+                entity_type=submission.recipient_entity_type,
+                entity_id=submission.recipient_entity_id,
+            ).exists()
+            if not is_recipient:
+                return Response(
+                    {'detail': 'Solo el destinatario de la respuesta puede cambiar su estado.'},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
         new_status_value = serializer.validated_data['status']
 
         if new_status_value == FormSubmissionStatus.APPROVED:
@@ -491,7 +874,7 @@ class TeacherFormSubmissionViewSet(BaseViewSet):
             FormSubmission.objects
             .filter(teacher=request.user.teacher)
             .select_related('form', 'user__student', 'status', 'teacher__user')
-            .prefetch_related('answers__field')
+            .prefetch_related('answers__field__form_field_type')
             .order_by('-submitted_at')
         )
 

@@ -29,7 +29,10 @@ class LocalStorageService(StorageService):
         with open(full_path, 'wb') as f:
             f.write(file_content)
 
-        return f"{self.public_url_prefix}{file_name}"
+        return self.public_url(file_name)
+
+    def public_url(self, key: str) -> str:
+        return f"{self.public_url_prefix}{key}"
 
     def download_object(self, file_name: str) -> io.IOBase:
         full_path = os.path.join(self.media_root, file_name)
@@ -51,3 +54,6 @@ class LocalStorageService(StorageService):
 
     def presign_url(self, url: str, expiration: int = 3600) -> Optional[str]:
         return url if url else None
+
+    def get_download_url(self, file_name: str, filename_hint: str, expiration: int = 60) -> str | None:
+        return None

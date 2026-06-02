@@ -27,7 +27,7 @@ class SemesterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Semester
-        fields = ('id', 'year_moment', 'start_date', 'commission', 'evaluations', 'students', 'classes_amount', 'minimum_attendance', 'schedules')
+        fields = ('id', 'year_moment', 'start_date', 'commission', 'evaluations', 'students', 'classes_amount', 'minimum_attendance', 'schedules', 'calendar_source_url')
 
 
 class SemesterCommissionStudentSerializer(StudentSerializer):
@@ -71,6 +71,7 @@ class SemesterCommissionSerializer(serializers.ModelSerializer):
             'minimum_attendance',
             'schedules',
             'attendance_qrs_count',
+            'calendar_source_url',
         )
 
     def get_attendance_qrs_count(self, obj):

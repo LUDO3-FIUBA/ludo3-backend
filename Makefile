@@ -24,6 +24,10 @@ migrate:
 	docker exec -it web python3 manage.py initdata
 .PHONY: migrate
 
+merge:
+	docker exec -it web python3 manage.py makemigrations --merge
+.PHONY: merge
+
 down:
 	docker compose -f docker-compose.yml down
 .PHONY: down
@@ -38,3 +42,29 @@ restart: down up-local
 test:
 	docker exec web python3 manage.py test
 .PHONY: test
+
+test-deprecations:
+	docker exec web python3 \
+		-W error::DeprecationWarning \
+		-W error::PendingDeprecationWarning \
+		-W ignore::DeprecationWarning:pkg_resources \
+		-W ignore::DeprecationWarning:coreapi \
+		manage.py test
+
+.PHONY: test-deprecations
+
+test-verbose:
+	docker exec web python3 manage.py test --verbosity=2
+.PHONY: test-verbose
+
+check:
+	docker exec web python3 manage.py check --deploy
+.PHONY: check
+
+shell:
+	docker exec -it web python3 manage.py shell
+.PHONY: shell
+
+pip-freeze:
+	docker exec web pip freeze > requirements.lock.txt
+.PHONY: pip-freeze
