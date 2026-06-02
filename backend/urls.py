@@ -9,6 +9,8 @@ from .views import CustomGCMDeviceViewSet
 from .views.contact_views import ContactViewSet, StudentSearchView
 from .views.study_group_views import StudyGroupViewSet
 from .views.guarani_views import OfertaComisionesView
+from .views.guarani_views import OfertaComisionesView, PlanCarreraView
+from .views.career_views import StudentCareerView
 from .views.user_views import UserCustomViewSet, simple_login
 from .views.google_auth_views import google_sign_in, google_complete_registration
 from .views.password_views import change_password, forgot_password, reset_password_confirm
@@ -99,6 +101,8 @@ urlpatterns = [
     path('auth/google/', google_sign_in, name='google-sign-in'),
     path('auth/google/registration/', google_complete_registration, name='google-registration'),
 
+    path('api/students/careers/', StudentCareerView.as_view(), name='student-careers'),
+    path('api/guarani/plan-carrera/', PlanCarreraView.as_view(), name='guarani-plan-carrera'),
     path('api/guarani/oferta-comisiones/', OfertaComisionesView.as_view(), name='guarani-oferta-comisiones'),
     path('api/students/search/', StudentSearchView.as_view(), name='student-search'),
 
