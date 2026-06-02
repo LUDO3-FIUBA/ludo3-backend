@@ -6,6 +6,9 @@ from rest_framework_nested import routers
 
 from . import views
 from .views import CustomGCMDeviceViewSet
+from .views.contact_views import ContactViewSet, StudentSearchView
+from .views.study_group_views import StudyGroupViewSet
+from .views.guarani_views import OfertaComisionesView
 from .views.guarani_views import OfertaComisionesView, PlanCarreraView
 from .views.career_views import StudentCareerView
 from .views.user_views import UserCustomViewSet, simple_login
@@ -56,6 +59,8 @@ router.register(r'catalogs', views.CatalogViewSet, 'catalog')
 router.register(r'student_identity', views.StudentIdentityViewSet, 'student-identity')
 router.register(r'admin/notifications', views.NotificationAdminViewSet, 'admin-notification')
 router.register(r'teacher/notifications', views.NotificationTeacherViewSet, 'teacher-notification')
+router.register(r'contacts', ContactViewSet, 'contact')
+router.register(r'study-groups', StudyGroupViewSet, 'study-group')
 
 teacher_finals_router = routers.NestedSimpleRouter(router, r'finals', lookup='final')
 teacher_finals_router.register(r'final_exams', views.FinalExamTeacherViews, basename='final-final_exams')
@@ -100,6 +105,7 @@ urlpatterns = [
     path('api/students/careers/', StudentCareerView.as_view(), name='student-careers'),
     path('api/guarani/plan-carrera/', PlanCarreraView.as_view(), name='guarani-plan-carrera'),
     path('api/guarani/oferta-comisiones/', OfertaComisionesView.as_view(), name='guarani-oferta-comisiones'),
+    path('api/students/search/', StudentSearchView.as_view(), name='student-search'),
 
     path('docs/', schema_view.with_ui('swagger', cache_timeout=0),name='schema-swagger-ui')
 ]

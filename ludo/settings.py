@@ -44,8 +44,14 @@ globals().update(get_storage_settings())
 
 CSRF_COOKIE_SECURE=False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'salty-badlands-32978.herokuapp.com', 'ludo-backend.herokuapp.com']
-
+ALLOWED_HOSTS = [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '10.0.2.2',
+    'salty-badlands-32978.herokuapp.com',
+    'ludo-backend.herokuapp.com'
+]
 # CORS configuration for web app
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:19006",

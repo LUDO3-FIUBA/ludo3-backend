@@ -22,6 +22,7 @@ class Notification(models.Model):
     send_push = models.BooleanField(default=False, verbose_name="Enviar push")
     send_email = models.BooleanField(default=False, verbose_name="Enviar email")
     image = models.ImageField(upload_to='notifications/', null=True, blank=True, verbose_name="Imagen")
+    action_url = models.CharField(max_length=200, null=True, blank=True, verbose_name="URL de acción")
     semester = models.ForeignKey(
         Semester,
         on_delete=models.CASCADE,

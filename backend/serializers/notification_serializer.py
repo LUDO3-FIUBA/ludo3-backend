@@ -95,7 +95,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         model = Notification
         fields = (
             'id', 'title', 'message', 'sender', 'sender_name', 'created_at',
-            'is_urgent', 'send_push', 'send_email', 'image', 'semester_info',
+            'is_urgent', 'send_push', 'send_email', 'image', 'semester_info', 'action_url',
         )
 
 
