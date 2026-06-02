@@ -72,6 +72,7 @@ class User(AbstractUser):
     dni = models.CharField(validators=[validate_dni], max_length=9, unique=True, blank=False, verbose_name="DNI")
     github_url = models.URLField(max_length=255, blank=True, verbose_name="GitHub")
     linkedin_url = models.URLField(max_length=255, blank=True, verbose_name="LinkedIn")
+    profile_photo = models.CharField(max_length=500, blank=True, null=True, verbose_name="Foto de perfil")
 
 
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")
