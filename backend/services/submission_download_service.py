@@ -1,7 +1,9 @@
 from django.http import FileResponse
+from rest_framework.response import Response
 from django.core.exceptions import PermissionDenied
 from backend.models import EvaluationSubmission
 from backend.models.teacher import Teacher
+from backend.services.storage import get_storage_service
 from backend.views.utils import teacher_not_in_commission_staff
 
 
@@ -32,10 +34,15 @@ class SubmissionDownloadService:
 
     @staticmethod
     def _build_file_response(submission: EvaluationSubmission):
-        file_obj = submission.submission_file.open('rb')
         filename = submission.original_filename or 'submission'
-        
+
+        # Try provider-native download URL first
+        url = get_storage_service().get_download_url(submission.submission_file.name, filename)
+        if url:
+            return Response({'download_url': url})
+
+        # Fallback: stream through Django
+        file_obj = submission.submission_file.open('rb')
         response = FileResponse(file_obj, content_type='application/octet-stream')
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        
         return response

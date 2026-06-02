@@ -1,5 +1,5 @@
 from django import forms
-from django.conf.urls import url
+from django.urls import re_path
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.db import transaction
@@ -183,13 +183,13 @@ class StudentPreRegistered(StudentCommonAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<student_id>.+)/revisar/$',
+            re_path(r'^(?P<student_id>.+)/revisar/$',
                 self.admin_site.admin_view(self.revisar),
                 name='revisar'),
-            url(r'^(?P<student_id>.+)/aprobar/$',
+            re_path(r'^(?P<student_id>.+)/aprobar/$',
                 self.admin_site.admin_view(self.aprobar),
                 name='aprobar'),
-            url(r'^(?P<student_id>.+)/rechazar/$',
+            re_path(r'^(?P<student_id>.+)/rechazar/$',
                 self.admin_site.admin_view(self.rechazar),
                 name='rechazar'),
         ]
@@ -327,10 +327,10 @@ class FinalToApproveAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<final_id>.+)/approve/$',
+            re_path(r'^(?P<final_id>.+)/approve/$',
                 self.admin_site.admin_view(self.approve_action),
                 name='approve_action'),
-            url(r'^(?P<final_id>.+)/reject/$',
+            re_path(r'^(?P<final_id>.+)/reject/$',
                 self.admin_site.admin_view(self.reject_action),
                 name='reject_action'),
         ]
@@ -412,7 +412,7 @@ class FinalAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<final_id>.+)/download/$',
+            re_path(r'^(?P<final_id>.+)/download/$',
                 self.admin_site.admin_view(self.download_action),
                 name='download_action')
         ]

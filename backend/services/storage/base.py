@@ -87,3 +87,11 @@ class StorageService(ABC):
             A URL the client can fetch, or None if `url` is empty.
         """
         pass
+
+    @abstractmethod
+    def get_download_url(self, file_name: str, filename_hint: str, expiration: int = 60) -> str | None:
+        """
+        Return a URL that triggers a download with the correct Content-Disposition.
+        Return None to fall back to streaming through Django.
+        """
+        pass

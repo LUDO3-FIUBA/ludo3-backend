@@ -51,3 +51,6 @@ class LocalStorageService(StorageService):
 
     def presign_url(self, url: str, expiration: int = 3600) -> Optional[str]:
         return url if url else None
+
+    def get_download_url(self, file_name: str, filename_hint: str, expiration: int = 60) -> str | None:
+        return None
