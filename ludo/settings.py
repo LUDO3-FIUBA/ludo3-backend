@@ -44,7 +44,7 @@ globals().update(get_storage_settings())
 
 CSRF_COOKIE_SECURE=False
 
-ALLOWED_HOSTS = [
+ALLOWED_HOSTS = ['*'] if DEBUG else [
     'localhost',
     '127.0.0.1',
     '0.0.0.0',
