@@ -144,3 +144,30 @@ class ContactViewSetTests(APITestCase):
         self.client.logout()
         response = self.client.get(CONTACTS_URI)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_accepted_contact_exposes_linkedin_and_github(self):
+        self.other.user.linkedin_url = 'https://linkedin.com/in/other'
+        self.other.user.github_url = 'https://github.com/other'
+        self.other.user.save()
+        Contact.objects.create(
+            from_student=self.student, to_student=self.other, status=Contact.Status.ACCEPTED
+        )
+        response = self.client.get(CONTACTS_URI)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        contact_payload = response.data[0]['contact']
+        self.assertEqual(contact_payload['linkedin_url'], 'https://linkedin.com/in/other')
+        self.assertEqual(contact_payload['github_url'], 'https://github.com/other')
+        self.assertIn('profile_photo', contact_payload)
+
+    def test_pending_contact_does_not_expose_linkedin_and_github(self):
+        self.other.user.linkedin_url = 'https://linkedin.com/in/other'
+        self.other.user.github_url = 'https://github.com/other'
+        self.other.user.save()
+        Contact.objects.create(
+            from_student=self.student, to_student=self.other, status=Contact.Status.PENDING
+        )
+        response = self.client.get(CONTACTS_URI)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        contact_payload = response.data[0]['contact']
+        self.assertNotIn('linkedin_url', contact_payload)
+        self.assertNotIn('github_url', contact_payload)
