@@ -15,6 +15,15 @@ class StudentContactSerializer(serializers.ModelSerializer):
         return f"{obj.user.first_name} {obj.user.last_name}".strip()
 
 
+class StudentContactProfileSerializer(StudentContactSerializer):
+    linkedin_url = serializers.CharField(source='user.linkedin_url', allow_blank=True, default='')
+    github_url = serializers.CharField(source='user.github_url', allow_blank=True, default='')
+    profile_photo = serializers.CharField(source='user.profile_photo', allow_null=True, default=None)
+
+    class Meta(StudentContactSerializer.Meta):
+        fields = StudentContactSerializer.Meta.fields + ('linkedin_url', 'github_url', 'profile_photo')
+
+
 class ContactSerializer(serializers.ModelSerializer):
     contact = serializers.SerializerMethodField()
     is_sender = serializers.SerializerMethodField()
@@ -26,9 +35,10 @@ class ContactSerializer(serializers.ModelSerializer):
 
     def get_contact(self, obj):
         requesting_student = self.context.get('student')
-        if obj.from_student == requesting_student:
-            return StudentContactSerializer(obj.to_student).data
-        return StudentContactSerializer(obj.from_student).data
+        other = obj.to_student if obj.from_student == requesting_student else obj.from_student
+        if obj.status == Contact.Status.ACCEPTED:
+            return StudentContactProfileSerializer(other).data
+        return StudentContactSerializer(other).data
 
     def get_is_sender(self, obj):
         requesting_student = self.context.get('student')
