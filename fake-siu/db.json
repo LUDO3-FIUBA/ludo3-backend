@@ -1,46 +1,4 @@
 {
-  "departamentos": [
-    {
-      "id": 1,
-      "nombre": "Matemática",
-      "codigos": [
-        61,
-        81
-      ]
-    },
-    {
-      "id": 2,
-      "nombre": "Física",
-      "codigos": [
-        62,
-        82
-      ]
-    },
-    {
-      "id": 3,
-      "nombre": "Computación",
-      "codigos": [
-        75,
-        95
-      ]
-    },
-    {
-      "id": 4,
-      "nombre": "Química",
-      "codigos": [
-        63,
-        83
-      ]
-    },
-    {
-      "id": 5,
-      "nombre": "Electrónica",
-      "codigos": [
-        66,
-        86
-      ]
-    }
-  ],
   "materias": [
     {
       "id": 1,

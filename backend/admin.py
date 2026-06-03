@@ -10,14 +10,10 @@ from django.utils.html import format_html
 
 from .forms import StaffCreateForm
 from .models import *
+from .permissions import get_admin_department_id
 from .services.notification_service import NotificationService
 from .services.siu_service import SiuService
-from .utils import memoized
 
-
-@memoized
-def departments():
-    return SiuService().list_departments()
 
 class AuditLogAdmin(admin.ModelAdmin):
 
@@ -56,9 +52,6 @@ class PasswordResetOTPAdmin(admin.ModelAdmin):
         return False
 
 admin.site.register(Commission)
-@memoized
-def subjects():
-    return SiuService().list_subjects()
 
 
 class StaffUser(User):
@@ -319,9 +312,9 @@ class FinalToApproveAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if not request.user.is_superuser and request.user.staff.department_siu_id:
-            owning_subjects = SiuService().list_subjects({"departamentoId": request.user.staff.department_siu_id})
-            qs = qs.filter(subject_siu_id__in=[s["id"] for s in owning_subjects])
+        dept_id = get_admin_department_id(request.user)
+        if dept_id is not None:
+            qs = qs.filter(commissions__department_id=dept_id).distinct()
         return qs.filter(status=Final.Status.DRAFT)
 
     def get_urls(self):
@@ -337,11 +330,8 @@ class FinalToApproveAdmin(admin.ModelAdmin):
         return my_urls + urls
 
     def department(self, obj):
-        for subject in subjects():
-            if subject['id'] == obj.subject_siu_id:
-                for department in departments():
-                    if department['id'] == subject['department_id']:
-                        return department['name']
+        commission = obj.commissions.first()
+        return commission.department.name if commission and commission.department else None
     department.short_description = "Departamento"
 
     def approve(self, obj):
@@ -404,9 +394,9 @@ class FinalAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if not request.user.is_superuser:
-            owning_subjects = SiuService().list_subjects({"departamentoId": request.user.staff.department_siu_id})
-            qs = qs.filter(subject_siu_id__in=[s["id"] for s in owning_subjects])
+        dept_id = get_admin_department_id(request.user)
+        if dept_id is not None:
+            qs = qs.filter(commissions__department_id=dept_id).distinct()
         return qs.filter(status__in=(Final.Status.OPEN, Final.Status.PENDING_ACT, Final.Status.ACT_SENT))
 
     def get_urls(self):
@@ -422,11 +412,8 @@ class FinalAdmin(admin.ModelAdmin):
     search_fields = ('subject_name', 'date',)
 
     def department(self, obj):
-        for subject in subjects():
-            if subject['id'] == obj.subject_siu_id:
-                for department in departments():
-                    if department['id'] == subject['department_id']:
-                        return department['name']
+        commission = obj.commissions.first()
+        return commission.department.name if commission and commission.department else None
     department.short_description = "Departamento"
 
     def download_qr(self, obj):

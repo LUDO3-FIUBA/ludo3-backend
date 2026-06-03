@@ -33,11 +33,6 @@ class FaceRegistrationPendingError(APIException):
     default_detail = 'El registro facial del usuario está incompleto.'
 
 
-class UserTypeMisMatch(APIException):
-    status_code = status.HTTP_404_NOT_FOUND
-    default_code = 'invalid_user_type'
-
-
 class InvalidSubjectCodeError(APIException):
     status_code = status.HTTP_404_NOT_FOUND
     default_code = 'invalid_subject_code'

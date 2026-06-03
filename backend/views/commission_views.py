@@ -17,11 +17,6 @@ class CommissionViewSet(BaseViewSet):
     queryset = Commission.objects.all()
     serializer_class = CommissionSerializer
 
-    #def list(self, request, *args, **kwargs):
-    #    result = SiuService().list_commissions(request.user.teacher.siu_id)
-    #    return respond_plain(result)
-
-    
     @swagger_auto_schema(
         tags=["Commissions"],
         operation_summary="Gets all commissions"
