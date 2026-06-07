@@ -2,6 +2,7 @@ from django.db import models
 from django.utils import timezone
 
 from .academic_calendar_event import AcademicCalendarEvent
+from .department import Department
 from .semester import Semester
 from .user import User
 
@@ -30,6 +31,14 @@ class Notification(models.Model):
         blank=True,
         related_name='notifications',
         verbose_name="Cuatrimestre"
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='notifications',
+        verbose_name="Departamento"
     )
 
     class Meta:
