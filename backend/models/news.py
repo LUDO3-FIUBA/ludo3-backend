@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from backend.news_tags import NEWS_TAG_CHOICES
 
+from .department import Department
 from .user import User
 
 
@@ -18,6 +19,14 @@ class News(models.Model):
         blank=True,
         related_name='posted_news',
         verbose_name="Autor",
+    )
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='news',
+        verbose_name="Departamento",
     )
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(default=timezone.now)

@@ -43,6 +43,7 @@ class NotificationCreateSerializer(serializers.Serializer):
     send_push = serializers.BooleanField(required=False, default=False)
     send_email = serializers.BooleanField(required=False, default=False)
     image = AbsoluteImageField(required=False, allow_null=True)
+    department_id = serializers.IntegerField(required=False, allow_null=True)
     recipient_groups = serializers.ListField(
         child=serializers.ChoiceField(choices=RECIPIENT_GROUPS),
         required=False,
@@ -72,6 +73,12 @@ class NotificationSerializer(serializers.ModelSerializer):
     image = AbsoluteImageField(required=False, allow_null=True)
     sender_name = serializers.SerializerMethodField()
     semester_info = serializers.SerializerMethodField()
+    department = serializers.SerializerMethodField()
+
+    def get_department(self, obj):
+        if not obj.department_id:
+            return None
+        return {'id': obj.department_id, 'name': obj.department.name}
 
     def get_sender_name(self, obj):
         sender = obj.sender
@@ -96,6 +103,7 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'title', 'message', 'sender', 'sender_name', 'created_at',
             'is_urgent', 'send_push', 'send_email', 'image', 'semester_info', 'action_url',
+            'department',
         )
 
 
@@ -110,10 +118,19 @@ class UserNotificationSerializer(serializers.ModelSerializer):
 class NotificationAdminSerializer(serializers.ModelSerializer):
     image = AbsoluteImageField(required=False, allow_null=True)
     recipient_count = serializers.SerializerMethodField()
+    department = serializers.SerializerMethodField()
 
     def get_recipient_count(self, obj):
         return obj.user_notifications.count()
 
+    def get_department(self, obj):
+        if not obj.department_id:
+            return None
+        return {'id': obj.department_id, 'name': obj.department.name}
+
     class Meta:
         model = Notification
-        fields = ('id', 'title', 'message', 'sender', 'created_at', 'is_urgent', 'send_push', 'send_email', 'image', 'recipient_count')
+        fields = (
+            'id', 'title', 'message', 'sender', 'created_at', 'is_urgent',
+            'send_push', 'send_email', 'image', 'recipient_count', 'department',
+        )
