@@ -51,32 +51,59 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         max_length=7,
         help_text="Padrón del estudiante (5 a 7 dígitos)"
     )
+    # Campo legajo solo aplica para docentes
+    legajo = serializers.CharField(
+        required=False,
+        min_length=5,
+        max_length=8,
+        help_text="Legajo del docente (5 a 8 caracteres)"
+    )
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=50)
     # Email is not required from the client — it's fetched from SIU Guaraní by DNI for students.
     email = serializers.EmailField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'is_student', 'is_teacher', 'padron', 'password')
+        fields = (
+            'dni', 'email', 'is_student', 'is_teacher',
+            'padron', 'legajo', 'first_name', 'last_name', 'password',
+        )
 
     def validate(self, attrs):
         is_student = attrs.get('is_student', False)
+        is_teacher = attrs.get('is_teacher', False)
         padron = attrs.get('padron')
+        legajo = attrs.get('legajo')
         password = attrs.get('password')
         dni = attrs.get('dni')
+
+        if is_student and is_teacher:
+            raise serializers.ValidationError({'is_teacher': 'Un usuario no puede registrarse como alumno y docente al mismo tiempo.'})
+
+        if not is_student and not is_teacher:
+            raise serializers.ValidationError({'is_student': 'Debe indicar si es alumno o docente.'})
+
+        if not password:
+            raise serializers.ValidationError({'password': 'La contraseña es obligatoria.'})
 
         if is_student:
             if not padron:
                 raise serializers.ValidationError({'padron': 'El padrón es obligatorio para estudiantes'})
             if not padron.isdigit():
                 raise serializers.ValidationError({'padron': 'El padrón debe contener solo números'})
-            if not password:
-                raise serializers.ValidationError({'password': 'La contraseña es obligatoria para estudiantes'})
 
             # Fetch email from SIU Guaraní; ignore any email the client sent.
             attrs['email'] = fetch_alumno_email_from_guarani(dni)
-        else:
+        else:  # is_teacher
+            if not legajo:
+                raise serializers.ValidationError({'legajo': 'El legajo es obligatorio para docentes.'})
             if not attrs.get('email'):
-                raise serializers.ValidationError({'email': 'El email es obligatorio.'})
+                raise serializers.ValidationError({'email': 'El email es obligatorio para docentes.'})
+            if not attrs.get('first_name'):
+                raise serializers.ValidationError({'first_name': 'El nombre es obligatorio para docentes.'})
+            if not attrs.get('last_name'):
+                raise serializers.ValidationError({'last_name': 'El apellido es obligatorio para docentes.'})
 
         return attrs
 
@@ -114,10 +141,14 @@ class UserCustomGetSerializer(UserSerializer):
     legajo = serializers.SerializerMethodField()
     face_registered = serializers.SerializerMethodField()
     department_id = serializers.SerializerMethodField()
+    secretary_id = serializers.SerializerMethodField()
+    is_bedelia = serializers.SerializerMethodField()
+    profile_photo = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'department_id', 'file', 'legajo', 'github_url', 'linkedin_url', 'face_registered')
+
+        fields = ('dni', 'email', 'first_name', 'last_name', 'is_student', 'is_teacher', 'is_staff', 'is_superuser', 'is_bedelia', 'department_id', 'secretary_id', 'file', 'legajo', 'github_url', 'linkedin_url', 'face_registered', 'profile_photo')
 
     def get_legajo(self, obj):
         if obj.is_teacher:
@@ -137,12 +168,32 @@ class UserCustomGetSerializer(UserSerializer):
         staff = getattr(obj, 'staff', None)
         return staff.department_id if staff else None
 
+    def get_secretary_id(self, obj):
+        if not obj.is_staff or obj.is_superuser:
+            return None
+        staff = getattr(obj, 'staff', None)
+        return staff.secretary_id if staff else None
+
+    def get_is_bedelia(self, obj):
+        if not obj.is_staff or obj.is_superuser:
+            return False
+        staff = getattr(obj, 'staff', None)
+        return bool(staff and staff.is_bedelia)
+
+    def get_profile_photo(self, obj):
+        if not obj.profile_photo:
+            return None
+        presigned = storage_service.presign_url(obj.profile_photo)
+        return presigned or obj.profile_photo
+
 
 class UserMeUpdateSerializer(serializers.ModelSerializer):
     """Editable profile fields on the /me PATCH endpoint."""
+    profile_photo = serializers.CharField(allow_null=True, allow_blank=True, required=False)
+
     class Meta:
         model = User
-        fields = ('github_url', 'linkedin_url')
+        fields = ('github_url', 'linkedin_url', 'profile_photo')
 
 
 class SimpleLoginSerializer(serializers.Serializer):

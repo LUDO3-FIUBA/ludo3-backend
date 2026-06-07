@@ -1,5 +1,5 @@
 import base64
-import collections
+from collections.abc import Hashable
 import functools
 from datetime import datetime, timezone
 
@@ -53,7 +53,7 @@ class memoized(object):
         self.cache = {}
 
     def __call__(self, *args):
-        if not isinstance(args, collections.Hashable):
+        if not isinstance(args, Hashable):
             # uncacheable. a list, for instance.
             # better to not cache than blow up.
             return self.func(*args)

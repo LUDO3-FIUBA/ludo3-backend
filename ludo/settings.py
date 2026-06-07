@@ -12,13 +12,16 @@ https://docs.djangoproject.com/en/3.0/ref/settings/
 
 import logging
 import os
+from datetime import timedelta
 
-import django_heroku
 import firebase_admin
 
 from ludo.storage_settings import get_storage_settings
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=os.environ.get('LOG_LEVEL', 'INFO').upper())
+logging.getLogger('botocore').setLevel(logging.WARNING)
+logging.getLogger('boto3').setLevel(logging.WARNING)
+logging.getLogger('s3transfer').setLevel(logging.WARNING)
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -41,16 +44,25 @@ globals().update(get_storage_settings())
 
 CSRF_COOKIE_SECURE=False
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
-
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '0.0.0.0', 'salty-badlands-32978.herokuapp.com', 'ludo-backend.herokuapp.com']
-
+ALLOWED_HOSTS = ['*'] if DEBUG else [
+    'localhost',
+    '127.0.0.1',
+    '0.0.0.0',
+    '10.0.2.2',
+    'salty-badlands-32978.herokuapp.com',
+    'ludo-backend.herokuapp.com'
+]
 # CORS configuration for web app
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:19006",
     "http://127.0.0.1:19006",
+    "http://localhost:8081",
+    "http://127.0.0.1:8081",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + ['x-client']
 
 # Allow all origins in development (temporary solution)
 # TODO: Remove in production
@@ -68,7 +80,6 @@ AUTH_USER_MODEL = 'backend.User'
 
 LANGUAGE_CODE = 'es-AR'
 USE_I18N = True
-USE_L10N = True
 
 # Application definition
 
@@ -81,7 +92,6 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'rest_framework_swagger',
     'drf_yasg',
     'django.contrib.staticfiles',
     'django.contrib.postgres',
@@ -177,6 +187,11 @@ DJOSER = {
     'USER_ID_FIELD': 'dni'
 }
 
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=14),
+}
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
@@ -202,8 +217,6 @@ TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
-USE_L10N = True
-
 USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
@@ -211,8 +224,8 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
-# Activate Django-Heroku.
-django_heroku.settings(locals(), databases=False)
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+SWAGGER_USE_COMPAT_RENDERERS = False
 
 # If DATABASE_URL is set, use it (supports both local and remote databases)
 if os.environ.get('DATABASE_URL'):

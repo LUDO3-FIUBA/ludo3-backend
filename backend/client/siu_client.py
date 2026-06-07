@@ -1,6 +1,5 @@
 import os
 
-from backend.api_exceptions import UserTypeMisMatch
 from backend.client.client_handler import ClientHandler
 
 
@@ -28,33 +27,12 @@ class SiuClient:
         data = {'materia_id': subject_siu_id, 'timestamp': timestamp}
         return self._post(f"docentes/{teacher_siu_id}/finales", data=data)
 
-    def get_final(self, final_siu_id, teacher_siu_id):
-        return self._get(f"docentes/{teacher_siu_id}/finales/{final_siu_id}")
-
     def save_final_grades(self, final_siu_id, teacher_siu_id, grades):
         return self._post(f"docentes/{teacher_siu_id}/finales/{final_siu_id}/cargar_notas", data=grades)
 
     def create_act(self, final_siu_id, teacher_siu_id, grades): # TODO: fix no grades only padrones
         data = {"finalId": final_siu_id, "notas": grades}
         return self._post(f"docentes/{teacher_siu_id}/finales/{final_siu_id}/subir_acta", data=data)
-
-    def list_commissions(self, teacher_siu_id):
-        return self._get(f"docentes/{teacher_siu_id}/comisiones?_expand=materia")
-
-    def list_departments(self):
-        return self._get(f"departamentos")
-
-    def get_student(self, dni):
-        result = self._get(f"alumnos/?dni={dni}")
-        if len(result) != 1:
-            raise UserTypeMisMatch()
-        return result[0]
-
-    def get_teacher(self, dni):
-        result = self._get(f"docentes/?dni={dni}")
-        if len(result) != 1:
-            raise UserTypeMisMatch()
-        return result[0]
 
     def _post(self, url, params=None, data=None, headers={}):
         return self.handler.post(f"{self.SIU_URL}/{url}", params, data, self._add_api_key_header(headers))

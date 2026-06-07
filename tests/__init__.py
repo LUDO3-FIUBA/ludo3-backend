@@ -5,4 +5,5 @@ from .views.evaluation_teacher_views_tests import EvaluationTeacherViewsTests
 from .views.evaluation_submission_student_views_tests import EvaluationSubmissionStudentViewsTests
 from .views.notification_views_tests import NotificationCreateTests, NotificationListTests, NotificationMarkAsReadTests
 from .services.rule_engine_service_tests import RuleEngineServiceTests
+from .services.file_validator_service_tests import FileValidatorServiceTests
 from .views.attendance_student_views_tests import AttendanceStudentViewsTests

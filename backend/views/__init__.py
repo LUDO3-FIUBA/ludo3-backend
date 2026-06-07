@@ -9,6 +9,7 @@ from .commission_views import CommissionViewSet
 from .commissionInscription_views import CommissionInscriptionViewSet
 from .custom_gcm_device_viewset import CustomGCMDeviceViewSet
 from .evaluation_submission_student_views import EvaluationSubmissionViewSet
+from .evaluation_submission_download_views import EvaluationSubmissionDownloadView
 from .evaluation_submission_teacher_views import \
     EvaluationSubmissionTeacherViewSet
 from .evaluation_teacher_views import EvaluationTeacherViewSet
@@ -29,12 +30,14 @@ from .notification_admin_views import NotificationAdminViewSet
 from .notification_teacher_views import NotificationTeacherViewSet
 from .academic_calendar_event_views import AcademicCalendarEventViewSet
 from .department_views import DepartmentViewSet
+from .secretary_views import SecretaryViewSet
 from .news_views import NewsViewSet
+from .admin_finals_views import AdminFinalsViewSet
 from .commission_admin_views import CommissionAdminViewSet
 from .user_admin_views import UserAdminViewSet
 from .form_views import (
     FormTypeViewSet,
-    FormProcedureTypeViewSet,
+    FormOwnershipGroupViewSet,
     FormFieldTypeViewSet,
     FormSubmissionStatusViewSet,
     FormViewSet,
@@ -44,3 +47,5 @@ from .form_views import (
     CatalogViewSet,
 )
 from .student_identity_views import StudentIdentityViewSet
+from .guarani_views import OfertaComisionesView, PlanCarreraView
+from .bedelia_views import BedeliaClassroomChangeViewSet

@@ -3,14 +3,18 @@ from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
+from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from backend.permissions import IsTeacherOrAdmin
-from backend.serializers.teacher_serializer import TeacherSerializer
+from backend.serializers.teacher_serializer import (TeacherProfileSerializer,
+                                                    TeacherSerializer)
 from backend.views.base_view import BaseViewSet
+from backend.views.utils import get_current_semester, get_current_year
 
-from ..models import Teacher
+from ..models import Commission, CommissionInscription, Teacher
 
 
 class TeacherViews(BaseViewSet):
@@ -45,3 +49,33 @@ class TeacherViews(BaseViewSet):
                 Q(legajo__icontains=query)
             )
         return Response(TeacherSerializer(qs[:20], many=True).data)
+
+    @swagger_auto_schema(
+        tags=["Teachers"],
+        operation_summary="Perfil de un docente (alumno con inscripcion activa o el mismo docente)",
+    )
+    @action(detail=True, methods=['GET'], permission_classes=[IsAuthenticated],
+            url_path='profile')
+    def profile(self, request, pk=None):
+        teacher = get_object_or_404(Teacher.objects.select_related('user'), user_id=pk)
+
+        if not self._can_view_profile(request.user, teacher):
+            raise NotFound("Perfil no disponible.")
+
+        return Response(TeacherProfileSerializer(teacher).data)
+
+    def _can_view_profile(self, user, teacher):
+        if getattr(user, 'is_teacher', False) and user.pk == teacher.pk:
+            return True
+        if getattr(user, 'is_student', False):
+            teacher_commissions = Commission.objects.filter(
+                Q(chief_teacher=teacher) | Q(teachers=teacher)
+            )
+            return CommissionInscription.objects.filter(
+                student__user=user,
+                status='A',
+                semester__start_date__year=get_current_year(),
+                semester__year_moment=get_current_semester(),
+                semester__commission__in=teacher_commissions,
+            ).exists()
+        return False

@@ -1,5 +1,5 @@
 from django import forms
-from django.conf.urls import url
+from django.urls import re_path
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.db import transaction
@@ -10,14 +10,10 @@ from django.utils.html import format_html
 
 from .forms import StaffCreateForm
 from .models import *
+from .permissions import get_admin_department_id
 from .services.notification_service import NotificationService
 from .services.siu_service import SiuService
-from .utils import memoized
 
-
-@memoized
-def departments():
-    return SiuService().list_departments()
 
 class AuditLogAdmin(admin.ModelAdmin):
 
@@ -56,9 +52,6 @@ class PasswordResetOTPAdmin(admin.ModelAdmin):
         return False
 
 admin.site.register(Commission)
-@memoized
-def subjects():
-    return SiuService().list_subjects()
 
 
 class StaffUser(User):
@@ -72,7 +65,7 @@ class StaffInline(admin.TabularInline):
     model = Staff
     fieldsets = [
         (None, {
-            'fields': ('department_siu_id',)
+            'fields': ('department_siu_id', 'department', 'secretary', 'is_bedelia')
             }),
         ]
 
@@ -183,13 +176,13 @@ class StudentPreRegistered(StudentCommonAdmin):
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<student_id>.+)/revisar/$',
+            re_path(r'^(?P<student_id>.+)/revisar/$',
                 self.admin_site.admin_view(self.revisar),
                 name='revisar'),
-            url(r'^(?P<student_id>.+)/aprobar/$',
+            re_path(r'^(?P<student_id>.+)/aprobar/$',
                 self.admin_site.admin_view(self.aprobar),
                 name='aprobar'),
-            url(r'^(?P<student_id>.+)/rechazar/$',
+            re_path(r'^(?P<student_id>.+)/rechazar/$',
                 self.admin_site.admin_view(self.rechazar),
                 name='rechazar'),
         ]
@@ -319,29 +312,26 @@ class FinalToApproveAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if not request.user.is_superuser and request.user.staff.department_siu_id:
-            owning_subjects = SiuService().list_subjects({"departamentoId": request.user.staff.department_siu_id})
-            qs = qs.filter(subject_siu_id__in=[s["id"] for s in owning_subjects])
+        dept_id = get_admin_department_id(request.user)
+        if dept_id is not None:
+            qs = qs.filter(commissions__department_id=dept_id).distinct()
         return qs.filter(status=Final.Status.DRAFT)
 
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<final_id>.+)/approve/$',
+            re_path(r'^(?P<final_id>.+)/approve/$',
                 self.admin_site.admin_view(self.approve_action),
                 name='approve_action'),
-            url(r'^(?P<final_id>.+)/reject/$',
+            re_path(r'^(?P<final_id>.+)/reject/$',
                 self.admin_site.admin_view(self.reject_action),
                 name='reject_action'),
         ]
         return my_urls + urls
 
     def department(self, obj):
-        for subject in subjects():
-            if subject['id'] == obj.subject_siu_id:
-                for department in departments():
-                    if department['id'] == subject['department_id']:
-                        return department['name']
+        commission = obj.commissions.first()
+        return commission.department.name if commission and commission.department else None
     department.short_description = "Departamento"
 
     def approve(self, obj):
@@ -404,15 +394,15 @@ class FinalAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if not request.user.is_superuser:
-            owning_subjects = SiuService().list_subjects({"departamentoId": request.user.staff.department_siu_id})
-            qs = qs.filter(subject_siu_id__in=[s["id"] for s in owning_subjects])
+        dept_id = get_admin_department_id(request.user)
+        if dept_id is not None:
+            qs = qs.filter(commissions__department_id=dept_id).distinct()
         return qs.filter(status__in=(Final.Status.OPEN, Final.Status.PENDING_ACT, Final.Status.ACT_SENT))
 
     def get_urls(self):
         urls = super().get_urls()
         my_urls = [
-            url(r'^(?P<final_id>.+)/download/$',
+            re_path(r'^(?P<final_id>.+)/download/$',
                 self.admin_site.admin_view(self.download_action),
                 name='download_action')
         ]
@@ -422,11 +412,8 @@ class FinalAdmin(admin.ModelAdmin):
     search_fields = ('subject_name', 'date',)
 
     def department(self, obj):
-        for subject in subjects():
-            if subject['id'] == obj.subject_siu_id:
-                for department in departments():
-                    if department['id'] == subject['department_id']:
-                        return department['name']
+        commission = obj.commissions.first()
+        return commission.department.name if commission and commission.department else None
     department.short_description = "Departamento"
 
     def download_qr(self, obj):
@@ -567,7 +554,7 @@ class NewsAdmin(admin.ModelAdmin):
     list_display = ('title', 'tag', 'author', 'created_at')
     list_filter = ('tag',)
     search_fields = ('title', 'description')
-    readonly_fields = ('author', 'created_at', 'updated_at', 'picture_url')
+    readonly_fields = ('author', 'created_at', 'updated_at', 'image')
 
     def save_model(self, request, obj, form, change):
         if not change and not obj.author_id:
@@ -581,3 +568,45 @@ class CalendarEventReminderAdmin(admin.ModelAdmin):
     list_filter = ('days_before',)
     ordering = ('-sent_at',)
     readonly_fields = ('event', 'days_before', 'notification', 'sent_at')
+
+
+class SecretaryStaffInline(admin.TabularInline):
+    model = Staff
+    fields = ('user', 'is_bedelia')
+    readonly_fields = ('user',)
+    extra = 0
+    verbose_name = "Administrador asociado"
+    verbose_name_plural = "Administradores asociados"
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).filter(secretary__isnull=False)
+
+
+@admin.register(Secretary)
+class SecretaryAdmin(admin.ModelAdmin):
+    list_display = ('name', 'parent_secretary', 'location', 'created_at')
+    list_filter = ('parent_secretary',)
+    search_fields = ('name',)
+    ordering = ('name',)
+    inlines = [SecretaryStaffInline]
+
+
+class FormOwnershipMemberInline(admin.TabularInline):
+    model = FormOwnershipMember
+    extra = 1
+    fields = ('entity_type', 'entity_id', 'is_editor')
+
+
+@admin.register(FormOwnershipGroup)
+class FormOwnershipGroupAdmin(admin.ModelAdmin):
+    list_display = ('name', 'created_at')
+    search_fields = ('name',)
+    ordering = ('name',)
+    inlines = [FormOwnershipMemberInline]
+
+
+@admin.register(FormOwnershipMember)
+class FormOwnershipMemberAdmin(admin.ModelAdmin):
+    list_display = ('group', 'entity_type', 'entity_id', 'is_editor')
+    list_filter = ('entity_type', 'is_editor')
+    search_fields = ('group__name',)

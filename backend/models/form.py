@@ -2,15 +2,19 @@ from django.db import models
 from django.utils import timezone
 
 from .catalog import Catalog
-from .form_types import FormFieldType, FormProcedureType, FormType
+from .form_types import FormFieldType, FormType
+from .form_ownership import FormOwnershipGroup
 
 
 class Form(models.Model):
     form_name = models.CharField(max_length=100, verbose_name="Nombre")
     form_description = models.CharField(max_length=300, verbose_name="Descripción")
     form_information = models.TextField(null=True, blank=True, verbose_name="Información adicional")
-    form_procedure = models.ForeignKey(
-        FormProcedureType, on_delete=models.CASCADE, related_name='forms', verbose_name="Tipo de trámite"
+    ownership_group = models.ForeignKey(
+        FormOwnershipGroup,
+        on_delete=models.PROTECT,
+        related_name='forms',
+        verbose_name="Grupo de propiedad",
     )
     form_type = models.ForeignKey(
         FormType, on_delete=models.CASCADE, related_name='forms', verbose_name="Tipo de formulario"
@@ -30,7 +34,7 @@ class FormDocumentSource(models.Model):
     form = models.OneToOneField(
         Form, on_delete=models.CASCADE, primary_key=True, related_name='document_source', verbose_name="Formulario"
     )
-    form_document_source = models.URLField(verbose_name="URL del documento")
+    form_document_source = models.CharField(max_length=500, verbose_name="Documento (clave relativa o URL)")
 
     class Meta:
         verbose_name = "Fuente de documento"

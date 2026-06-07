@@ -1,20 +1,24 @@
 from datetime import datetime
 
+from django.db import transaction
+from django.db.models import Q
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from backend.models import Final
+from backend.models import Commission, Final
 from backend.permissions import *
 from backend.serializers.final_serializer import (FinalTeacherListSerializer,
                                                   FinalTeacherSerializer)
 from backend.services.audit_log_service import AuditLogService
 from backend.services.final_service import FinalService
 from backend.views.base_view import BaseViewSet
-from backend.views.utils import respond, validate_face
+from backend.views.utils import (get_current_semester, get_current_year,
+                                 respond, validate_face)
 
 
 class FinalTeacherViewSet(BaseViewSet):
@@ -26,24 +30,71 @@ class FinalTeacherViewSet(BaseViewSet):
         tags=["Finals"]
     )
     def list(self, request):
-        finals = self.queryset.filter(teacher=request.user.teacher, subject_siu_id=request.query_params['subject_siu_id'])
+        subject_siu_id = request.query_params['subject_siu_id']
+        teacher = request.user.teacher
+        finals = self.queryset.filter(subject_siu_id=subject_siu_id).filter(
+            Q(teacher=teacher)
+            | Q(commissions__teachers=teacher)
+            | Q(commissions__chief_teacher=teacher)
+        ).distinct()
         return Response(self._paginate(finals, FinalTeacherListSerializer))
 
     @swagger_auto_schema(
         tags=["Finals"]
     )
     def create(self, request):
-        final = Final(
-            subject_siu_id=request.data['subject_siu_id'],
-            subject_name=request.data['subject_name'],
-            date=datetime.utcfromtimestamp(request.data['timestamp']),
-            teacher=request.user.teacher,
-            status=Final.Status.DRAFT)
-        final.save()
+        subject_siu_id = request.data['subject_siu_id']
+        commission_ids = request.data.get('commission_ids') or []
+
+        if not commission_ids:
+            raise ValidationError({'commission_ids': 'Debés elegir al menos una comisión.'})
+
+        commissions = self._validate_commissions_for_final(
+            commission_ids, subject_siu_id, request.user.teacher,
+        )
+
+        with transaction.atomic():
+            final = Final.objects.create(
+                subject_siu_id=subject_siu_id,
+                subject_name=request.data['subject_name'],
+                date=datetime.utcfromtimestamp(request.data['timestamp']),
+                teacher=request.user.teacher,
+                status=Final.Status.DRAFT,
+            )
+            final.commissions.set(commissions)
 
         AuditLogService().log(request.user, None, f"Docente creo un final para la materia: {request.data['subject_name']}")
 
         return respond(self.get_serializer(final), response_status=status.HTTP_201_CREATED)
+
+    def _validate_commissions_for_final(self, commission_ids, subject_siu_id, teacher):
+        commissions = list(Commission.objects.filter(id__in=commission_ids))
+        if len(commissions) != len(set(commission_ids)):
+            raise ValidationError({'commission_ids': 'Alguna de las comisiones no existe.'})
+
+        current_year = get_current_year()
+        current_semester = get_current_semester()
+
+        for commission in commissions:
+            if int(commission.subject_siu_id) != int(subject_siu_id):
+                raise ValidationError(
+                    {'commission_ids': f"La comisión {commission.siu_id} no pertenece a la materia indicada."}
+                )
+            in_current_semester = commission.semesters.filter(
+                start_date__year=current_year,
+                year_moment=current_semester,
+            ).exists()
+            if not in_current_semester:
+                raise ValidationError(
+                    {'commission_ids': f"La comisión {commission.siu_id} no está activa en el semestre actual."}
+                )
+
+        if not any(c.chief_teacher_id == teacher.pk for c in commissions):
+            raise PermissionDenied(
+                "Tenés que ser jefe de cátedra de al menos una de las comisiones elegidas."
+            )
+
+        return commissions
 
     @swagger_auto_schema(
         tags=["Finals"]

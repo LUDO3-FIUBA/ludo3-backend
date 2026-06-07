@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from backend.models.semester import Commission, Semester
 from backend.permissions import *
+from backend.serializers.catedra_calendar_entry_serializer import CatedraCalendarEntrySerializer
 from backend.serializers.semester_serializer import (SemesterPostSerializer,
                                                      SemesterSerializer)
 from backend.serializers.student_serializer import StudentSerializer
@@ -111,5 +112,66 @@ class SemesterDetailTeacherViews(BaseViewSet):
         semester.start_date = start_date
 
         semester.save()
-        
+
         return Response(SemesterSerializer(semester, many=False).data, status.HTTP_200_OK)
+
+    @action(detail=True, methods=['PUT'])
+    @swagger_auto_schema(
+        tags=["Semesters Teacher"],
+        operation_summary="Save or update the cátedra calendar source URL for a semester",
+    )
+    def set_calendar_url(self, request, pk=None):
+        semester = get_object_or_404(self.queryset, id=pk)
+        if teacher_not_in_commission_staff(request.user.teacher, semester.commission):
+            return Response("Teacher not a member of this semester commission", status=status.HTTP_403_FORBIDDEN)
+
+        url = request.data.get('url', '').strip()
+        if not url:
+            return Response({'error': 'url es requerida'}, status=status.HTTP_400_BAD_REQUEST)
+
+        semester.calendar_source_url = url
+        semester.save(update_fields=['calendar_source_url'])
+        return Response({'calendar_source_url': semester.calendar_source_url}, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['POST'])
+    @swagger_auto_schema(
+        tags=["Semesters Teacher"],
+        operation_summary="Sync the cátedra calendar from the configured Google Sheets URL",
+    )
+    def sync_calendar(self, request, pk=None):
+        from backend.services.catedra_calendar_sync_service import sync_catedra_calendar
+
+        semester = get_object_or_404(self.queryset, id=pk)
+        if teacher_not_in_commission_staff(request.user.teacher, semester.commission):
+            return Response("Teacher not a member of this semester commission", status=status.HTTP_403_FORBIDDEN)
+
+        if not semester.calendar_source_url:
+            return Response({'error': 'El semestre no tiene URL de calendario configurada'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            count = sync_catedra_calendar(semester)
+        except ValueError as e:
+            return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except EnvironmentError as e:
+            return Response({'error': str(e)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except Exception as e:
+            return Response({'error': f'Error al sincronizar: {str(e)}'}, status=status.HTTP_502_BAD_GATEWAY)
+
+        entries = semester.catedra_calendar.all()
+        return Response({
+            'synced': count,
+            'entries': CatedraCalendarEntrySerializer(entries, many=True).data,
+        }, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['GET'])
+    @swagger_auto_schema(
+        tags=["Semesters Teacher"],
+        operation_summary="Get cátedra calendar entries for a semester",
+    )
+    def catedra_calendar(self, request, pk=None):
+        semester = get_object_or_404(self.queryset, id=pk)
+        if teacher_not_in_commission_staff(request.user.teacher, semester.commission):
+            return Response("Teacher not a member of this semester commission", status=status.HTTP_403_FORBIDDEN)
+
+        entries = semester.catedra_calendar.all()
+        return Response(CatedraCalendarEntrySerializer(entries, many=True).data, status=status.HTTP_200_OK)

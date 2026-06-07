@@ -4,13 +4,13 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-
 from backend.api_exceptions import ValidationError
 from backend.serializers.google_auth_serializer import (
-    GoogleSignInSerializer, 
+    GoogleSignInSerializer,
     GoogleRegistrationSerializer
 )
 from backend.services.google_auth_service import GoogleAuthService
+from .cookie_auth_views import make_token_response
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +30,7 @@ def google_sign_in(request):
         if result['status'] == 'existing_user':
             user = result['user']
             refresh = RefreshToken.for_user(user)
-            
-            return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-            }, status=status.HTTP_200_OK)
+            return make_token_response(request, refresh_instance=refresh)
         
         elif result['status'] == 'needs_registration':
             return Response({
@@ -70,11 +66,9 @@ def google_complete_registration(request):
         )
         
         refresh = RefreshToken.for_user(user)
-        
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-        }, status=status.HTTP_201_CREATED)
+        response = make_token_response(request, refresh_instance=refresh)
+        response.status_code = status.HTTP_201_CREATED
+        return response
     
     except ValidationError as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)

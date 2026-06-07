@@ -1,46 +1,4 @@
 {
-  "departamentos": [
-    {
-      "id": 1,
-      "nombre": "Matemática",
-      "codigos": [
-        61,
-        81
-      ]
-    },
-    {
-      "id": 2,
-      "nombre": "Física",
-      "codigos": [
-        62,
-        82
-      ]
-    },
-    {
-      "id": 3,
-      "nombre": "Computación",
-      "codigos": [
-        75,
-        95
-      ]
-    },
-    {
-      "id": 4,
-      "nombre": "Química",
-      "codigos": [
-        63,
-        83
-      ]
-    },
-    {
-      "id": 5,
-      "nombre": "Electrónica",
-      "codigos": [
-        66,
-        86
-      ]
-    }
-  ],
   "materias": [
     {
       "id": 1,
@@ -240,8 +198,7 @@
       "codigo": "75.99",
       "nombre": "Trabajo Profesional",
       "departamentoId": 3,
-      "correlativas": [
-      ]
+      "correlativas": []
     }
   ],
   "alumnos": [
@@ -379,6 +336,12 @@
       "id": 7,
       "docenteId": 4,
       "materiaId": 22
+    },
+    {
+      "materia_id": "1",
+      "timestamp": "1779764400",
+      "docenteId": "1",
+      "id": 8
     }
   ],
   "comisiones": [

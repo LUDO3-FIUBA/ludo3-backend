@@ -1,4 +1,5 @@
 import logging
+import os
 import uuid
 
 from djoser.views import UserViewSet
@@ -16,6 +17,12 @@ from backend.services.image_validator_service import ImageValidatorService
 
 from ..api_exceptions import InvalidFaceError, InvalidImageError
 from ..models import User
+from .cookie_auth_views import is_web_client, set_refresh_cookie
+
+
+def _ext(filename: str) -> str:
+    _, ext = os.path.splitext(filename)
+    return ext if ext else '.jpg'
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +82,30 @@ class UserCustomViewSet(UserViewSet):
         model.save()
         return Response({"status": "ok"}, status=status.HTTP_200_OK)
 
+    @action(detail=False, methods=['POST'])
+    def upload_profile_photo(self, request):
+        from django.conf import settings as django_settings
+        image_file = request.FILES.get('image')
+        if not image_file:
+            return Response({"detail": "Falta la imagen."}, status=status.HTTP_400_BAD_REQUEST)
+
+        file_name = f"profile_photos/{uuid.uuid4()}{_ext(image_file.name)}"
+        try:
+            if getattr(django_settings, 'STORAGE_PROVIDER', 'local') == 'local':
+                storage_service.upload_object(image_file, file_name)
+                # Use request.build_absolute_uri so the URL reflects the actual host/port,
+                # independent of the BASE_URL env var.
+                url = request.build_absolute_uri(f"{django_settings.MEDIA_URL}{file_name}")
+            else:
+                url = storage_service.upload_object(image_file, file_name)
+        except Exception:
+            logger.exception("Upload failed for profile photo.")
+            return Response({"detail": "No se pudo subir la imagen."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        request.user.profile_photo = url
+        request.user.save(update_fields=['profile_photo'])
+        return Response(UserCustomGetSerializer(request.user).data, status=status.HTTP_200_OK)
+
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
         serializer = UserCustomGetSerializer(instance)
@@ -93,7 +124,15 @@ class SimpleLoginView(GenericAPIView):
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        data = serializer.validated_data
+
+        if is_web_client(request):
+            response = Response({'access': data['access']}, status=status.HTTP_200_OK)
+            set_refresh_cookie(response, data['refresh'])
+        else:
+            response = Response(data, status=status.HTTP_200_OK)
+
+        return response
 
 
 simple_login = SimpleLoginView.as_view()

@@ -23,6 +23,7 @@ class CustomUserManager(UserManager):
         image = extra_fields.pop("image", None)
         face_encodings = extra_fields.pop("face_encodings", None)
         padron = extra_fields.pop("padron", None)
+        legajo = extra_fields.pop("legajo", None)
 
         user = self.model(email=email, **extra_fields)
 
@@ -44,7 +45,7 @@ class CustomUserManager(UserManager):
         if is_student:
             Student(user=user, image=image, face_encodings=face_encodings, padron=padron).save()
         if is_teacher:
-            Teacher(user=user, face_encodings=face_encodings).save()
+            Teacher(user=user, face_encodings=face_encodings or [], legajo=legajo or '').save()
         
         return user
 
@@ -72,6 +73,7 @@ class User(AbstractUser):
     dni = models.CharField(validators=[validate_dni], max_length=9, unique=True, blank=False, verbose_name="DNI")
     github_url = models.URLField(max_length=255, blank=True, verbose_name="GitHub")
     linkedin_url = models.URLField(max_length=255, blank=True, verbose_name="LinkedIn")
+    profile_photo = models.CharField(max_length=500, blank=True, null=True, verbose_name="Foto de perfil")
 
 
     created_at = models.DateTimeField(default=timezone.now, editable=False, verbose_name="Creado en")

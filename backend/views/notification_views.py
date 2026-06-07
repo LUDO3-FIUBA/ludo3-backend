@@ -6,7 +6,7 @@ from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from backend.models import Notification, UserNotification
+from backend.models import Notification, Semester, UserNotification
 from backend.models.user import User
 from backend.serializers.notification_serializer import (
     NotificationCreateSerializer,
@@ -14,6 +14,7 @@ from backend.serializers.notification_serializer import (
     UserNotificationSerializer,
 )
 from backend.views.base_view import BaseViewSet
+from backend.views.utils import user_can_view_semester
 
 
 def _resolve_recipients(recipient_groups, user_ids):
@@ -37,8 +38,6 @@ def _resolve_recipients(recipient_groups, user_ids):
         target_users = target_users.distinct()
 
     return target_users
-
-
 class NotificationViewSet(BaseViewSet):
     permission_classes = [IsAuthenticated]
     queryset = Notification.objects.all()
@@ -56,6 +55,28 @@ class NotificationViewSet(BaseViewSet):
 
         return Response(
             UserNotificationSerializer(user_notifications, many=True, context={'request': request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=['GET'], url_path=r'semester/(?P<semester_id>[^/.]+)')
+    @swagger_auto_schema(
+        tags=["Notifications"],
+        operation_summary="Get notifications for the authenticated user in a semester",
+    )
+    def by_semester(self, request, semester_id=None):
+        semester = get_object_or_404(Semester.objects, id=semester_id)
+        if not user_can_view_semester(request.user, semester):
+            return Response(
+                {"detail": "You do not have access to this semester's notifications."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        notifications = Notification.objects.filter(
+            semester=semester
+        ).select_related('sender', 'semester__commission').order_by('-created_at')
+
+        return Response(
+            NotificationSerializer(notifications, many=True, context={'request': request}).data,
             status=status.HTTP_200_OK,
         )
 

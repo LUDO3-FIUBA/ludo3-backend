@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from datetime import datetime
 
 from rest_framework import status
@@ -5,6 +6,7 @@ from rest_framework.response import Response
 
 from backend.api_exceptions import FaceRegistrationPendingError, InvalidFaceError
 from backend.models.commission import Commission
+from backend.models.commissionInscription import CommissionInscription
 from backend.models.teacher import Teacher
 from backend.models.teacher_role import TeacherRole
 from backend.services.image_validator_service import ImageValidatorService
@@ -65,7 +67,7 @@ def get_required_int_query_param(request, param_name):
     value = request.query_params.get(param_name)
     if value is None:
         return None, Response(
-            {"detail": f"{param_name} query parameter is required."},
+            {param_name: ["This query parameter is required."]},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -73,7 +75,7 @@ def get_required_int_query_param(request, param_name):
         return int(value), None
     except (TypeError, ValueError):
         return None, Response(
-            {"detail": f"Invalid {param_name}."},
+            {param_name: ["Invalid value."]},
             status=status.HTTP_400_BAD_REQUEST,
         )
 
@@ -81,6 +83,30 @@ def teacher_not_in_commission_staff(teacher: Teacher, commission: Commission) ->
     return (
         teacher not in commission.teachers.all() and commission.chief_teacher != teacher
     )
+
+
+def user_can_view_semester(user, semester) -> bool:
+    if user.is_student:
+        try:
+            student = user.student
+        except ObjectDoesNotExist:
+            return False
+
+        return CommissionInscription.objects.filter(
+            semester=semester,
+            student=student,
+            status=CommissionInscription.InscriptionStatus.ACCEPTED,
+        ).exists()
+
+    if user.is_teacher:
+        try:
+            teacher = user.teacher
+        except ObjectDoesNotExist:
+            return False
+
+        return not teacher_not_in_commission_staff(teacher, semester.commission)
+
+    return False
 
 
 def get_stub_chief_teacher_role(commission: Commission) -> TeacherRole:

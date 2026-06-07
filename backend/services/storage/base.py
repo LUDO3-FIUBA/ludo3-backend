@@ -58,6 +58,23 @@ class StorageService(ABC):
         pass
 
     @abstractmethod
+    def public_url(self, key: str) -> str:
+        """
+        Build the absolute URL for a stored object from its relative key.
+
+        Inverse of `key_from_url`. The absolute prefix/domain comes from
+        environment configuration (e.g. BASE_URL for local, the public read
+        domain for S3), so the database only needs to persist the relative key.
+
+        Args:
+            key: Relative storage key (the value passed to upload_object).
+
+        Returns:
+            Absolute URL to access the object.
+        """
+        pass
+
+    @abstractmethod
     def key_from_url(self, url: str) -> Optional[str]:
         """
         Extract the storage key from a URL produced by this provider.
@@ -85,5 +102,13 @@ class StorageService(ABC):
 
         Returns:
             A URL the client can fetch, or None if `url` is empty.
+        """
+        pass
+
+    @abstractmethod
+    def get_download_url(self, file_name: str, filename_hint: str, expiration: int = 60) -> str | None:
+        """
+        Return a URL that triggers a download with the correct Content-Disposition.
+        Return None to fall back to streaming through Django.
         """
         pass
