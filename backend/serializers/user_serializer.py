@@ -51,32 +51,59 @@ class UserCustomCreateSerializer(UserCreateSerializer):
         max_length=7,
         help_text="Padrón del estudiante (5 a 7 dígitos)"
     )
+    # Campo legajo solo aplica para docentes
+    legajo = serializers.CharField(
+        required=False,
+        min_length=5,
+        max_length=8,
+        help_text="Legajo del docente (5 a 8 caracteres)"
+    )
+    first_name = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    last_name = serializers.CharField(required=False, allow_blank=True, max_length=50)
     # Email is not required from the client — it's fetched from SIU Guaraní by DNI for students.
     email = serializers.EmailField(required=False, allow_blank=True)
 
     class Meta:
         model = User
-        fields = ('dni', 'email', 'is_student', 'is_teacher', 'padron', 'password')
+        fields = (
+            'dni', 'email', 'is_student', 'is_teacher',
+            'padron', 'legajo', 'first_name', 'last_name', 'password',
+        )
 
     def validate(self, attrs):
         is_student = attrs.get('is_student', False)
+        is_teacher = attrs.get('is_teacher', False)
         padron = attrs.get('padron')
+        legajo = attrs.get('legajo')
         password = attrs.get('password')
         dni = attrs.get('dni')
+
+        if is_student and is_teacher:
+            raise serializers.ValidationError({'is_teacher': 'Un usuario no puede registrarse como alumno y docente al mismo tiempo.'})
+
+        if not is_student and not is_teacher:
+            raise serializers.ValidationError({'is_student': 'Debe indicar si es alumno o docente.'})
+
+        if not password:
+            raise serializers.ValidationError({'password': 'La contraseña es obligatoria.'})
 
         if is_student:
             if not padron:
                 raise serializers.ValidationError({'padron': 'El padrón es obligatorio para estudiantes'})
             if not padron.isdigit():
                 raise serializers.ValidationError({'padron': 'El padrón debe contener solo números'})
-            if not password:
-                raise serializers.ValidationError({'password': 'La contraseña es obligatoria para estudiantes'})
 
             # Fetch email from SIU Guaraní; ignore any email the client sent.
             attrs['email'] = fetch_alumno_email_from_guarani(dni)
-        else:
+        else:  # is_teacher
+            if not legajo:
+                raise serializers.ValidationError({'legajo': 'El legajo es obligatorio para docentes.'})
             if not attrs.get('email'):
-                raise serializers.ValidationError({'email': 'El email es obligatorio.'})
+                raise serializers.ValidationError({'email': 'El email es obligatorio para docentes.'})
+            if not attrs.get('first_name'):
+                raise serializers.ValidationError({'first_name': 'El nombre es obligatorio para docentes.'})
+            if not attrs.get('last_name'):
+                raise serializers.ValidationError({'last_name': 'El apellido es obligatorio para docentes.'})
 
         return attrs
 
