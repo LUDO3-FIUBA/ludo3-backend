@@ -23,6 +23,7 @@ class CustomUserManager(UserManager):
         image = extra_fields.pop("image", None)
         face_encodings = extra_fields.pop("face_encodings", None)
         padron = extra_fields.pop("padron", None)
+        legajo = extra_fields.pop("legajo", None)
 
         user = self.model(email=email, **extra_fields)
 
@@ -44,7 +45,7 @@ class CustomUserManager(UserManager):
         if is_student:
             Student(user=user, image=image, face_encodings=face_encodings, padron=padron).save()
         if is_teacher:
-            Teacher(user=user, face_encodings=face_encodings).save()
+            Teacher(user=user, face_encodings=face_encodings or [], legajo=legajo or '').save()
         
         return user
 
