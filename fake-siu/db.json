@@ -2,202 +2,245 @@
   "materias": [
     {
       "id": 1,
-      "codigo": "62.01",
-      "nombre": "Física I A",
-      "departamentoId": 2,
+      "codigo": "CBC62",
+      "nombre": "Álgebra A",
       "correlativas": []
     },
     {
       "id": 2,
-      "codigo": "62.02",
-      "nombre": "Física II A",
-      "departamentoId": 2,
-      "correlativas": [
-        "62.01",
-        "61.03"
-      ]
+      "codigo": "CBC66",
+      "nombre": "Análisis Matemático A",
+      "correlativas": []
     },
     {
       "id": 3,
-      "codigo": "61.03",
-      "nombre": "Análisis Matemático II A",
-      "departamentoId": 1,
+      "codigo": "CBC03",
+      "nombre": "Física",
       "correlativas": []
     },
     {
       "id": 4,
-      "codigo": "61.08",
-      "nombre": "Álgebra II A",
-      "departamentoId": 1,
+      "codigo": "CBC24",
+      "nombre": "Introducción al Conocimiento de la Sociedad y el Estado",
       "correlativas": []
     },
     {
       "id": 5,
-      "codigo": "75.40",
-      "nombre": "Algoritmos y Programación I",
-      "departamentoId": 3,
+      "codigo": "CBC40",
+      "nombre": "Introducción al Pensamiento Científico",
       "correlativas": []
     },
     {
       "id": 6,
-      "codigo": "75.41",
-      "nombre": "Algoritmos y Programación II",
-      "departamentoId": 3,
-      "correlativas": [
-        "75.40"
-      ]
+      "codigo": "CBC90",
+      "nombre": "Pensamiento Computacional",
+      "correlativas": []
     },
     {
       "id": 7,
-      "codigo": "75.07",
-      "nombre": "Algoritmos y Programación III",
-      "departamentoId": 3,
-      "correlativas": [
-        "75.41"
-      ]
+      "codigo": "CB001",
+      "nombre": "Análisis Matemático II",
+      "correlativas": []
     },
     {
       "id": 8,
-      "codigo": "63.01",
-      "nombre": "Química I",
-      "departamentoId": 4,
+      "codigo": "TB021",
+      "nombre": "Fundamentos de Programación",
       "correlativas": []
     },
     {
       "id": 9,
-      "codigo": "61.07",
-      "nombre": "Matemática Discreta",
-      "departamentoId": 1,
-      "correlativas": [
-        "62.01"
-      ]
+      "codigo": "TB022",
+      "nombre": "Introducción al Desarrollo de Software",
+      "correlativas": []
     },
     {
       "id": 10,
-      "codigo": "62.15",
-      "nombre": "Física III D",
-      "departamentoId": 2,
-      "correlativas": [
-        "61.08",
-        "62.02",
-        "63.01"
-      ]
+      "codigo": "CB002",
+      "nombre": "Álgebra Lineal",
+      "correlativas": []
     },
     {
       "id": 11,
-      "codigo": "66.02",
-      "nombre": "Laboratorio",
-      "departamentoId": 5,
+      "codigo": "TB023",
+      "nombre": "Organización del Computador",
       "correlativas": [
-        "62.02"
+        "TB022",
+        "TB021"
       ]
     },
     {
       "id": 12,
-      "codigo": "66.70",
-      "nombre": "Estructura del Computador",
-      "departamentoId": 5,
+      "codigo": "CB100",
+      "nombre": "Algoritmos y Estructuras de Datos",
       "correlativas": [
-        "62.02",
-        "61.08",
-        "75.41"
+        "TB021"
       ]
     },
     {
       "id": 13,
-      "codigo": "75.12",
-      "nombre": "Análisis Numérico",
-      "departamentoId": 1,
+      "codigo": "CB003",
+      "nombre": "Probabilidad y Estadística",
       "correlativas": [
-        "61.03",
-        "61.08",
-        "75.41"
+        "CB001",
+        "CB002"
       ]
     },
     {
       "id": 14,
-      "codigo": "75.09",
-      "nombre": "Análisis de la Información",
-      "departamentoId": 1,
+      "codigo": "TB024",
+      "nombre": "Teoría de Algoritmos",
       "correlativas": [
-        "75.07",
-        "75.42"
+        "CB100",
+        "TB022"
       ]
     },
     {
       "id": 15,
-      "codigo": "61.09",
-      "nombre": "Probabilidad y Estadística B",
-      "departamentoId": 1,
+      "codigo": "TA043",
+      "nombre": "Sistemas Operativos",
       "correlativas": [
-        "61.03",
-        "61.08"
+        "TB023"
       ]
     },
     {
       "id": 16,
-      "codigo": "61.10",
-      "nombre": "Análisis Matemático III A",
-      "departamentoId": 1,
+      "codigo": "TB025",
+      "nombre": "Paradigmas de Programación",
       "correlativas": [
-        "61.03",
-        "61.08"
+        "CB100",
+        "TB022"
       ]
     },
     {
       "id": 17,
-      "codigo": "66.20",
-      "nombre": "Organización de Computadoras",
-      "departamentoId": 5,
+      "codigo": "TA044",
+      "nombre": "Base de Datos",
       "correlativas": [
-        "66.02",
-        "66.70"
+        "TB023",
+        "TB025"
       ]
     },
     {
       "id": 18,
-      "codigo": "75.06",
-      "nombre": "Organización de Datos",
-      "departamentoId": 3,
+      "codigo": "CB051",
+      "nombre": "Modelación Numérica",
       "correlativas": [
-        "66.70",
-        "75.41"
+        "CB001",
+        "CB002",
+        "CB100"
       ]
     },
     {
       "id": 19,
-      "codigo": "75.42",
-      "nombre": "Taller de Programación I",
-      "departamentoId": 3,
+      "codigo": "TA045",
+      "nombre": "Taller de Programación",
       "correlativas": [
-        "66.70",
-        "75.12",
-        "75.41"
+        "TB023",
+        "TB025"
       ]
     },
     {
       "id": 20,
-      "codigo": "75.08",
-      "nombre": "Sistemas Operativos",
-      "departamentoId": 3,
+      "codigo": "TA046",
+      "nombre": "Ingeniería de Software I",
       "correlativas": [
-        "75.06"
+        "TB025"
       ]
     },
     {
       "id": 21,
-      "codigo": "75.71",
-      "nombre": "Seminario de Ingeniería en Informática I",
-      "departamentoId": 3,
+      "codigo": "TA047",
+      "nombre": "Ciencia de Datos",
       "correlativas": [
-        "75.07"
+        "CB003",
+        "TA044",
+        "CB051",
+        "TB024"
       ]
     },
     {
       "id": 22,
-      "codigo": "75.99",
-      "nombre": "Trabajo Profesional",
-      "departamentoId": 3,
+      "codigo": "TC017",
+      "nombre": "Gestión del Desarrollo de Sistemas Informáticos",
+      "correlativas": [
+        "TA046"
+      ]
+    },
+    {
+      "id": 23,
+      "codigo": "TB026",
+      "nombre": "Programación Concurrente",
+      "correlativas": [
+        "TA043",
+        "TA045"
+      ]
+    },
+    {
+      "id": 24,
+      "codigo": "TA048",
+      "nombre": "Redes",
+      "correlativas": [
+        "TA043"
+      ]
+    },
+    {
+      "id": 25,
+      "codigo": "CB024",
+      "nombre": "Física para Informática",
+      "correlativas": []
+    },
+    {
+      "id": 26,
+      "codigo": "TC018",
+      "nombre": "Empresas de Base Tecnológica I",
+      "correlativas": []
+    },
+    {
+      "id": 27,
+      "codigo": "TA049",
+      "nombre": "Ingeniería de Software II",
+      "correlativas": [
+        "TA044",
+        "TA046",
+        "TA045"
+      ]
+    },
+    {
+      "id": 28,
+      "codigo": "TA050",
+      "nombre": "Sistemas Distribuidos I",
+      "correlativas": [
+        "TB026",
+        "TA048"
+      ]
+    },
+    {
+      "id": 29,
+      "codigo": "TA051",
+      "nombre": "Taller de Seguridad Informática",
+      "correlativas": [
+        "TA048"
+      ]
+    },
+    {
+      "id": 30,
+      "codigo": "TC019",
+      "nombre": "Empresas de Base Tecnológica II",
+      "correlativas": [
+        "TC018"
+      ]
+    },
+    {
+      "id": 31,
+      "codigo": "TA052",
+      "nombre": "Tesis de Ingeniería Informática",
+      "correlativas": []
+    },
+    {
+      "id": 32,
+      "codigo": "TA053",
+      "nombre": "Trabajo Profesional de Ingeniería Informática",
       "correlativas": []
     }
   ],

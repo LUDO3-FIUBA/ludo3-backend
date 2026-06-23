@@ -47,7 +47,6 @@ class FinalTeacherViewsTests(APITestCase):
             "id": 1,
             "codigo": "62.01",
             "nombre": "Física I",
-            "departamentoId": 2,
             "correlativas": []
         }]
 
@@ -85,7 +84,6 @@ class FinalTeacherViewsTests(APITestCase):
             "id": 2,
             "codigo": "62.02",
             "nombre": "Física II",
-            "departamentoId": 2,
             "correlativas": ["62.01"]
         }
 
@@ -93,7 +91,6 @@ class FinalTeacherViewsTests(APITestCase):
             "id": 1,
             "codigo": "62.01",
             "nombre": "Física I",
-            "departamentoId": 2,
             "correlativas": []
         }]
 
@@ -135,7 +132,6 @@ class FinalTeacherViewsTests(APITestCase):
             "id": 1,
             "codigo": "62.01",
             "nombre": "Física I",
-            "departamentoId": 2,
             "correlativas": []
         }]
 
@@ -260,7 +256,7 @@ class FinalTeacherViewsTests(APITestCase):
         shared_final.commissions.add(own_commission)
 
         self.client.force_authenticate(user=other_chief.user)
-        mock_subject = [{"id": 1, "codigo": "62.01", "nombre": "x", "departamentoId": 2, "correlativas": []}]
+        mock_subject = [{"id": 1, "codigo": "62.01", "nombre": "x", "correlativas": []}]
         with mock.patch.object(SiuClient, "get_subject", return_value=mock_subject):
             response = self.client.get("/api/finals/", {"subject_siu_id": self.subject_siu_id}, format='json')
 
@@ -288,7 +284,7 @@ class FinalTeacherViewsTests(APITestCase):
 
         mock_subject = [{
             "id": 1, "codigo": "62.01", "nombre": "Física I",
-            "departamentoId": 2, "correlativas": [],
+            "correlativas": [],
         }]
         with mock.patch.object(SiuClient, "get_subject", return_value=mock_subject):
             response = self.client.get("/api/finals/", {"subject_siu_id": self.subject_siu_id}, format='json')
@@ -320,7 +316,6 @@ class FinalTeacherViewsTests(APITestCase):
             "id": 1,
             "codigo": "62.01",
             "nombre": "Física I",
-            "departamentoId": 2,
             "correlatives": []
         }
 
@@ -357,7 +352,6 @@ class FinalTeacherViewsTests(APITestCase):
             "id": 1,
             "codigo": "62.01",
             "nombre": "Física I",
-            "departamentoId": 2,
             "correlatives": []
         }
 
@@ -393,7 +387,6 @@ class FinalTeacherViewsTests(APITestCase):
             "id": 1,
             "codigo": "62.01",
             "nombre": "Física I",
-            "departamentoId": 2,
             "correlatives": []
         }
 
