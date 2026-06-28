@@ -152,7 +152,8 @@ class UserCustomGetSerializer(UserSerializer):
 
     def get_legajo(self, obj):
         if obj.is_teacher:
-            return obj.teacher.legajo
+            teacher = getattr(obj, 'teacher', None)
+            return teacher.legajo if teacher else None
         return None
 
     def get_face_registered(self, obj):

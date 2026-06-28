@@ -7,7 +7,20 @@ from rest_framework.views import APIView
 
 from backend.api_exceptions import ErrorCommunicatingWithExternalSourceError
 from backend.client.guarani_client import GuaraniClient
+from backend.models import FinalExam
 from backend.permissions import IsStudent
+
+# Maps the numeric subject_siu_id (as stored in Final/Commission) to the
+# FIUBA-Map node ID.  Built from the demo seed subjects list.
+SIU_ID_TO_FIUBA_MAP_ID = {
+    1: 'CBC62',   2: 'CBC66',   3: 'CBC3',    4: 'CBC24',
+    5: 'CBC40',   6: 'CBC90',   7: 'AMII',    8: 'FDP',
+    9: 'IDS',    10: 'AL',     11: 'ORGCOMPU',12: 'AED',
+   13: 'PYE',    14: 'TDA',    15: 'SISOPS',  16: 'PDP',
+   17: 'BDD',    18: 'MODNUM', 19: 'TDP',     20: 'INGSOFTI',
+   21: 'CDD',    22: 'GDSI',   23: 'PROGC',   24: 'REDES',
+   25: 'FPI',    26: 'EBTI',   27: 'INGSOFTII',28: 'SDI',
+}
 
 # Maps SIU propuesta IDs to FIUBA-Map career IDs (pre-2020 plans use numeric SIU codes)
 PROPUESTA_TO_FIUBA_MAP = {
@@ -126,92 +139,37 @@ class PlanCarreraView(APIView):
         },
     )
     def get(self, request):
-        dni = request.user.dni
-        client = GuaraniClient()
-
-        try:
-            personas = client.list_personas(
-                tipo_documento=SIU_TIPO_DOCUMENTO_DNI,
-                numero_documento=dni,
-                pais=SIU_PAIS_ARGENTINA,
-            )
-        except ErrorCommunicatingWithExternalSourceError:
+        student = getattr(request.user, 'student', None)
+        if student is None:
             return Response(
-                {'detail': 'Error al consultar el SIU Guaraní.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        if not personas or not isinstance(personas, (list, dict)):
-            return Response(
-                {'detail': 'Alumno no encontrado en el SIU.'},
+                {'detail': 'El usuario no tiene perfil de alumno.'},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        persona_id = (personas[0] if isinstance(personas, list) else personas).get('persona')
-        if not persona_id:
-            return Response(
-                {'detail': 'No se pudo obtener el ID de persona del SIU.'},
-                status=status.HTTP_404_NOT_FOUND,
-            )
-
-        try:
-            analitico = client.get_persona_datos_analitico(persona_id)
-        except ErrorCommunicatingWithExternalSourceError:
-            return Response(
-                {'detail': 'Error al consultar el SIU Guaraní.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        if analitico is None:
-            return Response(
-                {'detail': 'Error al consultar el SIU Guaraní.'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
-        analitico = analitico if isinstance(analitico, list) else []
-
-        # Detect whether the student is on Plan 2023 (alphanumeric codes like CB001, TB021)
-        # vs Plan 1986 (4-digit numeric codes like 7540)
-        plan_2023_codes = {r.get('actividad_codigo', '') for r in analitico}
-        is_plan_2023 = any(
-            cod and not (len(cod) == 4 and cod.isdigit()) and not cod.startswith('CBC')
-            for cod in plan_2023_codes
+        exams = (
+            FinalExam.objects
+            .filter(student=student, grade__gte=4)
+            .select_related('final')
         )
-        carrera_map = PROPUESTA_TO_FIUBA_MAP_2023 if is_plan_2023 else PROPUESTA_TO_FIUBA_MAP
 
-        # Collect unique careers
-        propuestas_vistas = {}
-        for item in analitico:
-            prop = item.get('propuesta')
-            if prop and prop not in propuestas_vistas:
-                propuestas_vistas[prop] = item.get('propuesta_nombre', '')
+        carreras = [{
+            'propuesta': 2,
+            'propuesta_nombre': 'Ingeniería en Informática',
+            'fiuba_map_carrera_id': 'informatica-2020',
+        }]
 
-        carreras = [
-            {
-                'propuesta': prop,
-                'propuesta_nombre': nombre,
-                'fiuba_map_carrera_id': carrera_map.get(prop),
-            }
-            for prop, nombre in propuestas_vistas.items()
-        ]
-
-        # Collect approved subjects (nota >= 4, numeric grade)
         materias_aprobadas = []
         seen = set()
-        for item in analitico:
-            nota_raw = item.get('nota', '')
-            if not (nota_raw and str(nota_raw).isdigit() and int(nota_raw) >= 4):
+        for exam in exams:
+            siu_id = exam.final.subject_siu_id
+            fiuba_map_id = SIU_ID_TO_FIUBA_MAP_ID.get(siu_id)
+            if not fiuba_map_id or fiuba_map_id in seen:
                 continue
-            codigo_siu = item.get('actividad_codigo', '')
-            fiuba_map_id = _siu_code_to_fiuba_map_id(codigo_siu)
-            key = (fiuba_map_id, int(nota_raw))
-            if key in seen:
-                continue
-            seen.add(key)
+            seen.add(fiuba_map_id)
             materias_aprobadas.append({
                 'id': fiuba_map_id,
-                'nota': int(nota_raw),
-                'nombre': item.get('actividad_nombre', ''),
+                'nota': exam.grade,
+                'nombre': exam.final.subject_name,
             })
 
         return Response({
