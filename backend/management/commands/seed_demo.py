@@ -21,9 +21,15 @@ from django.db import transaction
 from backend.models import (
     Student, Teacher, Department, Commission, CommissionInscription,
     Semester, Evaluation, EvaluationSubmission, Final, FinalExam,
-    Attendance, AttendanceQRCode,
+    Attendance, AttendanceQRCode, Secretary,
 )
+from backend.models.staff import Staff
 from backend.models.auth_identity import AuthIdentity
+from backend.models.catalog import Catalog, CatalogItem
+from backend.models.form import Form, FormDocumentSource, FormField
+from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
+from backend.models.form_submission import FormAnswer, FormSubmission
+from backend.models.form_types import FormFieldType, FormSubmissionStatus, FormType
 from backend.models.teacher_role import TeacherRole
 from backend.models.user import User
 
@@ -145,6 +151,10 @@ class Command(BaseCommand):
         c = self._build_academia(students, dropped, dept_id, pablo, chief_for)
 
         self._restore_google_identities()
+        self._seed_secretaries()
+        self._seed_forms()
+        self._seed_dept_staff()
+        self._seed_submissions()
 
         n_pwd = 0
         for u in User.objects.all():
@@ -327,6 +337,447 @@ class Command(BaseCommand):
                 user=u,
                 defaults=dict(provider=AuthIdentity.Provider.GOOGLE,
                               provider_user_id=sub, email=email))
+
+    def _seed_secretaries(self):
+        """Crea las secretarías reales de FIUBA según la demo spec."""
+        location = "Paseo Colón"
+        schedule = "Lunes a Viernes de 8 a 16"
+
+        # Los padres deben aparecer antes que sus hijos.
+        entries = [
+            dict(name="Secretaría Administrativa", parent_name=None,
+                 contact_info="Lic. Guido Regazzoli"),
+            dict(name="Secretaría de Coordinación General", parent_name=None,
+                 contact_info="Xavier A. Pérez"),
+            dict(name="Secretaría de Gestión Académica", parent_name=None,
+                 contact_info="Ing. Lucas A. Macias"),
+            dict(name="Secretaría de Hábitat", parent_name=None,
+                 contact_info="Fernando A. López"),
+            dict(name="Secretaría de Bienestar Estudiantil", parent_name=None,
+                 contact_info="Gabriel A. González"),
+            dict(name="Secretaría de Extensión Universitaria", parent_name=None,
+                 contact_info="Prof. Univ. Sofía Della Villa"),
+            dict(name="Secretaría de Investigación, Posgrado y Doctorado", parent_name=None,
+                 contact_info="Dra. Celina Raquel Bernal"),
+            dict(name="Secretaría de Planificación Académica y de Investigación", parent_name=None,
+                 contact_info="Inga. Silvia Susana Isaurralde"),
+            dict(name="Secretaría de Relaciones Institucionales", parent_name=None,
+                 contact_info="Ing. Fernando Horman"),
+            dict(name="Subsecretaría de Tecnologías de la Información y Comunicaciones", parent_name=None,
+                 contact_info="Ing. Rodrigo Calero"),
+            dict(name="Subsecretaría Técnica Legal", parent_name=None,
+                 contact_info="Abog. Alejandra Cejas"),
+            dict(name="Área de Coordinación para el Proyecto Edilicio", parent_name=None,
+                 contact_info="Ing. Luis Nelson Sosti"),
+            dict(name="Intercambios Académicos",
+                 parent_name="Secretaría de Gestión Académica",
+                 contact_info="interac@fi.uba.ar"),
+        ]
+
+        n = 0
+        for e in entries:
+            parent = (Secretary.objects.filter(name=e["parent_name"]).first()
+                      if e["parent_name"] else None)
+            _, created = Secretary.objects.get_or_create(
+                name=e["name"],
+                defaults=dict(parent_secretary=parent, location=location,
+                              schedule=schedule, contact_info=e["contact_info"]),
+            )
+            n += created
+        total = len(entries)
+        print(f"Secretaries: {total} ({total - n} already existed)")
+
+    def _seed_forms(self):
+        """Crea los grupos de propiedad y formularios de la demo spec.
+
+        Fuentes:
+        - Campos de 'Solicitud cuenta de correo' e 'Intercambios académicos': migración 0066.
+        - URL de 'Excepción de correlatividad': migración 0065.
+        """
+        sec_tic = Secretary.objects.get(
+            name="Subsecretaría de Tecnologías de la Información y Comunicaciones")
+        sec_interc = Secretary.objects.get(name="Intercambios Académicos")
+        departments = list(Department.objects.all())
+
+        def _entity_type(obj):
+            if isinstance(obj, Department):
+                return FormOwnershipMember.DEPARTMENT
+            return FormOwnershipMember.SECRETARY
+
+        ownership_groups = [
+            dict(name="Mesa de Ayuda - Subsecretaría TIC",
+                 members=[dict(entity=sec_tic, is_editor=True)]),
+            dict(name="Intercambios Académicos",
+                 members=[dict(entity=sec_interc, is_editor=True)]),
+            dict(name="Todos los departamentos",
+                 members=[dict(entity=d, is_editor=True) for d in departments]),
+        ]
+
+        ng = 0
+        for g in ownership_groups:
+            group, created = FormOwnershipGroup.objects.get_or_create(name=g["name"])
+            ng += created
+            for m in g["members"]:
+                FormOwnershipMember.objects.get_or_create(
+                    group=group,
+                    entity_type=_entity_type(m["entity"]),
+                    entity_id=m["entity"].pk,
+                    defaults={"is_editor": m["is_editor"]},
+                )
+        total_g = len(ownership_groups)
+        print(f"Ownership groups: {total_g} ({total_g - ng} already existed)")
+
+        digital = FormType.objects.get(form_type_value="Digital")
+        document = FormType.objects.get(form_type_value="Documento")
+
+        group_tic = FormOwnershipGroup.objects.get(name="Mesa de Ayuda - Subsecretaría TIC")
+        group_interc = FormOwnershipGroup.objects.get(name="Intercambios Académicos")
+        group_depts = FormOwnershipGroup.objects.get(name="Todos los departamentos")
+
+        def _field_type(value):
+            ft, _ = FormFieldType.objects.get_or_create(form_field_type_value=value)
+            return ft
+
+        forms = [
+            dict(
+                form_name="Solicitud cuenta de correo FI.UBA.AR",
+                form_description="Solicitud de mail institucional FIUBA",
+                form_information=(
+                    "El alta tiene un tiempo estimado maximo de 72hs habiles. Una vez generada la cuenta se le enviara "
+                    "desde el remitente de Mesa de Ayuda o Google Workspace un correo con los datos de acceso. "
+                    "Verificar siempre la carpeta de spam o correos no deseados en caso de que hayan transcurrido mas "
+                    "de las 72hs habiles.\n\n"
+                    "NOTA: En el caso de los alumnos de grado, es condicion necesaria tener numero de legajo asignado "
+                    "para obtener un correo Fiuba.\n\n"
+                    "Informacion importante:\n"
+                    "1- Los campos nombre y apellido deben ser completados de forma completa.\n"
+                    "2- NO completar el formulario mas de una vez. El completar el formulario varias veces solo "
+                    "perjudica el procesamiento de datos y hace que los tiempos de creacion sean aun mayores.\n"
+                    "3- En caso de ser alumno de posgrado, una vez completado el formulario deberan enviar a "
+                    "ayuda@fi.uba.ar la constancia de que se encuentra realizando un Posgrado en la Facultad.\n"
+                    "4- En caso de ser alumno del CBC los correos electronicos FIUBA son otorgados solamente a los "
+                    "alumnos del CBC que esten cursando una materia en la Facultad (no incluye materias del CBC) o "
+                    "bien para aquellos que lo necesiten para algun tramite administrativo."
+                ),
+                ownership_group=group_tic,
+                form_type=digital,
+                requires_teacher_validation=False,
+                document_source=None,
+                fields=[
+                    dict(label="Correo", field_type="mail", required=True, catalog_key=None),
+                    dict(label="Nombre", field_type="texto", required=True, catalog_key=None),
+                    dict(label="Apellido", field_type="texto", required=True, catalog_key=None),
+                    dict(label="DNI", field_type="numero", required=True, catalog_key=None),
+                    dict(label="Rol en la comunidad FIUBA", field_type="catalog", required=True,
+                         catalog_key="rol_en_comunidad"),
+                    dict(label="Legajo o Padron", field_type="padron", required=True, catalog_key=None),
+                    dict(label="Email de contacto", field_type="mail", required=True, catalog_key=None),
+                ],
+            ),
+            dict(
+                form_name="Solicitud de información de intercambios académicos",
+                form_description="Solicitud de información sobre programas de intercambio académico",
+                form_information=(
+                    "¿Querés estar al tanto de las novedades de los intercambios para alumnos de FIUBA sin beca? "
+                    "Completá el siguiente formulario para que podamos mantenerte informado."
+                ),
+                ownership_group=group_interc,
+                form_type=digital,
+                requires_teacher_validation=False,
+                document_source=None,
+                fields=[
+                    dict(label="Correo", field_type="mail", required=True, catalog_key=None),
+                    dict(label="Nombre", field_type="texto", required=True, catalog_key=None),
+                    dict(label="Apellido", field_type="texto", required=True, catalog_key=None),
+                    dict(label="Padrón", field_type="padron", required=True, catalog_key=None),
+                    dict(label="Carrera", field_type="catalog", required=True, catalog_key="carreras"),
+                    dict(label="Promedio con CBC y aplazos", field_type="numero", required=True, catalog_key=None),
+                    dict(label="¿Podrías realizar un intercambio sin la ayuda económica de una beca?",
+                         field_type="checkbox", required=True, catalog_key=None),
+                    dict(label="¿Cuántos créditos aprobados tenés?", field_type="numero", required=True,
+                         catalog_key=None),
+                    dict(label="Correo electrónico FIUBA", field_type="mail", required=True, catalog_key=None),
+                    dict(label="¿En qué cuatrimestre te gustaría irte de intercambio?",
+                         field_type="texto", required=True, catalog_key=None),
+                    dict(label="¿Sabés a qué universidad te gustaría ir?",
+                         field_type="texto", required=True, catalog_key=None),
+                    dict(label="¿A qué país te gustaría viajar?", field_type="texto", required=True,
+                         catalog_key=None),
+                    dict(label="¿Tenes pensado postularte a alguna beca?", field_type="checkbox",
+                         required=False, catalog_key=None),
+                    dict(label="Tipo de beca", field_type="catalog", required=True, catalog_key="tipo_de_beca"),
+                    dict(label="Añadir programa de interés en caso de que no esté en las opciones anteriores",
+                         field_type="texto", required=False, catalog_key=None),
+                    dict(label="Subí tu analítico de materias aprobadas pedido en el Departamento de Alumnos "
+                               "(no obligatorio)",
+                         field_type="adjunto", required=False, catalog_key=None),
+                ],
+            ),
+            dict(
+                form_name="Excepción de correlatividad",
+                form_description="Pedido de excepción de correlatividad",
+                form_information=None,
+                ownership_group=group_depts,
+                form_type=document,
+                requires_teacher_validation=True,
+                document_source="https://cms.fi.uba.ar/uploads/Pedido_de_excepcion_2016_f77cee96e0_b6a398efe5.pdf",
+                fields=[
+                    dict(label="Adjunto", field_type="adjunto", required=True, catalog_key=None),
+                ],
+            ),
+        ]
+
+        nf = 0
+        for f in forms:
+            form, created = Form.objects.get_or_create(
+                form_name=f["form_name"],
+                defaults=dict(
+                    form_description=f["form_description"],
+                    form_information=f["form_information"],
+                    ownership_group=f["ownership_group"],
+                    form_type=f["form_type"],
+                    requires_teacher_validation=f["requires_teacher_validation"],
+                ),
+            )
+            nf += created
+            if created:
+                if f["document_source"]:
+                    FormDocumentSource.objects.create(
+                        form=form, form_document_source=f["document_source"])
+                for order, field in enumerate(f["fields"], start=1):
+                    catalog = (Catalog.objects.get(catalog_key=field["catalog_key"])
+                               if field["catalog_key"] else None)
+                    FormField.objects.create(
+                        form=form,
+                        form_field_label=field["label"],
+                        form_field_type=_field_type(field["field_type"]),
+                        form_field_require=field["required"],
+                        form_field_order=order,
+                        catalog=catalog,
+                    )
+
+        total_f = len(forms)
+        print(f"Forms: {total_f} ({total_f - nf} already existed)")
+
+    def _seed_dept_staff(self):
+        """Crea un usuario staff del Departamento de Computación si no existe."""
+        dept = Department.objects.get(name="Departamento de Computación")
+        user, created = User.objects.get_or_create(
+            email="carlos.rodriguez@dept.fi.uba.ar",
+            defaults=dict(
+                first_name="Carlos",
+                last_name="Rodriguez",
+                dni="28456123",
+                is_staff=True,
+                is_active=True,
+            ),
+        )
+        if not hasattr(user, 'staff'):
+            Staff.objects.create(user=user, department=dept, department_siu_id=0)
+        print(f"Dept staff: 1 ({int(not created)} already existed)")
+
+    def _seed_submissions(self):
+        """Puebla con respuestas pre-cargadas los dos formularios digitales de la demo."""
+
+        def _cat(catalog_key, label):
+            return str(CatalogItem.objects.get(
+                catalog__catalog_key=catalog_key, catalog_item_label=label).pk)
+
+        status_sent = FormSubmissionStatus.objects.get(
+            form_submission_status_value=FormSubmissionStatus.SENT)
+        status_pending = FormSubmissionStatus.objects.get(
+            form_submission_status_value=FormSubmissionStatus.PENDING_APPROVAL)
+        status_approved = FormSubmissionStatus.objects.get(
+            form_submission_status_value=FormSubmissionStatus.APPROVED)
+        status_denied = FormSubmissionStatus.objects.get(
+            form_submission_status_value=FormSubmissionStatus.DENIED)
+
+        form_correo = Form.objects.get(form_name="Solicitud cuenta de correo FI.UBA.AR")
+        form_interc = Form.objects.get(form_name="Solicitud de información de intercambios académicos")
+
+        sec_tic = Secretary.objects.get(
+            name="Subsecretaría de Tecnologías de la Información y Comunicaciones")
+        sec_interc = Secretary.objects.get(name="Intercambios Académicos")
+
+        # Idempotente: borra las respuestas previas de estos dos formularios demo.
+        FormSubmission.objects.filter(form__in=[form_correo, form_interc]).delete()
+
+        def _fields(form):
+            return {f.form_field_label: f for f in form.fields.all()}
+
+        def _submit(form, user, status, recipient_sec, answers, fields):
+            sub = FormSubmission.objects.create(
+                form=form,
+                user=user,
+                status=status,
+                recipient_entity_type=FormSubmission.RECIPIENT_ENTITY_SECRETARY,
+                recipient_entity_id=recipient_sec.pk,
+            )
+            for label, value in answers.items():
+                FormAnswer.objects.create(
+                    submission=sub, field=fields[label], answer_value=value)
+
+        # ── Solicitud cuenta de correo FI.UBA.AR ─────────────────────────────
+        fc = _fields(form_correo)
+        ROL_ALUMNO = _cat("rol_en_comunidad", "Alumno de Grado")
+
+        CORREO_SUBS = [
+            dict(
+                dni="41835723",
+                status=status_approved,
+                answers={
+                    "Correo": "jandresen@gmail.com",
+                    "Nombre": "Joaquin",
+                    "Apellido": "Andresen",
+                    "DNI": "41835723",
+                    "Rol en la comunidad FIUBA": ROL_ALUMNO,
+                    "Legajo o Padron": "102707",
+                    "Email de contacto": "jandresen@gmail.com",
+                },
+            ),
+            dict(
+                dni="43990892",
+                status=status_pending,
+                answers={
+                    "Correo": "lsalluzi@gmail.com",
+                    "Nombre": "Luca",
+                    "Apellido": "Salluzzi",
+                    "DNI": "43990892",
+                    "Rol en la comunidad FIUBA": ROL_ALUMNO,
+                    "Legajo o Padron": "108088",
+                    "Email de contacto": "lsalluzi@gmail.com",
+                },
+            ),
+            dict(
+                dni="41779246",
+                status=status_sent,
+                answers={
+                    "Correo": "ggordyn@gmail.com",
+                    "Nombre": "Gonzalo",
+                    "Apellido": "Gordyn Biello",
+                    "DNI": "41779246",
+                    "Rol en la comunidad FIUBA": ROL_ALUMNO,
+                    "Legajo o Padron": "104503",
+                    "Email de contacto": "ggordyn@gmail.com",
+                },
+            ),
+            dict(
+                dni="42817479",
+                status=status_denied,
+                answers={
+                    "Correo": "mgonzalezp@gmail.com",
+                    "Nombre": "Martin",
+                    "Apellido": "Gonzalez Prieto",
+                    "DNI": "42817479",
+                    "Rol en la comunidad FIUBA": ROL_ALUMNO,
+                    "Legajo o Padron": "105738",
+                    "Email de contacto": "mgonzalezp@gmail.com",
+                },
+            ),
+        ]
+
+        for s in CORREO_SUBS:
+            _submit(form_correo, User.objects.get(dni=s["dni"]), s["status"], sec_tic, s["answers"], fc)
+        print(f"Form submissions created: {len(CORREO_SUBS)} ({form_correo.form_name})")
+
+        # ── Solicitud de información de intercambios académicos ───────────────
+        fi = _fields(form_interc)
+        INFORMATICA = _cat("carreras", "Ing. en Informática")
+
+        INTERC_SUBS = [
+            dict(
+                dni="43459394",
+                status=status_sent,
+                answers={
+                    "Correo": "vlanzillotta@gmail.com",
+                    "Nombre": "Valentina",
+                    "Apellido": "Lanzillotta",
+                    "Padrón": "108257",
+                    "Carrera": INFORMATICA,
+                    "Promedio con CBC y aplazos": "8.2",
+                    "¿Podrías realizar un intercambio sin la ayuda económica de una beca?": "false",
+                    "¿Cuántos créditos aprobados tenés?": "160",
+                    "Correo electrónico FIUBA": "vlanzillotta@fi.uba.ar",
+                    "¿En qué cuatrimestre te gustaría irte de intercambio?": "1C2027",
+                    "¿Sabés a qué universidad te gustaría ir?": "Universidad Politécnica de Madrid",
+                    "¿A qué país te gustaría viajar?": "España",
+                    "¿Tenes pensado postularte a alguna beca?": "true",
+                    "Tipo de beca": _cat("tipo_de_beca", "Doble Diploma"),
+                    "Añadir programa de interés en caso de que no esté en las opciones anteriores": "",
+                    "Subí tu analítico de materias aprobadas pedido en el Departamento de Alumnos (no obligatorio)": None,
+                },
+            ),
+            dict(
+                dni="42150053",
+                status=status_pending,
+                answers={
+                    "Correo": "mmerlog@gmail.com",
+                    "Nombre": "Matías Sebastián",
+                    "Apellido": "Merlo Gonzalez",
+                    "Padrón": "104093",
+                    "Carrera": INFORMATICA,
+                    "Promedio con CBC y aplazos": "7.5",
+                    "¿Podrías realizar un intercambio sin la ayuda económica de una beca?": "true",
+                    "¿Cuántos créditos aprobados tenés?": "140",
+                    "Correo electrónico FIUBA": "mmerlog@fi.uba.ar",
+                    "¿En qué cuatrimestre te gustaría irte de intercambio?": "2C2026",
+                    "¿Sabés a qué universidad te gustaría ir?": "Tecnológico de Monterrey",
+                    "¿A qué país te gustaría viajar?": "México",
+                    "¿Tenes pensado postularte a alguna beca?": "false",
+                    "Tipo de beca": _cat("tipo_de_beca", "Programa sin beca"),
+                    "Añadir programa de interés en caso de que no esté en las opciones anteriores": "",
+                    "Subí tu analítico de materias aprobadas pedido en el Departamento de Alumnos (no obligatorio)": None,
+                },
+            ),
+            dict(
+                dni="43775927",
+                status=status_approved,
+                answers={
+                    "Correo": "isuarezp@gmail.com",
+                    "Nombre": "Imanol",
+                    "Apellido": "Suarez Pino",
+                    "Padrón": "107746",
+                    "Carrera": INFORMATICA,
+                    "Promedio con CBC y aplazos": "9.1",
+                    "¿Podrías realizar un intercambio sin la ayuda económica de una beca?": "false",
+                    "¿Cuántos créditos aprobados tenés?": "170",
+                    "Correo electrónico FIUBA": "isuarezp@fi.uba.ar",
+                    "¿En qué cuatrimestre te gustaría irte de intercambio?": "1C2027",
+                    "¿Sabés a qué universidad te gustaría ir?": "Université Paris-Saclay",
+                    "¿A qué país te gustaría viajar?": "Francia",
+                    "¿Tenes pensado postularte a alguna beca?": "true",
+                    "Tipo de beca": _cat("tipo_de_beca", "Programa UBAInt"),
+                    "Añadir programa de interés en caso de que no esté en las opciones anteriores": "",
+                    "Subí tu analítico de materias aprobadas pedido en el Departamento de Alumnos (no obligatorio)": None,
+                },
+            ),
+            dict(
+                dni="42817479",
+                status=status_sent,
+                answers={
+                    "Correo": "mgonzalezp@gmail.com",
+                    "Nombre": "Martin",
+                    "Apellido": "Gonzalez Prieto",
+                    "Padrón": "105738",
+                    "Carrera": INFORMATICA,
+                    "Promedio con CBC y aplazos": "8.8",
+                    "¿Podrías realizar un intercambio sin la ayuda económica de una beca?": "true",
+                    "¿Cuántos créditos aprobados tenés?": "155",
+                    "Correo electrónico FIUBA": "mgonzalezp@fi.uba.ar",
+                    "¿En qué cuatrimestre te gustaría irte de intercambio?": "2C2026",
+                    "¿Sabés a qué universidad te gustaría ir?": "KTH Royal Institute of Technology",
+                    "¿A qué país te gustaría viajar?": "Suecia",
+                    "¿Tenes pensado postularte a alguna beca?": "true",
+                    "Tipo de beca": _cat("tipo_de_beca", "Beca Aelarg"),
+                    "Añadir programa de interés en caso de que no esté en las opciones anteriores": "",
+                    "Subí tu analítico de materias aprobadas pedido en el Departamento de Alumnos (no obligatorio)": None,
+                },
+            ),
+        ]
+
+        for s in INTERC_SUBS:
+            _submit(form_interc, User.objects.get(dni=s["dni"]), s["status"], sec_interc, s["answers"], fi)
+        print(f"Form submissions created: {len(INTERC_SUBS)} ({form_interc.form_name})")
 
     def _report(self, c, students, dropped):
         w = self.stdout.write
