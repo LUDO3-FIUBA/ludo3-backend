@@ -11,10 +11,20 @@ from rest_framework.viewsets import ViewSet
 from backend.models import Contact, Notification, Student, UserNotification
 from backend.permissions import IsStudent
 from backend.serializers.contact_serializer import ContactSerializer, StudentContactSerializer
+from backend.views.utils import get_current_semester, get_current_year
 
 
 def _get_student(request):
     return Student.objects.get(user=request.user)
+
+
+def _present_inscriptions(student):
+    """Accepted inscriptions for the semester currently in progress."""
+    return student.commissioninscription_set.filter(
+        status='A',
+        semester__start_date__year=get_current_year(),
+        semester__year_moment=get_current_semester(),
+    )
 
 
 def _contact_queryset(student):
@@ -144,9 +154,9 @@ class ContactViewSet(ViewSet):
             return Response({'detail': 'Contacto no encontrado.'}, status=status.HTTP_404_NOT_FOUND)
 
         other = contact.to_student if contact.from_student == student else contact.from_student
-        inscriptions = other.commissioninscription_set.filter(
-            status='A'
-        ).select_related('semester__commission').prefetch_related('semester__schedules')
+        inscriptions = _present_inscriptions(other).select_related(
+            'semester__commission'
+        ).prefetch_related('semester__schedules')
 
         data = [
             {
@@ -191,7 +201,7 @@ class ContactViewSet(ViewSet):
                     'start_time': sc.start_time.strftime('%H:%M'),
                     'end_time': sc.end_time.strftime('%H:%M'),
                 }
-                for i in s.commissioninscription_set.filter(status='A')
+                for i in _present_inscriptions(s)
                     .select_related('semester__commission')
                     .prefetch_related('semester__schedules')
                 for sc in i.semester.schedules.all()
