@@ -136,12 +136,37 @@ SEGUNDA_COMISION_FISICA_STUDENTS = [
     ("46100005", "110005", "Lucas", "Moreno", "lmoreno@fi.uba.ar", [6, 4, 7]),
 ]
 
-# Horarios de cursada por materia (subject_siu_id) para el cuatrimestre en curso.
-# Se usan en la comparación de horarios entre contactos.
+# Horarios de cursada por materia (subject_siu_id). Fuente: fake-siu/db.json.
 # day_of_week: 0=Lun, 1=Mar, 2=Mié, 3=Jue, 4=Vie, 5=Sáb.
 HORARIOS_POR_MATERIA = {
-    25: [(0, "09:00", "12:00"), (2, "09:00", "12:00")],   # Física para Informática: Lun y Mié
-    28: [(1, "18:00", "21:00"), (3, "18:00", "21:00")],   # Sistemas Distribuidos I: Mar y Jue
+    1:  [(0, "08:00", "11:00"), (3, "08:00", "11:00")],   # Álgebra A
+    2:  [(1, "08:00", "11:00"), (4, "08:00", "11:00")],   # Análisis Matemático A
+    3:  [(0, "14:00", "17:00"), (2, "14:00", "17:00")],   # Física
+    4:  [(1, "18:00", "22:00")],                           # Intro al Conocimiento de la Sociedad y el Estado
+    5:  [(2, "18:00", "22:00")],                           # Intro al Pensamiento Científico
+    6:  [(3, "18:00", "22:00")],                           # Pensamiento Computacional
+    7:  [(0, "08:00", "11:00"), (3, "08:00", "11:00")],   # Análisis Matemático II
+    8:  [(1, "08:00", "11:00"), (4, "08:00", "11:00")],   # Fundamentos de Programación
+    9:  [(2, "08:00", "11:00"), (4, "11:00", "14:00")],   # Intro al Desarrollo de Software
+    10: [(0, "11:00", "14:00"), (3, "11:00", "14:00")],   # Álgebra Lineal
+    11: [(1, "11:00", "14:00"), (3, "14:00", "17:00")],   # Organización del Computador
+    12: [(0, "18:00", "21:00"), (2, "18:00", "21:00")],   # Algoritmos y Estructuras de Datos
+    13: [(0, "14:00", "17:00"), (2, "14:00", "17:00")],   # Probabilidad y Estadística
+    14: [(1, "14:00", "17:00"), (3, "18:00", "21:00")],   # Teoría de Algoritmos
+    15: [(2, "11:00", "14:00"), (4, "14:00", "17:00")],   # Sistemas Operativos
+    16: [(1, "08:00", "11:00"), (4, "08:00", "11:00")],   # Paradigmas de Programación
+    17: [(0, "11:00", "14:00"), (2, "18:00", "21:00")],   # Base de Datos
+    18: [(0, "08:00", "11:00"), (2, "08:00", "11:00")],   # Modelación Numérica
+    19: [(3, "14:00", "17:00")],                           # Taller de Programación
+    20: [(2, "18:00", "21:00"), (4, "18:00", "21:00")],   # Ingeniería de Software I
+    21: [(0, "18:00", "21:00"), (3, "11:00", "14:00")],   # Ciencia de Datos
+    22: [(1, "18:00", "21:00")],                           # Gestión del Desarrollo de Sistemas Informáticos
+    23: [(2, "08:00", "11:00"), (4, "08:00", "11:00")],   # Programación Concurrente
+    24: [(0, "14:00", "17:00"), (3, "14:00", "17:00")],   # Redes
+    25: [(0, "11:00", "14:00"), (2, "11:00", "14:00")],   # Física para Informática
+    26: [(1, "18:00", "21:00")],                           # Empresas de Base Tecnológica I
+    27: [(0, "18:00", "21:00"), (3, "18:00", "21:00")],   # Ingeniería de Software II
+    28: [(2, "18:00", "21:00"), (4, "18:00", "21:00")],   # Sistemas Distribuidos I
 }
 
 
@@ -418,13 +443,10 @@ class Command(BaseCommand):
               f"{len(students)} alumnos, {len(evals)} evaluaciones, {n_sub} notas.")
 
     def _seed_horarios(self):
-        """Carga horarios de cursada (SemesterSchedule) de las materias del cuatrimestre
-        en curso, según HORARIOS_POR_MATERIA. Se usan en la comparación de horarios entre
-        contactos. Idempotente."""
-        ym, start, _approved = CUATRI["8P"]  # cuatri actual
-        semesters = Semester.objects.filter(year_moment=ym, start_date__year=start.year)
+        """Carga horarios de cursada (SemesterSchedule) para todos los semesters,
+        según HORARIOS_POR_MATERIA. Idempotente."""
         n = 0
-        for sem in semesters:
+        for sem in Semester.objects.select_related("commission").all():
             bloques = HORARIOS_POR_MATERIA.get(sem.commission.subject_siu_id)
             if not bloques:
                 continue
@@ -435,7 +457,7 @@ class Command(BaseCommand):
                     semester=sem, day_of_week=dow, start_time=time(sh, sm),
                     defaults={"end_time": time(eh, em)})
                 n += 1
-        print(f"Horarios cargados: {n} bloques en semestres del cuatri actual.")
+        print(f"Horarios cargados: {n} bloques en {Semester.objects.count()} semesters.")
 
     def _restore_google_identities(self):
         """Restaura las identidades de Google (sub real) para que el login con
