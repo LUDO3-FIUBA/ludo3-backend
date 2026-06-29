@@ -345,6 +345,1000 @@
     }
   ],
   "finales": [],
-  "comisiones": [],
+  "comisiones": [
+    {
+      "id": 1001,
+      "comision": 1001,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CBC62",
+        "nombre": "Álgebra A"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "08:00",
+          "fin": "11:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "García",
+          "nombres": "Carlos"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1002,
+      "comision": 1002,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CBC66",
+        "nombre": "Análisis Matemático A"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "López",
+          "nombres": "Ana María"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1003,
+      "comision": 1003,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CBC03",
+        "nombre": "Física"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "14:00",
+          "fin": "17:00"
+        },
+        {
+          "dia": "miércoles",
+          "inicio": "14:00",
+          "fin": "17:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Martínez",
+          "nombres": "Jorge"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1004,
+      "comision": 1004,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CBC24",
+        "nombre": "Introducción al Conocimiento de la Sociedad y el Estado"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "18:00",
+          "fin": "22:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Fernández",
+          "nombres": "María"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1005,
+      "comision": 1005,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CBC40",
+        "nombre": "Introducción al Pensamiento Científico"
+      },
+      "horarios": [
+        {
+          "dia": "miércoles",
+          "inicio": "18:00",
+          "fin": "22:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Rodríguez",
+          "nombres": "Pablo"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1006,
+      "comision": 1006,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CBC90",
+        "nombre": "Pensamiento Computacional"
+      },
+      "horarios": [
+        {
+          "dia": "jueves",
+          "inicio": "18:00",
+          "fin": "22:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Sánchez",
+          "nombres": "Laura"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1007,
+      "comision": 1007,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CB001",
+        "nombre": "Análisis Matemático II"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "08:00",
+          "fin": "11:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Perez",
+          "nombres": "Daniel"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1070,
+      "comision": 1070,
+      "nombre": "B",
+      "actividad": {
+        "codigo": "CB001",
+        "nombre": "Análisis Matemático II"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "González",
+          "nombres": "Sergio"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1008,
+      "comision": 1008,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TB021",
+        "nombre": "Fundamentos de Programación"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Díaz",
+          "nombres": "Valentina"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1009,
+      "comision": 1009,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TB022",
+        "nombre": "Introducción al Desarrollo de Software"
+      },
+      "horarios": [
+        {
+          "dia": "miércoles",
+          "inicio": "08:00",
+          "fin": "11:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "11:00",
+          "fin": "14:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Torres",
+          "nombres": "Matías"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1010,
+      "comision": 1010,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CB002",
+        "nombre": "Álgebra Lineal"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "11:00",
+          "fin": "14:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "11:00",
+          "fin": "14:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Ruiz",
+          "nombres": "Claudia"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1011,
+      "comision": 1011,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TB023",
+        "nombre": "Organización del Computador"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "11:00",
+          "fin": "14:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "14:00",
+          "fin": "17:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Morales",
+          "nombres": "Ricardo"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1012,
+      "comision": 1012,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CB100",
+        "nombre": "Algoritmos y Estructuras de Datos"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "miércoles",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Jiménez",
+          "nombres": "Florencia"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1120,
+      "comision": 1120,
+      "nombre": "B",
+      "actividad": {
+        "codigo": "CB100",
+        "nombre": "Algoritmos y Estructuras de Datos"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Vargas",
+          "nombres": "Ignacio"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1013,
+      "comision": 1013,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CB003",
+        "nombre": "Probabilidad y Estadística"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "14:00",
+          "fin": "17:00"
+        },
+        {
+          "dia": "miércoles",
+          "inicio": "14:00",
+          "fin": "17:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Castro",
+          "nombres": "Emilio"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1014,
+      "comision": 1014,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TB024",
+        "nombre": "Teoría de Algoritmos"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "14:00",
+          "fin": "17:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Romero",
+          "nombres": "Sebastián"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1015,
+      "comision": 1015,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TA043",
+        "nombre": "Sistemas Operativos"
+      },
+      "horarios": [
+        {
+          "dia": "miércoles",
+          "inicio": "11:00",
+          "fin": "14:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "14:00",
+          "fin": "17:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Navarro",
+          "nombres": "Diego"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1150,
+      "comision": 1150,
+      "nombre": "B",
+      "actividad": {
+        "codigo": "TA043",
+        "nombre": "Sistemas Operativos"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Herrera",
+          "nombres": "Lucía"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1016,
+      "comision": 1016,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TB025",
+        "nombre": "Paradigmas de Programación"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Medina",
+          "nombres": "Tomás"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1017,
+      "comision": 1017,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TA044",
+        "nombre": "Base de Datos"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "11:00",
+          "fin": "14:00"
+        },
+        {
+          "dia": "miércoles",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Silva",
+          "nombres": "Verónica"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1170,
+      "comision": 1170,
+      "nombre": "B",
+      "actividad": {
+        "codigo": "TA044",
+        "nombre": "Base de Datos"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "08:00",
+          "fin": "11:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Reyes",
+          "nombres": "Andrés"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1018,
+      "comision": 1018,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CB051",
+        "nombre": "Modelación Numérica"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        },
+        {
+          "dia": "miércoles",
+          "inicio": "08:00",
+          "fin": "11:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Flores",
+          "nombres": "Cecilia"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1019,
+      "comision": 1019,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TA045",
+        "nombre": "Taller de Programación"
+      },
+      "horarios": [
+        {
+          "dia": "jueves",
+          "inicio": "14:00",
+          "fin": "17:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Ortega",
+          "nombres": "Nicolás"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1020,
+      "comision": 1020,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TA046",
+        "nombre": "Ingeniería de Software I"
+      },
+      "horarios": [
+        {
+          "dia": "miércoles",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Guerrero",
+          "nombres": "Beatriz"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1021,
+      "comision": 1021,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TA047",
+        "nombre": "Ciencia de Datos"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "11:00",
+          "fin": "14:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Vega",
+          "nombres": "Martín"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1022,
+      "comision": 1022,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TC017",
+        "nombre": "Gestión del Desarrollo de Sistemas Informáticos"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Mendoza",
+          "nombres": "Patricia"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1023,
+      "comision": 1023,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TB026",
+        "nombre": "Programación Concurrente"
+      },
+      "horarios": [
+        {
+          "dia": "viernes",
+          "inicio": "08:00",
+          "fin": "11:00"
+        },
+        {
+          "dia": "miércoles",
+          "inicio": "08:00",
+          "fin": "11:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Ramos",
+          "nombres": "Esteban"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1024,
+      "comision": 1024,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TA048",
+        "nombre": "Redes"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "14:00",
+          "fin": "17:00"
+        },
+        {
+          "dia": "jueves",
+          "inicio": "14:00",
+          "fin": "17:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Espinoza",
+          "nombres": "Hugo"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1240,
+      "comision": 1240,
+      "nombre": "B",
+      "actividad": {
+        "codigo": "TA048",
+        "nombre": "Redes"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "14:00",
+          "fin": "17:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "14:00",
+          "fin": "17:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Contreras",
+          "nombres": "Sofía"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1025,
+      "comision": 1025,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "CB024",
+        "nombre": "Física para Informática"
+      },
+      "horarios": [
+        {
+          "dia": "lunes",
+          "inicio": "11:00",
+          "fin": "14:00"
+        },
+        {
+          "dia": "miércoles",
+          "inicio": "11:00",
+          "fin": "14:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Parra",
+          "nombres": "Javier"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1026,
+      "comision": 1026,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TC018",
+        "nombre": "Empresas de Base Tecnológica I"
+      },
+      "horarios": [
+        {
+          "dia": "martes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Cosso",
+          "nombres": "Pablo"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1027,
+      "comision": 1027,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TA049",
+        "nombre": "Ingeniería de Software II"
+      },
+      "horarios": [
+        {
+          "dia": "jueves",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "lunes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "Essaya",
+          "nombres": "Diego"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    },
+    {
+      "id": 1028,
+      "comision": 1028,
+      "nombre": "A",
+      "actividad": {
+        "codigo": "TA050",
+        "nombre": "Sistemas Distribuidos I"
+      },
+      "horarios": [
+        {
+          "dia": "miércoles",
+          "inicio": "18:00",
+          "fin": "21:00"
+        },
+        {
+          "dia": "viernes",
+          "inicio": "18:00",
+          "fin": "21:00"
+        }
+      ],
+      "docentes": [
+        {
+          "apellido": "González Prieto",
+          "nombres": "Martín"
+        }
+      ],
+      "periodo_lectivo": {
+        "periodo_lectivo": 10,
+        "nombre": "2do Cuatrimestre 2026"
+      }
+    }
+  ],
   "actas": []
 }
