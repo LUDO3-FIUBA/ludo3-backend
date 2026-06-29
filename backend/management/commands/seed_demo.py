@@ -216,12 +216,30 @@ class Command(BaseCommand):
     # ---------- helpers ----------
 
     def _ensure_departments(self):
-        names = {"FIS": "Departamento de Física",
-                 "MAT": "Departamento de Matemática",
-                 "COM": "Departamento de Computación"}
+        dept_data = {
+            "FIS": dict(
+                name="Departamento de Física",
+                location="Pabellón 1, Ciudad Universitaria",
+                schedule="Lunes a Viernes de 9 a 17",
+                contact_info="deptofisica@fi.uba.ar",
+            ),
+            "MAT": dict(
+                name="Departamento de Matemática",
+                location="Pabellón 3, Ciudad Universitaria",
+                schedule="Lunes a Viernes de 9 a 17",
+                contact_info="deptomat@fi.uba.ar",
+            ),
+            "COM": dict(
+                name="Departamento de Computación",
+                location="Pabellón 1, Planta Baja, Ciudad Universitaria",
+                schedule="Lunes a Viernes de 9 a 17",
+                contact_info="info@dc.uba.ar",
+            ),
+        }
         out = {}
-        for key, name in names.items():
-            d, _ = Department.objects.get_or_create(name=name)
+        for key, data in dept_data.items():
+            name = data.pop("name")
+            d, _ = Department.objects.update_or_create(name=name, defaults=data)
             out[key] = d.id
         out[None] = None
         return out
@@ -542,7 +560,7 @@ class Command(BaseCommand):
                  members=[dict(entity=sec_tic, is_editor=True)]),
             dict(name="Intercambios Académicos",
                  members=[dict(entity=sec_interc, is_editor=True)]),
-            dict(name="Todos los departamentos",
+            dict(name="Trámites departamentales",
                  members=[dict(entity=d, is_editor=True) for d in departments]),
         ]
 
@@ -565,7 +583,7 @@ class Command(BaseCommand):
 
         group_tic = FormOwnershipGroup.objects.get(name="Mesa de Ayuda - Subsecretaría TIC")
         group_interc = FormOwnershipGroup.objects.get(name="Intercambios Académicos")
-        group_depts = FormOwnershipGroup.objects.get(name="Todos los departamentos")
+        group_depts = FormOwnershipGroup.objects.get(name="Trámites departamentales")
 
         def _field_type(value):
             ft, _ = FormFieldType.objects.get_or_create(form_field_type_value=value)
