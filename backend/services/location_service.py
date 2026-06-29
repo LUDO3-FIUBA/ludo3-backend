@@ -1,8 +1,8 @@
 import math
 
 CAMPUS_COORDINATES = {
-    'las_heras': {'lat': -34.58881221211288, 'lon': -58.39658985864721},
-    'paseo_colon': {'lat': -34.61756641409776, 'lon': -58.3681642316851},
+    'las_heras': {'lat': -34.5544933, 'lon': -58.464998},
+    'paseo_colon': {'lat': -34.6175841, 'lon': -58.3682286},
 }
 
 TOLERANCE_METERS = 250

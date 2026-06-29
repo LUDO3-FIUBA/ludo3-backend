@@ -12,7 +12,7 @@ con final pendiente -OPEN- a cargo de Pablo Cosso). Comisiones con varios inscri
     python manage.py seed_demo
 """
 import random
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
 from django.core.management import BaseCommand
@@ -30,6 +30,7 @@ from backend.models.form import Form, FormDocumentSource, FormField
 from backend.models.form_ownership import FormOwnershipGroup, FormOwnershipMember
 from backend.models.form_submission import FormAnswer, FormSubmission
 from backend.models.form_types import FormFieldType, FormSubmissionStatus, FormType
+from backend.models.semester_schedule import SemesterSchedule
 from backend.models.teacher_role import TeacherRole
 from backend.models.user import User
 
@@ -123,6 +124,26 @@ FAKE_TEACHERS = [
     ("Diego", "Fernández", "30666666", "dfernandez@fi.uba.ar", "COM"),
 ]
 
+# Alumnos falsos de la SEGUNDA comisión de Física para Informática (no son los 7
+# principales). Sirve para demostrar los finales unificados: dos comisiones de la
+# misma materia en el cuatrimestre en curso, con jefes de cátedra distintos.
+# dni, padron, first, last, email, notas (1° Parcial, 2° Parcial, TP Final)
+SEGUNDA_COMISION_FISICA_STUDENTS = [
+    ("46100001", "110001", "Tomás", "Ibarra", "tibarra@fi.uba.ar", [7, 8, 6]),
+    ("46100002", "110002", "Camila", "Ríos", "crios@fi.uba.ar", [9, 9, 10]),
+    ("46100003", "110003", "Nicolás", "Vega", "nvega@fi.uba.ar", [3, 5, 4]),
+    ("46100004", "110004", "Sofía", "Castro", "scastro@fi.uba.ar", [8, 7, 9]),
+    ("46100005", "110005", "Lucas", "Moreno", "lmoreno@fi.uba.ar", [6, 4, 7]),
+]
+
+# Horarios de cursada por materia (subject_siu_id) para el cuatrimestre en curso.
+# Se usan en la comparación de horarios entre contactos.
+# day_of_week: 0=Lun, 1=Mar, 2=Mié, 3=Jue, 4=Vie, 5=Sáb.
+HORARIOS_POR_MATERIA = {
+    25: [(0, "09:00", "12:00"), (2, "09:00", "12:00")],   # Física para Informática: Lun y Mié
+    28: [(1, "18:00", "21:00"), (3, "18:00", "21:00")],   # Sistemas Distribuidos I: Mar y Jue
+}
+
 
 class Command(BaseCommand):
     help = "DEV COMMAND: puebla la base con datos académicos de demo (ver docstring)."
@@ -155,6 +176,8 @@ class Command(BaseCommand):
         self._seed_forms()
         self._seed_dept_staff()
         self._seed_submissions()
+        self._seed_segunda_comision_fisica(dept_id)
+        self._seed_horarios()
 
         n_pwd = 0
         for u in User.objects.all():
@@ -325,6 +348,94 @@ class Command(BaseCommand):
                                                       submitted_at=qr.created_at, location_valid=True)
                             c["att"] += 1
         return c
+
+    def _seed_segunda_comision_fisica(self, dept_id):
+        """Segunda comisión de Física para Informática (mismo subject_siu_id que CB024)
+        para demostrar los finales unificados: dos comisiones de la misma materia, con
+        jefes de cátedra distintos, en el cuatrimestre en curso (2026 FS). Trae sus
+        propios alumnos falsos con notas de cursada."""
+        chief = Teacher.objects.filter(user__dni="30111111").first()  # Silvia Romano (FIS)
+        if chief is None:
+            print("Segunda comisión Física: no se encontró a Silvia Romano, se omite.")
+            return
+
+        ssid = 25
+        name = "Física para Informática"
+        ym, start, _approved = CUATRI["8P"]  # cuatri actual
+
+        if Commission.objects.filter(subject_siu_id=ssid, chief_teacher=chief).exists():
+            print("Segunda comisión Física: ya existe, se omite.")
+            return
+
+        students = []
+        for dni, padron, fn, ln, email, _grades in SEGUNDA_COMISION_FISICA_STUDENTS:
+            u = User.objects.filter(dni=dni).first() or User(username="", is_active=True)
+            u.dni = dni
+            u.email = email
+            u.first_name = fn
+            u.last_name = ln
+            u.is_student = True
+            u.save()  # .save() evita el validador de dni
+            st = Student.objects.filter(user=u).first() or Student(user=u, face_encodings=[])
+            st.padron = padron
+            st.save()
+            students.append(st)
+
+        siu_id = (Commission.objects.order_by("-siu_id")
+                  .values_list("siu_id", flat=True).first() or 2000) + 1
+        com = Commission.objects.create(
+            chief_teacher=chief, subject_siu_id=ssid, subject_name=name,
+            siu_id=siu_id, department_id=dept_id["FIS"])
+        TeacherRole.objects.create(commission=com, teacher=chief, role="Titular", grader_weight=5.0)
+
+        sem = Semester.objects.create(commission=com, year_moment=ym, start_date=start,
+                                      classes_amount=16, minimum_attendance=0.75)
+        for st in students:
+            CommissionInscription.objects.create(
+                semester=sem, student=st,
+                status=CommissionInscription.InscriptionStatus.ACCEPTED)
+
+        evals = []
+        for ename, off in (("1° Parcial", 45), ("2° Parcial", 95), ("TP Final", 104)):
+            ev_date = _plus(start, off)
+            ev = Evaluation.objects.create(
+                semester=sem, evaluation_name=ename,
+                is_graded=True, is_gradeable=True, passing_grade=4,
+                start_date=ev_date, end_date=_plus(ev_date, hours=3))
+            evals.append(ev)
+
+        n_sub = 0
+        for st, (*_meta, grades) in zip(students, SEGUNDA_COMISION_FISICA_STUDENTS):
+            for ev, grade in zip(evals, grades):
+                status_val = (EvaluationSubmission.SubmissionStatus.APROBADO if grade >= 4
+                              else EvaluationSubmission.SubmissionStatus.DESAPROBADO)
+                EvaluationSubmission.objects.create(
+                    evaluation=ev, student=st, grade=grade, grader=chief,
+                    submission_status=status_val)
+                n_sub += 1
+
+        print(f"Segunda comisión Física: comisión {com.id} (siu {siu_id}), "
+              f"{len(students)} alumnos, {len(evals)} evaluaciones, {n_sub} notas.")
+
+    def _seed_horarios(self):
+        """Carga horarios de cursada (SemesterSchedule) de las materias del cuatrimestre
+        en curso, según HORARIOS_POR_MATERIA. Se usan en la comparación de horarios entre
+        contactos. Idempotente."""
+        ym, start, _approved = CUATRI["8P"]  # cuatri actual
+        semesters = Semester.objects.filter(year_moment=ym, start_date__year=start.year)
+        n = 0
+        for sem in semesters:
+            bloques = HORARIOS_POR_MATERIA.get(sem.commission.subject_siu_id)
+            if not bloques:
+                continue
+            for dow, st, et in bloques:
+                sh, sm = (int(x) for x in st.split(":"))
+                eh, em = (int(x) for x in et.split(":"))
+                SemesterSchedule.objects.get_or_create(
+                    semester=sem, day_of_week=dow, start_time=time(sh, sm),
+                    defaults={"end_time": time(eh, em)})
+                n += 1
+        print(f"Horarios cargados: {n} bloques en semestres del cuatri actual.")
 
     def _restore_google_identities(self):
         """Restaura las identidades de Google (sub real) para que el login con
