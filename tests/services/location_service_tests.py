@@ -20,14 +20,21 @@ class HaversineDistanceTests(TestCase):
 
 
 class IsWithinCampusTests(TestCase):
-    LAS_HERAS_LAT = -34.58881221211288
-    LAS_HERAS_LON = -58.39658985864721
+    LAS_HERAS_LAT = -34.5544933
+    LAS_HERAS_LON = -58.464998
     PASEO_COLON_LAT = -34.61756641409776
     PASEO_COLON_LON = -58.3681642316851
+    CIUDAD_UNIVERSITARIA_LAT = -34.5423313
+    CIUDAD_UNIVERSITARIA_LON = -58.444624
 
     def test_exact_campus_coordinates_are_within(self):
         self.assertTrue(is_within_campus('las_heras', self.LAS_HERAS_LAT, self.LAS_HERAS_LON))
         self.assertTrue(is_within_campus('paseo_colon', self.PASEO_COLON_LAT, self.PASEO_COLON_LON))
+        self.assertTrue(is_within_campus('ciudad_universitaria', self.CIUDAD_UNIVERSITARIA_LAT, self.CIUDAD_UNIVERSITARIA_LON))
+
+    def test_ciudad_universitaria_rejects_other_campus_coordinates(self):
+        self.assertFalse(is_within_campus('ciudad_universitaria', self.LAS_HERAS_LAT, self.LAS_HERAS_LON))
+        self.assertFalse(is_within_campus('ciudad_universitaria', self.PASEO_COLON_LAT, self.PASEO_COLON_LON))
 
     def test_point_100m_away_is_within(self):
         # ~0.0009 degrees latitude ≈ 100 meters (well within 250m tolerance)

@@ -16,7 +16,12 @@ MODE_CHOICES = [(MODE_QR, 'QR'), (MODE_QR_LOCATION, 'QR + Ubicación')]
 
 CAMPUS_LAS_HERAS = 'las_heras'
 CAMPUS_PASEO_COLON = 'paseo_colon'
-CAMPUS_CHOICES = [(CAMPUS_LAS_HERAS, 'Las Heras'), (CAMPUS_PASEO_COLON, 'Paseo Colón')]
+CAMPUS_CIUDAD_UNIVERSITARIA = 'ciudad_universitaria'
+CAMPUS_CHOICES = [
+    (CAMPUS_LAS_HERAS, 'Las Heras'),
+    (CAMPUS_PASEO_COLON, 'Paseo Colón'),
+    (CAMPUS_CIUDAD_UNIVERSITARIA, 'Ciudad Universitaria'),
+]
 
 
 class AttendanceQRCode(models.Model):

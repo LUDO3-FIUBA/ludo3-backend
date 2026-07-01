@@ -111,7 +111,7 @@ class AttendanceQRCodeStudentsSerializerNoSemester(serializers.ModelSerializer):
 class AttendanceQRCodePostSerializer(serializers.ModelSerializer):
     semester = serializers.IntegerField()
     mode = serializers.ChoiceField(choices=['qr', 'qr_location'], default='qr')
-    campus = serializers.ChoiceField(choices=['las_heras', 'paseo_colon'], required=False, allow_null=True)
+    campus = serializers.ChoiceField(choices=['las_heras', 'paseo_colon', 'ciudad_universitaria'], required=False, allow_null=True)
 
     class Meta:
         model = AttendanceQRCode
